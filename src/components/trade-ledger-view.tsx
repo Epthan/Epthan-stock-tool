@@ -4,6 +4,7 @@ import Link from "next/link";
 import { TTL, fetchCached } from "@/lib/client-cache";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useLanguage } from "@/components/language-provider";
+import { BackupControls } from "@/components/data-sync";
 import { PortfolioTradesDialog } from "@/components/portfolio-trades-dialog";
 import { useStockSelection } from "@/components/stock-selection-provider";
 import { legacyMigrationKey, usePortfolios, type LegacyMigration } from "@/hooks/use-portfolios";
@@ -113,6 +114,7 @@ export function TradeLedgerView() {
           </select>
         </label>
         <button className="tl-primary" onClick={() => setEditor({ symbol: "" })}>{text("+ Add trade", "+ 新增交易")}</button>
+        <BackupControls zh={locale === "zh"} />
         <Link className="tl-link" href="/dashboard">{text("Dashboard", "组合分析")} ↗</Link>
       </div>
     </header>

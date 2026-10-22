@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { useStockSelection } from "@/components/stock-selection-provider";
 import { SymbolSearchBox } from "@/components/symbol-search-box";
+import { DataSync } from "@/components/data-sync";
 import { useTheme, type ThemeChoice } from "@/components/theme-provider";
 
 const icons = {
@@ -42,6 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="shell">
+      <DataSync />
       <nav className="shell-rail" aria-label={zh ? "主导航" : "Main navigation"}>
         <Link href="/" className="shell-logo" aria-label="Stock Tool">S</Link>
         {items.map((item) => (
