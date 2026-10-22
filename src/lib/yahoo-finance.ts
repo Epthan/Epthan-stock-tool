@@ -17,12 +17,15 @@ export async function getYahooQuoteSummary(symbol: string) {
   });
 }
 
+/**
+ * Daily bars via chart(). yahoo-finance2's historical() is deprecated and throws when Yahoo returns
+ * rows with some null fields (e.g. an unfinished current-day bar); chart() returns them and we drop them.
+ */
 export async function getYahooHistorical(symbol: string, period1: string, period2: string) {
-  return yahooFinance.historical(symbol, {
-    period1,
-    period2,
-    interval: "1d",
-  });
+  const chart = await yahooFinance.chart(symbol, { period1, period2, interval: "1d", includePrePost: false });
+  return chart.quotes
+    .filter((row) => row.close != null && Number.isFinite(row.close) && row.close > 0)
+    .map((row) => ({ date: row.date, open: row.open ?? null, high: row.high ?? null, low: row.low ?? null, close: row.close as number, volume: row.volume ?? null }));
 }
 
 export async function searchYahooSymbols(query: string) {
