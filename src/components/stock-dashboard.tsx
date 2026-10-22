@@ -8,6 +8,7 @@ import { BacktestPanel } from "@/components/backtest-panel";
 import { useStoredWatchlists } from "@/hooks/use-stored-watchlists";
 import { usePortfolios } from "@/hooks/use-portfolios";
 import { getTradePosition } from "@/lib/portfolio-trades";
+import { TTL, fetchCached, forgetCached, prefetchCached } from "@/lib/client-cache";
 import { useLanguage } from "@/components/language-provider";
 import { StockChart, type ChartStyle } from "@/components/stock-chart";
 import { useStockSelection } from "@/components/stock-selection-provider";
@@ -162,6 +163,11 @@ function createWatchlistId() {
   return `list-${Date.now()}`;
 }
 
+const candleCacheKey = (symbol: string, timeframe: string) => `candles:${symbol}:${timeframe}`;
+const candleUrl = (symbol: string, timeframe: string) => `/api/market/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}`;
+const candleTtl = (timeframe: string) => (["1D", "2D", "5D", "1W"].includes(timeframe) ? TTL.intraday : TTL.daily);
+const companyUrl = (symbol: string) => `/api/market/company?symbol=${encodeURIComponent(symbol)}`;
+
 export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   const { locale, messages } = useLanguage();
   const { selectedSymbol: globalSelectedSymbol, pickSymbol } = useStockSelection();
@@ -245,11 +251,8 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
 
     async function loadDashboard() {
       try {
-        const response = await fetch(
-          `/api/market/dashboard?symbols=${encodeURIComponent(activeWatchlist.symbols.join(","))}`,
-          { cache: "no-store" },
-        );
-        const payload = (await response.json()) as DashboardResponse;
+        const url = `/api/market/dashboard?symbols=${encodeURIComponent(activeWatchlist.symbols.join(","))}`;
+        const payload = await fetchCached<DashboardResponse>(`dashboard:${activeWatchlist.symbols.join(",")}`, url, 10_000, undefined, (fresh) => { if (!ignore) setDashboard(fresh); });
 
         if (!ignore) {
           setDashboard(payload);
@@ -285,12 +288,9 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
 
     async function loadCandles() {
       try {
-        const response = await fetch(
-          `/api/market/candles?symbol=${resolvedSelectedSymbol}&timeframe=${activeTimeframe}`,
-          { cache: "no-store" },
-        );
-        const payload = (await response.json()) as CandleResponse;
-        if (!response.ok || payload.mode !== "live") throw new Error("Chart data unavailable");
+        const key = candleCacheKey(resolvedSelectedSymbol, activeTimeframe);
+        const payload = await fetchCached<CandleResponse>(key, candleUrl(resolvedSelectedSymbol, activeTimeframe), candleTtl(activeTimeframe));
+        if (payload.mode !== "live") { forgetCached(key); throw new Error("Chart data unavailable"); }
 
         if (!ignore) {
           setCandles(payload.candles);
@@ -327,15 +327,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
 
     async function loadSelectedQuote() {
       try {
-        const response = await fetch(`/api/market/quote?symbol=${encodeURIComponent(resolvedSelectedSymbol)}`, {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to load selected quote");
-        }
-
-        const payload = (await response.json()) as QuoteResponse;
+        const payload = await fetchCached<QuoteResponse>(`quote:${resolvedSelectedSymbol}`, `/api/market/quote?symbol=${encodeURIComponent(resolvedSelectedSymbol)}`, TTL.quote);
 
         if (!ignore) {
           setSelectedSearchQuote(payload.quote);
@@ -359,15 +351,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
 
     async function loadCompanyDetail() {
       try {
-        const response = await fetch(`/api/market/company?symbol=${encodeURIComponent(resolvedSelectedSymbol)}`, {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to load company detail");
-        }
-
-        const payload = (await response.json()) as CompanyResponse;
+        const payload = await fetchCached<CompanyResponse>(`company:${resolvedSelectedSymbol}`, companyUrl(resolvedSelectedSymbol), TTL.company);
 
         if (!ignore) {
           setCompanyDetail(payload);
@@ -656,6 +640,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={() => { if (draggedSymbol && listSource === "watchlist") reorderActiveWatchlist(draggedSymbol, item.symbol); setDraggedSymbol(null); }}
                   onDragEnd={() => setDraggedSymbol(null)}
+                  onPointerEnter={() => { prefetchCached(candleCacheKey(item.symbol, activeTimeframe), candleUrl(item.symbol, activeTimeframe), candleTtl(activeTimeframe)); prefetchCached(`company:${item.symbol}`, companyUrl(item.symbol), TTL.company); }}
                   className={`wpx-watch-row ${item.symbol === resolvedSelectedSymbol ? "is-active" : ""}`}
                 >
                   <button type="button" onClick={() => handleSymbolPick(item.symbol)} className="wpx-watch-pick" aria-current={item.symbol === resolvedSelectedSymbol ? "true" : undefined}>

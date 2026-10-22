@@ -1,6 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useState } from "react";
+import { TTL, fetchCached } from "@/lib/client-cache";
 import { useLanguage } from "@/components/language-provider";
 import { normalizeSymbol } from "@/lib/market-symbols";
 
@@ -46,10 +47,7 @@ export function SymbolSearchBox({
 
     async function loadSearchResults() {
       try {
-        const response = await fetch(`/api/market/search?q=${encodeURIComponent(normalized)}`, {
-          cache: "no-store",
-        });
-        const payload = (await response.json()) as { results: SearchResult[] };
+        const payload = await fetchCached<{ results: SearchResult[] }>(`search:${normalized.toLowerCase()}`, `/api/market/search?q=${encodeURIComponent(normalized)}`, TTL.search);
 
         if (!ignore) {
           setSearchResults(payload.results);

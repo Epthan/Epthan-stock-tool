@@ -277,3 +277,10 @@ html[data-skin] .pd-topbar .pd-portfolio-options button:hover { background: var(
 html[data-skin] .pd-topbar .pd-portfolio-options button[aria-pressed="true"] { background: var(--ui-accent-soft); }
 html[data-skin] .pd-topbar .pd-portfolio-options p, html[data-skin] .pd-topbar .pd-portfolio-options small { color: var(--ui-muted); }
 html[data-skin] .pd-topbar .pd-menu-check { color: var(--ui-accent); }
+
+/* Loading: keep the previous result visible, dimmed, while a new range loads */
+.pd-updating { display: inline-flex; align-items: center; gap: 8px; color: var(--ui-accent); font-weight: 500; }
+.pd-updating::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pd-pulse 1s ease-in-out infinite; }
+@keyframes pd-pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.portfolio-dashboard:has(.pd-updating) :is(.rd-hero, .rd-row, .rd-panel, .pd-section, .pd-metrics, .pd-primary-grid) { opacity: .55; transition: opacity .15s; }
+@media (prefers-reduced-motion: reduce) { .pd-updating::before { animation: none; opacity: 1; } }

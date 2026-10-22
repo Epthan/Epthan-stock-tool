@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TTL, fetchCached } from "@/lib/client-cache";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { PortfolioTradesDialog } from "@/components/portfolio-trades-dialog";
@@ -51,9 +52,7 @@ export function TradeLedgerView() {
     let cancelled = false;
     Promise.all(symbolKey.split(",").map(async (symbol) => {
       try {
-        const response = await fetch(`/api/market/quote?symbol=${encodeURIComponent(symbol)}`);
-        if (!response.ok) return [symbol, null] as const;
-        const body = (await response.json()) as { quote?: { price?: number; currency?: string } };
+        const body = await fetchCached<{ quote?: { price?: number; currency?: string } }>(`quote:${symbol}`, `/api/market/quote?symbol=${encodeURIComponent(symbol)}`, TTL.quote);
         return [symbol, body.quote?.price ? { price: body.quote.price, currency: body.quote.currency || "USD" } : null] as const;
       } catch { return [symbol, null] as const; }
     })).then((entries) => { if (!cancelled) setQuotes((current) => ({ ...current, ...Object.fromEntries(entries) })); });

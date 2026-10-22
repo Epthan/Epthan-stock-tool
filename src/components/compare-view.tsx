@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TTL, fetchCached } from "@/lib/client-cache";
 import { useStoredWatchlists } from "@/hooks/use-stored-watchlists";
 import { useLanguage } from "@/components/language-provider";
 import { StockChart, type ChartStyle } from "@/components/stock-chart";
@@ -49,7 +50,7 @@ type CompareCardProps = {
 
 function CompareCard({ chartStyle, movingAverages, onTimeframeChange, symbol, timeframe }: CompareCardProps) {
   const { messages } = useLanguage();
-  const [candles, setCandles] = useState<CandlePoint[]>(mockCandles);
+  const [candles, setCandles] = useState<CandlePoint[]>([]);
   const [quote, setQuote] = useState<WatchlistRow | null>(null);
   const [message, setMessage] = useState(messages.compare.loadingMessage);
 
@@ -58,15 +59,11 @@ function CompareCard({ chartStyle, movingAverages, onTimeframeChange, symbol, ti
 
     async function loadCard() {
       try {
-        const [quoteResponse, candleResponse] = await Promise.all([
-          fetch(`/api/market/quote?symbol=${encodeURIComponent(symbol)}`, { cache: "no-store" }),
-          fetch(`/api/market/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}`, {
-            cache: "no-store",
-          }),
+        const intraday = ["1D", "2D", "5D", "1W"].includes(timeframe);
+        const [quotePayload, candlePayload] = await Promise.all([
+          fetchCached<QuoteResponse>(`quote:${symbol}`, `/api/market/quote?symbol=${encodeURIComponent(symbol)}`, TTL.quote).catch(() => ({} as QuoteResponse)),
+          fetchCached<CandleResponse>(`candles:${symbol}:${timeframe}`, `/api/market/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}`, intraday ? TTL.intraday : TTL.daily),
         ]);
-
-        const quotePayload = (await quoteResponse.json()) as QuoteResponse;
-        const candlePayload = (await candleResponse.json()) as CandleResponse;
 
         if (!ignore) {
           setQuote(quotePayload.quote ?? null);

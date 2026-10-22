@@ -7,6 +7,7 @@ import { InsightList, TradeAnalysis } from "@/components/trade-analysis";
 import { ContributionScatter, CorrelationHeatmap, MonthlyCalendar, ReturnDrawdownChart, WeightRiskBars } from "@/components/trader-charts";
 import { buildTraderInsights } from "@/lib/trader-insights";
 import { RISK_FREE_RATE } from "@/lib/trader-analytics";
+import { TTL, fetchCached, forgetCached, prefetchCached } from "@/lib/client-cache";
 import { useLanguage } from "@/components/language-provider";
 import type { ManagedPortfolio } from "@/hooks/use-portfolios";
 import type { LivePortfolioAnalysis } from "@/lib/live-portfolio";
@@ -23,16 +24,25 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
   const requestKey = `${portfolio.id}:${tradesJson}:${range}:${benchmark}:${retry}`;
   const hasTrades = !!portfolio.trades?.length;
   useEffect(() => {
-    if (!JSON.parse(tradesJson).length) return;
-    const controller = new AbortController();
-    fetch("/api/market/portfolio-analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trades: JSON.parse(tradesJson), range, benchmark }), signal: controller.signal }).then(async (response) => {
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.message ?? "Unable to load market data.");
-      if (!controller.signal.aborted) setState({ key: requestKey, data: payload.result });
-    }).catch((reason) => { if (!controller.signal.aborted) setState({ key: requestKey, error: reason instanceof Error ? reason.message : "Unable to load market data." }); });
-    return () => controller.abort();
-  }, [tradesJson, range, benchmark, requestKey]);
-  const data = state.key === requestKey ? state.data : undefined;
+    const trades = JSON.parse(tradesJson);
+    if (!trades.length) return;
+    let active = true;
+    const request = (forRange: PortfolioRange): [string, RequestInit] => [`analysis:${tradesJson}:${forRange}:${benchmark}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trades, range: forRange, benchmark }) }];
+    const [key, init] = request(range);
+    if (retry > 0) forgetCached(key);
+    fetchCached<{ result: LivePortfolioAnalysis }>(key, "/api/market/portfolio-analysis", TTL.analysis, init, (fresh) => { if (active) setState({ key: requestKey, data: fresh.result }); })
+      .then((payload) => {
+        if (!active) return;
+        setState({ key: requestKey, data: payload.result });
+        // Warm the other ranges so switching is instant (server already holds the prices).
+        window.setTimeout(() => { for (const other of ["1M", "3M", "6M", "YTD", "1Y", "ALL"] as PortfolioRange[]) if (other !== range) { const [otherKey, otherInit] = request(other); prefetchCached(otherKey, "/api/market/portfolio-analysis", TTL.analysis, otherInit); } }, 400);
+      })
+      .catch((reason) => { if (active) setState({ key: requestKey, error: reason instanceof Error ? reason.message : "Unable to load market data." }); });
+    return () => { active = false; };
+  }, [tradesJson, range, benchmark, requestKey, retry]);
+  const loading = hasTrades && state.key !== requestKey;
+  // While a new range/benchmark loads, keep showing the previous result (marked as updating) instead of blanking the page.
+  const data = state.data;
   const error = state.key === requestKey ? state.error : undefined;
   const money = (value: number) => `${data?.currency ?? "USD"} ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const percent = (value: number) => `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
@@ -63,7 +73,7 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
   const conc = data?.risk.concentration;
   const residual = st && st.betaComponent != null ? st.totalReturn - st.betaComponent : null;
   return <>
-    <div className="pd-toolbar"><div className="pd-segments">{(["1M", "3M", "6M", "YTD", "1Y", "ALL"] as const).map((option) => <button key={option} className={range === option ? "is-active" : ""} aria-pressed={range === option} onClick={() => setRange(option)}>{option}</button>)}</div><label className="pd-benchmark">{text("Benchmark", "基准")}<select value={benchmark} onChange={(event) => setBenchmark(event.target.value as Benchmark)}><option>SPY</option><option>QQQ</option></select></label><span className="pd-data-stamp">{text("RECORDED TRADES + MARKET DATA", "已录入交易 + 真实行情")}{data && ` · ${data.end}`}</span></div>
+    <div className="pd-toolbar"><div className="pd-segments">{(["1M", "3M", "6M", "YTD", "1Y", "ALL"] as const).map((option) => <button key={option} className={range === option ? "is-active" : ""} aria-pressed={range === option} onClick={() => setRange(option)}>{option}</button>)}</div><label className="pd-benchmark">{text("Benchmark", "基准")}<select value={benchmark} onChange={(event) => setBenchmark(event.target.value as Benchmark)}><option>SPY</option><option>QQQ</option></select></label><span className="pd-data-stamp">{loading && data ? <span className="pd-updating" role="status">{text("Updating…", "更新中…")}</span> : <>{text("RECORDED TRADES + MARKET DATA", "已录入交易 + 真实行情")}{data && ` · ${data.end}`}</>}</span></div>
     <details className="pd-calculation-note"><summary>{text("Daily close · securities only", "日收盘估值 · 仅证券资产")} ⓘ</summary><p>{text("Cash, dividends, fees and FX excluded. Returns include first-day trading P&L and are estimated using date-only transactions. The zero baseline is the prior trading close; both series use the same start.", "不含现金、股息、手续费和汇率影响。收益采用仅日期交易近似计算，包含首日交易盈亏；零点为前一交易日收盘，组合与基准使用相同起点。")}</p></details>
     {view === "holdings" && <div className="pd-section-heading"><h2>{text("Recorded positions", "实际录入持仓")}</h2><div className="pd-table-tools">{data && <span className="pd-badge">{data.currency}</span>}<button type="button" className="pd-button" aria-label={text("Add stock transaction", "添加股票交易")} title={text("Add stock transaction", "添加股票交易")} onClick={() => onUpdateHolding("")}>＋</button></div></div>}
     {!hasTrades ? <section className="pd-pending"><h2>{text("No recorded positions yet", "尚未录入可分析持仓")}</h2><p>{text("Your stocks are saved, but quantities and purchase prices are needed to calculate market value and returns. Record a buy in the Trade log or Workplace to unlock analytics.", "股票清单已保存，但计算市值和收益需要买入日期、价格及数量。请先在交易记录页或 Workplace 记录买入交易。")}</p><p>{portfolio.symbols.join(" · ")}</p><Link href="/portfolio" className="pd-workplace-link">{text("Open Trade log", "前往交易记录")} ↗</Link></section> : !data || !st ? <section className="pd-pending" role="status"><h2>{error ? text("Analysis unavailable", "分析暂不可用") : text("Calculating your portfolio…", "正在计算你的组合分析…")}</h2><p>{error ?? text("Loading historical prices and reconstructing recorded positions.", "正在获取历史行情，按已录入交易重建持仓。")}</p>{error && <button className="pd-button" onClick={() => setRetry((value) => value + 1)}>{text("Retry", "重试")}</button>}</section> : <>
