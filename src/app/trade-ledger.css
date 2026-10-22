@@ -102,5 +102,5 @@ html[data-theme="day"] .tl-primary { color: #fff; }
 .cl-form .tl-primary { padding: 8px 14px; }
 .cl-in { color: var(--tl-positive); }
 .cl-out { color: var(--tl-negative); }
-.tl-metrics.tl-metrics-cash { grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 10px; }
+.tl-metrics.tl-metrics-cash { margin-top: 10px; }
 @media (max-width: 900px) { .cl-form { grid-template-columns: 1fr 1fr; } .cl-form .tl-primary { grid-column: span 2; } }

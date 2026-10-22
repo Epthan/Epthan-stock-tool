@@ -20,6 +20,7 @@ function money(value: number | null | undefined, digits = 2) {
 }
 function signed(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  if (Math.abs(value) < 0.005) return money(0);
   return `${value >= 0 ? "+" : "−"}${money(Math.abs(value))}`;
 }
 function tone(value: number | null | undefined) {
