@@ -16,7 +16,7 @@ This first version uses deterministic simulated weekly prices from 2024-10-18 to
 
 The sidebar portfolio selector switches between three demo accounts: Core (six holdings, $12,000 cash), Growth (three holdings, $4,500 cash), and Defensive (three holdings, $20,000 cash). The selection persists locally. Each account has independent quantities and cash, using the same underlying simulated security price history. These are demonstration portfolios, not authenticated user accounts.
 
-Positions are opened at the first observation and held throughout. There are no subsequent cash flows, trades, dividends or fees. Consequently the account-value ratio equals time-weighted return for this dataset. Existing browser trade records are not read or modified.
+Positions are opened at the first observation and held throughout. There are no subsequent cash flows, trades, dividends or fees. Consequently the account-value ratio equals time-weighted return for this dataset. Demo holdings are simulated and are not trades.
 
 Equity beta is estimated from 104 stock/benchmark weekly returns, then weighted by end-date equity market values; cash is excluded. Changing the display period does not change the beta estimation window. Changing the benchmark does. Drawdown is calculated from weekly observations and can miss intraweek losses. Allocation uses assets including cash. Period dollar contributions reconcile to the net change in account value.
 
@@ -35,3 +35,9 @@ Daily securities return is `(closing value + sales) / (previous closing value + 
 Actual cash and external funding still require ledger integration before account total assets, cash allocation or account-level performance can be presented.
 
 Add a unified cash/trade/dividend/fee ledger and adjusted historical price adapter before representing this dashboard as real portfolio performance. Handle corporate actions and dividend accounting consistently, validate holdings and cash balances, and calculate daily flow-adjusted returns. Do not value historical holdings using current quotes.
+
+## Unified trade log (2026-10-22)
+
+There is now one trade store: `stock-tool.portfolios.v1` (trades live on each portfolio). `/portfolio` is the Trade Log page for the active portfolio — positions rebuilt with the average-cost method, latest quotes, full trade list with notes, and CSV export. Adding/editing/deleting uses the same trade dialog as Workplace and Dashboard, so all three pages stay in sync.
+
+Legacy migration: on first load, records in the retired `stock-tool.portfolio-trades.v1` key are imported once into a new portfolio "Imported Trade Log" (dates normalised to `YYYY-MM-DD`, symbols upper-cased, notes kept). Records that fail validation (e.g. selling more than held, future dates) are skipped and counted. The legacy key is left untouched as a backup; `stock-tool.legacy-trades-migrated.v1` records the result and prevents re-import.

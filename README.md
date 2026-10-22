@@ -24,7 +24,7 @@ Stock Tool is a personal market dashboard built for fast monitoring, chart revie
 - Watch list mini sparklines
 - Multi Watch page
 - Tree Map page
-- Local portfolio and trade log page
+- Portfolio dashboard and unified per-portfolio trade log
 
 ## Run Locally
 
@@ -83,12 +83,13 @@ Examples:
 - `/` — Dashboard
 - `/compare` — Multi Watch
 - `/treemap` — Tree Map
-- `/portfolio` — Portfolio / Trade Log
+- `/dashboard` — Portfolio Dashboard (analytics per portfolio)
+- `/portfolio` — Trade Log (unified per-portfolio ledger; same data as Workplace and Dashboard)
 
 ## Suggested Next Steps
 
 1. Add index switching for multiple markets.
 2. Add a market filter to symbol search.
 3. Improve Tree Map with hover tooltips and click-through behavior.
-4. Add portfolio trade editing and import/export support.
+4. Add CSV import for trade logs.
 5. Replace the current Yahoo-based setup with a more official market data source if long-term public deployment is needed.
