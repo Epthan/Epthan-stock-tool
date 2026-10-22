@@ -1,7 +1,7 @@
 @echo off
 title Stock Tool - phone access (port 3001)
 cd /d "%~dp0"
-where node >/dev/null 2>nul
+where node 1>nul 2>nul
 if errorlevel 1 (
   echo [x] Node.js not found. Install Node.js 20 LTS or newer from https://nodejs.org then run this again.
   pause
