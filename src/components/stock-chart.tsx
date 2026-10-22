@@ -1,0 +1,316 @@
+"use client";
+
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { useTheme } from "@/components/theme-provider";
+import { useLanguage } from "@/components/language-provider";
+import {
+  CandlestickSeries,
+  ColorType,
+  createChart,
+  HistogramSeries,
+  type IChartApi,
+  LineSeries,
+  type LogicalRange,
+  type UTCTimestamp,
+} from "lightweight-charts";
+import { timeframeLabels, type CandlePoint, type MovingAverageKey, type TimeframeKey } from "@/lib/mock-market";
+
+export type ChartStyle = "line" | "candles";
+export type StockChartHandle = {
+  captureSnapshot: () => string | null;
+};
+
+type StockChartProps = {
+  candles: CandlePoint[];
+  chartStyle: ChartStyle;
+  heightClassName?: string;
+  movingAverages: MovingAverageKey[];
+  onTimeframeChange?: (timeframe: TimeframeKey) => void;
+  timeframe?: TimeframeKey;
+};
+
+type MovingAveragePoint = {
+  time: UTCTimestamp;
+  value: number;
+};
+
+const movingAverageColors: Record<MovingAverageKey, string> = {
+  5: "#f59e0b",
+  10: "#22c55e",
+  20: "#38bdf8",
+  50: "#a78bfa",
+  200: "#f472b6",
+};
+
+function calculateMovingAverage(candles: CandlePoint[], period: MovingAverageKey) {
+  let sum = 0;
+
+  return candles.map((candle, index) => {
+    sum += candle.close;
+
+    if (index >= period) {
+      sum -= candles[index - period].close;
+    }
+
+    if (index < period - 1) {
+      return null;
+    }
+
+    return {
+      time: candle.time as UTCTimestamp,
+      value: Number((sum / period).toFixed(2)),
+    };
+  });
+}
+
+function isMovingAveragePoint(point: MovingAveragePoint | null): point is MovingAveragePoint {
+  return point !== null;
+}
+
+function getNextTimeframe(timeframe: TimeframeKey, direction: "in" | "out") {
+  const index = timeframeLabels.indexOf(timeframe);
+
+  if (index === -1) {
+    return timeframe;
+  }
+
+  if (direction === "in") {
+    return timeframeLabels[Math.max(0, index - 1)];
+  }
+
+  return timeframeLabels[Math.min(timeframeLabels.length - 1, index + 1)];
+}
+
+function captureChartSnapshot(chart: IChartApi | null) {
+  if (!chart) {
+    return null;
+  }
+
+  return chart.takeScreenshot(false, true).toDataURL("image/png");
+}
+
+export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function StockChart(
+  { candles, chartStyle, heightClassName = "h-[320px]", movingAverages, onTimeframeChange, timeframe }: StockChartProps,
+  ref,
+) {
+  const { messages } = useLanguage();
+  const { resolvedTheme } = useTheme();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartApiRef = useRef<IChartApi | null>(null);
+  const lastSuggestedAtRef = useRef(0);
+  const pendingZoomDirectionRef = useRef<"in" | "out" | null>(null);
+  const pendingZoomExpiresAtRef = useRef(0);
+
+  useImperativeHandle(ref, () => ({
+    captureSnapshot: () => captureChartSnapshot(chartApiRef.current),
+  }));
+
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const chart = createChart(container, {
+      autoSize: true,
+      layout: {
+        background: { type: ColorType.Solid, color: resolvedTheme === "day" ? "#ffffff" : "#07111f" },
+        textColor: resolvedTheme === "day" ? "#526477" : "#94a3b8",
+      },
+      grid: {
+        vertLines: { color: resolvedTheme === "day" ? "#e8edf1" : "rgba(255,255,255,0.06)" },
+        horzLines: { color: resolvedTheme === "day" ? "#e8edf1" : "rgba(255,255,255,0.06)" },
+      },
+      crosshair: {
+        vertLine: { color: resolvedTheme === "day" ? "#94a3b8" : "rgba(226,232,240,0.22)" },
+        horzLine: { color: resolvedTheme === "day" ? "#94a3b8" : "rgba(226,232,240,0.22)" },
+      },
+      rightPriceScale: {
+        borderColor: "rgba(255,255,255,0.08)",
+      },
+      timeScale: {
+        borderColor: "rgba(255,255,255,0.08)",
+      },
+    });
+    chartApiRef.current = chart;
+
+    const handleWheel = (event: WheelEvent) => {
+      pendingZoomDirectionRef.current = event.deltaY < 0 ? "in" : "out";
+      pendingZoomExpiresAtRef.current = Date.now() + 1200;
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: true });
+
+    const priceSeries =
+      chartStyle === "candles"
+        ? chart.addSeries(CandlestickSeries, {
+            upColor: resolvedTheme === "day" ? "#059669" : "#34d399",
+            downColor: resolvedTheme === "day" ? "#e11d48" : "#fb7185",
+            borderVisible: false,
+            wickUpColor: resolvedTheme === "day" ? "#059669" : "#34d399",
+            wickDownColor: resolvedTheme === "day" ? "#e11d48" : "#fb7185",
+          })
+        : chart.addSeries(LineSeries, {
+            color: "#38bdf8",
+            lineWidth: 2,
+            crosshairMarkerRadius: 4,
+            priceLineVisible: false,
+          });
+
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      priceFormat: {
+        type: "volume",
+      },
+      priceScaleId: "",
+      color: "rgba(45, 212, 191, 0.35)",
+    });
+
+    if (chartStyle === "candles") {
+      priceSeries.setData(
+        candles.map((candle) => ({
+          time: candle.time as UTCTimestamp,
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close,
+        })),
+      );
+    } else {
+      priceSeries.setData(
+        candles.map((candle) => ({
+          time: candle.time as UTCTimestamp,
+          value: candle.close,
+        })),
+      );
+    }
+
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: {
+        top: 0.78,
+        bottom: 0,
+      },
+    });
+
+    volumeSeries.setData(
+      candles.map((candle) => ({
+        time: candle.time as UTCTimestamp,
+        value: candle.volume,
+        color:
+          candle.close >= candle.open ? "rgba(52, 211, 153, 0.35)" : "rgba(251, 113, 133, 0.35)",
+      })),
+    );
+
+    movingAverages.forEach((period) => {
+      const lineSeries = chart.addSeries(LineSeries, {
+        color: movingAverageColors[period],
+        lineWidth: period === 200 ? 2 : 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+
+      lineSeries.setData(
+        calculateMovingAverage(candles, period).filter(isMovingAveragePoint),
+      );
+    });
+
+    const handleVisibleRangeChange = (range: LogicalRange | null) => {
+      if (!range || !onTimeframeChange || !timeframe || candles.length < 10) {
+        return;
+      }
+
+      const pendingDirection = pendingZoomDirectionRef.current;
+      const pendingExpiresAt = pendingZoomExpiresAtRef.current;
+
+      if (!pendingDirection || Date.now() > pendingExpiresAt) {
+        pendingZoomDirectionRef.current = null;
+        return;
+      }
+
+      const visibleBars = range.to - range.from;
+
+      if (!Number.isFinite(visibleBars) || visibleBars <= 0) {
+        return;
+      }
+
+      const ratio = visibleBars / candles.length;
+      const now = Date.now();
+
+      if (now - lastSuggestedAtRef.current < 900) {
+        return;
+      }
+
+      if (pendingDirection === "in" && ratio < 0.62) {
+        const nextTimeframe = getNextTimeframe(timeframe, pendingDirection);
+
+        if (nextTimeframe !== timeframe) {
+          lastSuggestedAtRef.current = now;
+          pendingZoomDirectionRef.current = null;
+          onTimeframeChange(nextTimeframe);
+        }
+
+        return;
+      }
+
+      if (pendingDirection === "out" && ratio > 1.18) {
+        const nextTimeframe = getNextTimeframe(timeframe, pendingDirection);
+
+        if (nextTimeframe !== timeframe) {
+          lastSuggestedAtRef.current = now;
+          pendingZoomDirectionRef.current = null;
+          onTimeframeChange(nextTimeframe);
+        }
+      }
+    };
+
+    if (onTimeframeChange && timeframe) {
+      chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
+    }
+
+    chart.timeScale().fitContent();
+
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+      if (onTimeframeChange && timeframe) {
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
+      }
+      chartApiRef.current = null;
+      chart.remove();
+    };
+  }, [candles, chartStyle, movingAverages, onTimeframeChange, timeframe, resolvedTheme]);
+
+  return (
+    <div className="space-y-3">
+      <div className={`${heightClassName} w-full`}>
+        <div ref={containerRef} className="h-full w-full" />
+      </div>
+      <div className="flex flex-wrap gap-x-5 gap-y-2 rounded-2xl border border-white/8 bg-slate-950/30 px-4 py-3 text-xs text-slate-400">
+        {chartStyle === "candles" ? (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+              <span>{messages.chart.candleGreen}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
+              <span>{messages.chart.candleRed}</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
+            <span>{messages.chart.lineChartLegend}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+          <span>{messages.chart.volumeGreen}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+          <span>{messages.chart.volumeRed}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
