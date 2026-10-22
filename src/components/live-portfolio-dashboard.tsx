@@ -49,16 +49,6 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
   const tr = data?.trading.stats;
   const alphaNote = (t: number | null | undefined) => t == null ? text("Needs ≥40 trading days", "需 ≥40 个交易日") : `t = ${t.toFixed(2)} · ${Math.abs(t) >= 2 ? text("significant", "显著") : text("not significant", "不显著")}`;
   type Card = { label: string; value: string; note: string; tone?: string };
-  const overviewCards: Card[] = data && st && tr ? [
-    { label: text("Securities value", "证券市值"), value: money(data.value), note: text("Cash excluded · latest close", "不含现金 · 最近收盘") },
-    { label: text("Period P&L", "区间盈亏"), value: money(data.pnl), note: `${data.start} — ${data.end}`, tone: toneOf(data.pnl) },
-    { label: text("Return · estimated", "收益率 · 近似"), value: percent(data.returnPercent), note: `${benchmark} ${percent(data.returnPercent - data.excess)} · ${data.excess >= 0 ? "+" : ""}${data.excess.toFixed(2)} pp`, tone: toneOf(data.returnPercent) },
-    { label: text("Alpha · annualized", "年化 Alpha"), value: st.alphaAnnual == null ? "—" : percent(st.alphaAnnual), note: alphaNote(st.alphaT), tone: st.alphaT != null && Math.abs(st.alphaT) >= 2 ? toneOf(st.alphaAnnual) : "" },
-    { label: "Sharpe", value: num(st.sharpe), note: `Sortino ${num(st.sortino)} · rf ${(RISK_FREE_RATE * 100).toFixed(0)}%` },
-    { label: text("Maximum drawdown", "最大回撤"), value: percent(st.maxDrawdown), note: `${text("Current", "当前")} ${percent(data.points.at(-1)?.drawdown ?? 0)}`, tone: "pd-negative" },
-    { label: "Profit Factor", value: tr.profitFactor === Infinity ? "∞" : num(tr.profitFactor), note: `${tr.closedCount} ${text("closed trades in period", "笔区间内已平仓")}`, tone: tr.profitFactor == null ? "" : tr.profitFactor >= 1 ? "pd-positive" : "pd-negative" },
-    { label: text("Win rate", "胜率"), value: tr.winRate == null ? "—" : `${tr.winRate.toFixed(1)}%`, note: `${text("Payoff ratio", "盈亏比")} ${num(tr.payoffRatio)}` },
-  ] : [];
   const performanceCards: Card[] = data && st ? [
     { label: text("Annualized return", "年化收益"), value: st.annualReturn == null ? "—" : percent(st.annualReturn), note: `${st.observations} ${text("trading days", "个交易日")}`, tone: toneOf(st.annualReturn) },
     { label: text("Annualized volatility", "年化波动率"), value: st.volatility == null ? "—" : `${st.volatility.toFixed(2)}%`, note: `${benchmark} ${num(st.benchmarkVolatility)}%` },
@@ -79,17 +69,68 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
     {!hasTrades ? <section className="pd-pending"><h2>{text("No recorded positions yet", "尚未录入可分析持仓")}</h2><p>{text("Your stocks are saved, but quantities and purchase prices are needed to calculate market value and returns. Record a buy in the Trade log or Workplace to unlock analytics.", "股票清单已保存，但计算市值和收益需要买入日期、价格及数量。请先在交易记录页或 Workplace 记录买入交易。")}</p><p>{portfolio.symbols.join(" · ")}</p><Link href="/portfolio" className="pd-workplace-link">{text("Open Trade log", "前往交易记录")} ↗</Link></section> : !data || !st ? <section className="pd-pending" role="status"><h2>{error ? text("Analysis unavailable", "分析暂不可用") : text("Calculating your portfolio…", "正在计算你的组合分析…")}</h2><p>{error ?? text("Loading historical prices and reconstructing recorded positions.", "正在获取历史行情，按已录入交易重建持仓。")}</p>{error && <button className="pd-button" onClick={() => setRetry((value) => value + 1)}>{text("Retry", "重试")}</button>}</section> : <>
       {unrecorded.length > 0 && <p className="pd-muted">{text("Excluded: no trades recorded", "未录入交易，未计入分析")}: {unrecorded.join(", ")}</p>}
 
-      {view === "overview" && <>
-        {metricGrid(overviewCards)}
-        <div className="pd-primary-grid">
-          <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Returns vs benchmark · drawdown", "收益与基准对比 · 回撤")}</h2><p>{data.start} — {data.end} · {benchmark}</p></div></div><ReturnDrawdownChart points={data.points} benchmark={benchmark} labels={{ portfolio: text("Portfolio", "组合"), drawdown: text("Drawdown", "回撤") }} /></section>
-          <section className="pd-section pd-insights"><p className="pd-eyebrow">{text("PORTFOLIO BRIEF", "组合分析摘要")}</p><h2>{text("Behind the numbers", "数字背后的发现")}</h2><InsightList insights={insights} limit={4} />{insights.length > 4 && <p className="pd-table-note">{text(`${insights.length - 4} more findings in Performance & risk and Trade analysis.`, `另有 ${insights.length - 4} 条发现，见「表现与风险」和「交易分析」。`)}</p>}</section>
-        </div>
-        <div className="pd-two-columns">
-          <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Weight vs risk contribution", "仓位 vs 风险贡献")}</h2><p>{text("Share of 1-year portfolio volatility", "占近一年组合波动的比例")}</p></div></div><WeightRiskBars rows={data.risk.contributions} labels={{ weight: text("Weight", "仓位"), risk: text("Risk contribution", "风险贡献") }} /></section>
-          <section className="pd-section"><div className="pd-section-heading"><h2>{text("P&L drivers", "盈亏贡献")}</h2></div>{contributions.map((holding) => <div className="pd-allocation-row" key={holding.symbol}><button className="pd-symbol" onClick={() => onPick(holding.symbol)}>{holding.symbol}</button><span>{text("Period P&L", "区间盈亏")}</span><strong className={toneOf(holding.contribution)}>{signedAmount(holding.contribution)}</strong></div>)}<p className="pd-reconciliation">{text("Reconciled contribution total", "贡献对账合计")} <strong>{money(data.pnl)}</strong></p></section>
-        </div>
-      </>}
+      {view === "overview" && (() => {
+        const [whole, fraction] = data.value.toFixed(2).split(".");
+        const rangeLabel = ({ "1M": text("Over the past month", "近 1 个月"), "3M": text("Over 3 months", "近 3 个月"), "6M": text("Over 6 months", "近 6 个月"), YTD: text("Year to date", "今年以来"), "1Y": text("Over the past year", "近 1 年"), ALL: text("Since the first trade", "自首笔交易以来") } as Record<string, string>)[range];
+        const beat = data.excess >= 0;
+        const maxContribution = Math.max(1, ...contributions.map((holding) => Math.abs(holding.contribution)));
+        const months = data.months.slice(-12);
+        const monthScale = Math.max(4, ...months.map((month) => Math.abs(month.portfolio)));
+        const riskRows: [string, string, string?, string?][] = [
+          [text("Annualized return", "年化收益"), st.annualReturn == null ? "—" : percent(st.annualReturn), undefined, toneOf(st.annualReturn)],
+          [text("Annualized volatility", "年化波动"), st.volatility == null ? "—" : `${st.volatility.toFixed(1)}%`, `${benchmark} ${num(st.benchmarkVolatility, 1)}%`],
+          ["Sharpe", num(st.sharpe)],
+          ["Sortino", num(st.sortino)],
+          [text("Max drawdown", "最大回撤"), percent(st.maxDrawdown), undefined, "pd-negative"],
+          [text(`Beta vs ${benchmark}`, `β（对 ${benchmark}）`), num(st.beta), st.rSquared == null ? undefined : `R² ${num(st.rSquared)}`],
+          [text("Alpha, annualized", "年化 Alpha"), st.alphaAnnual == null ? "—" : percent(st.alphaAnnual), st.alphaT == null ? undefined : Math.abs(st.alphaT) >= 2 ? text("significant", "显著") : text("not significant", "不显著")],
+          [text("Up / down capture", "上 / 下行捕获"), st.upCapture == null || st.downCapture == null ? "—" : `${st.upCapture.toFixed(0)}% / ${st.downCapture.toFixed(0)}%`],
+          [text("Closed trades · win rate", "已平仓 · 胜率"), `${tr?.closedCount ?? 0} · ${tr?.winRate == null ? "—" : `${tr.winRate.toFixed(0)}%`}`],
+        ];
+        return <>
+          <section className="rd-hero">
+            <div className="rd-hero-main">
+              <span className="rd-label">{text("Securities value", "证券市值")} · {data.currency}</span>
+              <span className="rd-big">{Number(whole).toLocaleString("en-US")}<span>.{fraction}</span></span>
+              <p className="rd-sentence">{rangeLabel}{text(" ", "")}<strong className={toneOf(data.returnPercent)}>{percent(data.returnPercent)}</strong>{text(", ", "，")}{data.pnl >= 0 ? text("a gain of ", "盈利 ") : text("a loss of ", "亏损 ")}{decimal(Math.abs(data.pnl))}{text(", ", "，")}{beat ? text("ahead of ", "跑赢 ") : text("behind ", "跑输 ")}{benchmark}{text(" by ", " ")}<strong>{Math.abs(data.excess).toFixed(1)}</strong>{text(" pp.", " 个百分点。")}</p>
+              <dl className="rd-inline">
+                <div><dt>{text("Realized", "已实现")}</dt><dd className={toneOf(data.realized)}>{signedAmount(data.realized)}</dd></div>
+                <div><dt>{text("Unrealized", "未实现")}</dt><dd className={toneOf(data.unrealized)}>{signedAmount(data.unrealized)}</dd></div>
+                <div><dt>{text("As of", "截至")}</dt><dd>{data.end} {text("close", "收盘")}</dd></div>
+              </dl>
+            </div>
+            <aside className="rd-panel rd-brief" aria-label={text("Key findings", "本期要点")}>
+              <div className="rd-panel-head"><h2>{text("Key findings", "本期要点")}</h2>{insights.length > 3 && <span>{text(`${insights.length} in total`, `共 ${insights.length} 条`)}</span>}</div>
+              <InsightList insights={insights} limit={3} />
+            </aside>
+          </section>
+          <section className="rd-row">
+            <div className="rd-panel rd-grow">
+              <div className="rd-panel-head"><h2>{text("Cumulative return and drawdown", "累计收益与回撤")}</h2><span>{data.start} — {data.end}</span></div>
+              <ReturnDrawdownChart points={data.points} benchmark={benchmark} labels={{ portfolio: text("Portfolio", "组合"), drawdown: text("Drawdown", "回撤") }} />
+            </div>
+            <div className="rd-panel rd-side">
+              <div className="rd-panel-head"><h2>{text("Risk and return", "风险与收益")}</h2></div>
+              <dl className="rd-list">{riskRows.map(([label, value, note, tone]) => <div key={label}><dt>{label}</dt><dd className={tone ?? ""}>{value}{note && <small>{note}</small>}</dd></div>)}</dl>
+            </div>
+          </section>
+          <section className="rd-row">
+            <div className="rd-panel rd-half">
+              <div className="rd-panel-head"><h2>{text("Weight vs risk contribution", "仓位与风险贡献")}</h2><span>{text("1-year volatility · current weights", "近一年波动 · 当前权重")}</span></div>
+              <WeightRiskBars rows={data.risk.contributions} labels={{ weight: text("Weight", "仓位"), risk: text("Risk contribution", "风险贡献") }} />
+            </div>
+            <div className="rd-panel rd-half">
+              <div className="rd-panel-head"><h2>{text("Where the P&L came from", "盈亏来源")}</h2><span>{text("Selected period · includes closed positions", "所选区间 · 含已平仓")}</span></div>
+              <div className="rd-contrib">{contributions.map((holding) => <div key={holding.symbol}><button className="pd-symbol" onClick={() => onPick(holding.symbol)}>{holding.symbol}</button><span className="rd-contrib-track"><span className={holding.contribution >= 0 ? "is-up" : "is-down"} style={{ width: `${Math.abs(holding.contribution) / maxContribution * 100}%` }} /></span><strong className={toneOf(holding.contribution)}>{signedAmount(holding.contribution)}</strong></div>)}</div>
+              <p className="rd-total"><span>{text("Total, reconciled to period P&L", "合计，与区间盈亏一致")}</span><strong className={toneOf(data.pnl)}>{signedAmount(data.pnl)}</strong></p>
+            </div>
+          </section>
+          {months.length > 0 && <section className="rd-panel">
+            <div className="rd-panel-head"><h2>{text("Monthly returns", "月度收益")}</h2><span>{text(`Last ${months.length} months`, `最近 ${months.length} 个月`)}</span></div>
+            <div className="rd-months">{months.map((month) => { const strength = Math.min(1, Math.abs(month.portfolio) / monthScale); return <div key={month.month}><span className={`rd-month ${month.portfolio >= 0 ? "is-up" : "is-down"}`} style={{ ["--strength" as string]: (0.12 + strength * 0.6).toFixed(2) }} title={`${month.month}: ${percent(month.portfolio)} · ${benchmark} ${percent(month.benchmark)}`}>{month.portfolio >= 0 ? "+" : "−"}{Math.abs(month.portfolio).toFixed(1)}</span><small>{month.month.slice(2).replace("-", "/")}</small></div>; })}</div>
+          </section>}
+        </>;
+      })()}
 
       {view === "trades" && <TradeAnalysis data={data} insights={insights} benchmark={benchmark} money={money} onPick={onPick} />}
 
@@ -111,8 +152,8 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
           </section>
         </div>
         <div className="pd-two-columns">
-          <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Rolling 3-month excess return", "滚动 3 个月超额收益")}</h2><p>{text("63 trading days · percentage points", "63 个交易日 · 百分点")}</p></div></div>{data.rolling.some((row) => row.excess != null) ? <InsightChart dates={data.rolling.map((row) => row.date)} unit="pp" label={text("Rolling excess return", "滚动超额收益")} series={[{ name: text("Excess", "超额"), color: "#14b8a6", values: data.rolling.map((row) => row.excess) }]} /> : <p className="pd-muted">{text("Needs 63 trading days of history.", "需要 63 个交易日的历史。")}</p>}</section>
-          <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Rolling 3-month beta", "滚动 3 个月 β")}</h2><p>{text("Is your market exposure drifting?", "市场暴露是否在漂移？")}</p></div></div>{data.rolling.some((row) => row.beta != null) ? <InsightChart dates={data.rolling.map((row) => row.date)} unit="" label={text("Rolling beta", "滚动 β")} series={[{ name: "β", color: "#a78bfa", values: data.rolling.map((row) => row.beta) }]} /> : <p className="pd-muted">{text("Needs 63 trading days of history.", "需要 63 个交易日的历史。")}</p>}</section>
+          <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Rolling 3-month excess return", "滚动 3 个月超额收益")}</h2><p>{text("63 trading days · percentage points", "63 个交易日 · 百分点")}</p></div></div>{data.rolling.some((row) => row.excess != null) ? <InsightChart dates={data.rolling.map((row) => row.date)} unit="pp" label={text("Rolling excess return", "滚动超额收益")} series={[{ name: text("Excess", "超额"), color: "var(--ui-chart-line)", values: data.rolling.map((row) => row.excess) }]} /> : <p className="pd-muted">{text("Needs 63 trading days of history.", "需要 63 个交易日的历史。")}</p>}</section>
+          <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Rolling 3-month beta", "滚动 3 个月 β")}</h2><p>{text("Is your market exposure drifting?", "市场暴露是否在漂移？")}</p></div></div>{data.rolling.some((row) => row.beta != null) ? <InsightChart dates={data.rolling.map((row) => row.date)} unit="" label={text("Rolling beta", "滚动 β")} series={[{ name: "β", color: "var(--ui-accent)", values: data.rolling.map((row) => row.beta) }]} /> : <p className="pd-muted">{text("Needs 63 trading days of history.", "需要 63 个交易日的历史。")}</p>}</section>
         </div>
         <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Monthly returns", "月度收益日历")}</h2><p>{text("All recorded history · portfolio return, excess vs", "全部历史 · 组合月收益，年度超额相对")} {benchmark}</p></div></div><MonthlyCalendar months={data.months} labels={{ year: text("Year", "年份"), total: text("Year", "全年"), excess: text("vs bench", "超额") }} /></section>
         <PerformanceInsights points={data.points} benchmark={benchmark} />

@@ -1,0 +1,238 @@
+/* =====================================================================
+   Design tokens — three skins. Loaded last so it wins over legacy CSS.
+   灰白 gray (light) · 黑金 gold (light content, graphite frame) · 夜间 night
+   ===================================================================== */
+:root,
+:root[data-skin="gray"] {
+  --ui-bg: #E4E8EC;
+  --ui-panel: #FFFFFF;
+  --ui-panel-2: #F3F5F7;
+  --ui-input: #FFFFFF;
+  --ui-line: #C5CDD5;
+  --ui-line-soft: #DCE2E8;
+  --ui-ink: #0E1620;
+  --ui-ink-2: #232D38;
+  --ui-muted: #4A5462;
+  --ui-faint: #646E7A;
+  --ui-accent: #3F46C9;
+  --ui-accent-hover: #2C32A3;
+  --ui-on-accent: #FFFFFF;
+  --ui-accent-soft: rgba(63, 70, 201, 0.10);
+  --ui-up: #0B7A55;
+  --ui-down: #C23A2B;
+  --ui-up-soft: rgba(11, 122, 85, 0.12);
+  --ui-down-soft: rgba(194, 58, 43, 0.12);
+  --ui-warn: #B7791F;
+  --ui-seg: #D5DBE2;
+  --ui-grid: #E1E6EB;
+  --ui-chart-line: #0E1620;
+  --ui-chart-bench: #646E7A;
+  --ui-chart-area: rgba(63, 70, 201, 0.07);
+  --ui-dd: rgba(194, 58, 43, 0.16);
+  --ui-rail: #F5F7F9;
+  --ui-rail-line: #C5CDD5;
+  --ui-rail-ink: #4A5462;
+  --ui-rail-hover: #E4E8EC;
+  --ui-rail-active-bg: #DCDEFA;
+  --ui-rail-active-ink: #3F46C9;
+  --ui-logo-bg: #0E1620;
+  --ui-logo-ink: #FFFFFF;
+  --ui-shadow: 0 1px 2px rgba(14, 22, 32, 0.10);
+  --ui-overlay: 0 18px 50px rgba(14, 22, 32, 0.18);
+}
+:root[data-skin="gold"] {
+  --ui-bg: #E6E4E0;
+  --ui-panel: #FFFFFF;
+  --ui-panel-2: #F4F2EF;
+  --ui-input: #FFFFFF;
+  --ui-line: #C8C5BF;
+  --ui-line-soft: #E4E1DC;
+  --ui-ink: #16181B;
+  --ui-ink-2: #2A2E33;
+  --ui-muted: #52575E;
+  --ui-faint: #6B7077;
+  --ui-accent: #8A6A1F;
+  --ui-accent-hover: #6E5418;
+  --ui-on-accent: #FFFFFF;
+  --ui-accent-soft: rgba(138, 106, 31, 0.12);
+  --ui-up: #0B7A55;
+  --ui-down: #C23A2B;
+  --ui-up-soft: rgba(11, 122, 85, 0.12);
+  --ui-down-soft: rgba(194, 58, 43, 0.12);
+  --ui-warn: #E07A1F;
+  --ui-seg: #DCD9D3;
+  --ui-grid: #ECE9E4;
+  --ui-chart-line: #16181B;
+  --ui-chart-bench: #6B7077;
+  --ui-chart-area: rgba(201, 164, 76, 0.14);
+  --ui-dd: rgba(194, 58, 43, 0.16);
+  --ui-rail: #1F2226;
+  --ui-rail-line: #1F2226;
+  --ui-rail-ink: #A3A9B0;
+  --ui-rail-hover: #2C3036;
+  --ui-rail-active-bg: #3A3F46;
+  --ui-rail-active-ink: #E9C77B;
+  --ui-logo-bg: #C9A44C;
+  --ui-logo-ink: #1F2226;
+  --ui-shadow: 0 1px 2px rgba(22, 24, 27, 0.12);
+  --ui-overlay: 0 18px 50px rgba(22, 24, 27, 0.20);
+}
+:root[data-skin="night"] {
+  --ui-bg: #10151B;
+  --ui-panel: #161D25;
+  --ui-panel-2: #1C2430;
+  --ui-input: #10151B;
+  --ui-line: #2A3440;
+  --ui-line-soft: #222B35;
+  --ui-ink: #E7EAEE;
+  --ui-ink-2: #C9D0D8;
+  --ui-muted: #95A0AB;
+  --ui-faint: #7C8794;
+  --ui-accent: #9DA4FF;
+  --ui-accent-hover: #C3C7FF;
+  --ui-on-accent: #10151B;
+  --ui-accent-soft: rgba(157, 164, 255, 0.14);
+  --ui-up: #3CCB94;
+  --ui-down: #FF7A6B;
+  --ui-up-soft: rgba(60, 203, 148, 0.14);
+  --ui-down-soft: rgba(255, 122, 107, 0.14);
+  --ui-warn: #E0A03A;
+  --ui-seg: #1C2430;
+  --ui-grid: #1E2731;
+  --ui-chart-line: #E7EAEE;
+  --ui-chart-bench: #7C8794;
+  --ui-chart-area: rgba(157, 164, 255, 0.08);
+  --ui-dd: rgba(255, 122, 107, 0.18);
+  --ui-rail: #0D1217;
+  --ui-rail-line: #222B35;
+  --ui-rail-ink: #95A0AB;
+  --ui-rail-hover: #1C2430;
+  --ui-rail-active-bg: #232A4A;
+  --ui-rail-active-ink: #C3C7FF;
+  --ui-logo-bg: #E7EAEE;
+  --ui-logo-ink: #10151B;
+  --ui-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ui-overlay: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- Base ---------- */
+:root { --background: var(--ui-bg); --foreground: var(--ui-ink); }
+html body {
+  background: var(--ui-bg);
+  color: var(--ui-ink);
+  font-family: var(--font-plex), var(--font-noto-sc), "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  font-feature-settings: "tnum" 1;
+}
+html[data-skin] main { background: transparent !important; color: var(--ui-ink); }
+::selection { background: var(--ui-accent-soft); }
+:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+
+/* ---------- App shell: rail + top bar ---------- */
+.shell { display: flex; min-height: 100vh; }
+.shell-rail { position: sticky; top: 0; flex: 0 0 76px; height: 100vh; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 0; background: var(--ui-rail); border-right: 1px solid var(--ui-rail-line); z-index: 60; }
+.shell-logo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--ui-logo-bg); color: var(--ui-logo-ink); font-weight: 600; font-size: 15px; margin-bottom: 18px; }
+.shell-rail a.shell-item { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 60px; padding: 10px 0; border-radius: 10px; color: var(--ui-rail-ink); font-size: 11px; line-height: 1.2; }
+.shell-rail a.shell-item:hover { background: var(--ui-rail-hover); color: var(--ui-ink); }
+html[data-skin="gold"] .shell-rail a.shell-item:hover { color: #FFFFFF; }
+.shell-rail a.shell-item[aria-current="page"] { background: var(--ui-rail-active-bg); color: var(--ui-rail-active-ink); font-weight: 500; }
+.shell-item svg { width: 20px; height: 20px; }
+.shell-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.shell-top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 16px; min-height: 64px; padding: 12px 32px; background: var(--ui-bg); border-bottom: 1px solid var(--ui-line); }
+.shell-title { font-size: 17px; font-weight: 600; color: var(--ui-ink); white-space: nowrap; }
+.shell-spacer { flex: 1 1 auto; }
+.shell-search { width: min(380px, 40vw); position: relative; z-index: 40; }
+.shell-controls { display: flex; align-items: center; gap: 8px; }
+.shell-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--ui-seg); }
+.shell-seg button { border: 0; background: transparent; color: var(--ui-muted); font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
+.shell-seg button:hover { color: var(--ui-ink); }
+.shell-seg button[aria-pressed="true"] { background: var(--ui-panel); color: var(--ui-ink); font-weight: 500; box-shadow: var(--ui-shadow); }
+.shell-btn { height: 36px; padding: 0 12px; border: 1px solid var(--ui-line); background: var(--ui-panel); color: var(--ui-ink); border-radius: 8px; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.shell-btn:hover { border-color: var(--ui-accent); }
+@media (max-width: 1100px) { .shell-top { flex-wrap: wrap; padding: 10px 20px; } .shell-search { order: 5; width: 100%; } }
+@media (max-width: 760px) {
+  .shell { flex-direction: column; }
+  .shell-rail { position: fixed; top: auto; bottom: 0; left: 0; right: 0; height: 64px; flex-direction: row; justify-content: space-around; padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); border-right: 0; border-top: 1px solid var(--ui-rail-line); }
+  .shell-logo { display: none; }
+  .shell-rail a.shell-item { width: auto; flex: 1; padding: 6px 0; }
+  .shell-main { padding-bottom: 72px; }
+  .shell-title { display: none; }
+  .shell-top { gap: 10px; padding: 10px 16px; }
+  .shell-seg button { padding: 6px 8px; }
+}
+
+/* ---------- Bridge legacy component variables to tokens ---------- */
+html[data-skin] .portfolio-dashboard { --pd-surface: var(--ui-panel); --pd-line: var(--ui-line); --pd-muted: var(--ui-muted); --pd-ink: var(--ui-ink); --pd-accent: var(--ui-accent); background: transparent; color: var(--ui-ink); }
+html[data-skin] .pm-studio { --pm-bg: var(--ui-panel); --pm-side: var(--ui-panel-2); --pm-line: var(--ui-line); --pm-text: var(--ui-ink); --pm-muted: var(--ui-muted); --pm-accent: var(--ui-accent); }
+html[data-skin] .pm-dialog { background: var(--ui-panel); color: var(--ui-ink); border-color: var(--ui-line); box-shadow: var(--ui-overlay); }
+html[data-skin] .trade-ledger { --tl-surface: var(--ui-panel); --tl-line: var(--ui-line); --tl-muted: var(--ui-muted); --tl-ink: var(--ui-ink); --tl-accent: var(--ui-accent); --tl-positive: var(--ui-up); --tl-negative: var(--ui-down); }
+html[data-skin] .workplace-portfolios { --pd-surface: var(--ui-panel); --pd-line: var(--ui-line); --pd-ink: var(--ui-ink); background: var(--ui-panel); color: var(--ui-ink); border-color: var(--ui-line); }
+html[data-skin] .pd-positive { color: var(--ui-up); }
+html[data-skin] .pd-negative { color: var(--ui-down); }
+html[data-skin] .tl-primary { background: var(--ui-accent); color: var(--ui-on-accent); }
+html[data-skin] .pm-primary { background: var(--ui-accent); color: var(--ui-on-accent); }
+html[data-skin] .pd-workplace-link { background: var(--ui-accent); border-color: var(--ui-accent); color: var(--ui-on-accent); }
+html[data-skin] .pd-workplace-link:hover { background: var(--ui-accent-hover); }
+html[data-skin] .pd-segments { background: var(--ui-seg); border: 0; }
+html[data-skin] .pd-segments button.is-active { background: var(--ui-panel); color: var(--ui-ink); font-weight: 500; box-shadow: var(--ui-shadow); }
+html[data-skin] .pd-badge { border-color: var(--ui-line); color: var(--ui-muted); }
+html[data-skin] .pd-symbol { color: var(--ui-ink); font-weight: 600; }
+html[data-skin] .pd-symbol:hover { color: var(--ui-accent); }
+html[data-skin] .ta-swatch-risk, html[data-skin] .ta-bar-risk { background: var(--ui-accent); }
+html[data-skin] .ta-bar-risk.is-hot { background: var(--ui-down); }
+html[data-skin] .ta-bar-weight, html[data-skin] .ta-swatch-weight { background: var(--ui-line); }
+html[data-skin] .ta-bar-win { background: var(--ui-up); }
+html[data-skin] .ta-bar-loss { background: var(--ui-down); }
+html[data-skin] .ta-insight-positive::before { background: var(--ui-up); }
+html[data-skin] .ta-insight-warning::before { background: var(--ui-down); }
+html[data-skin] .ta-insight small { color: var(--ui-muted); }
+html[data-skin] .tl-side-buy { color: var(--ui-up); background: var(--ui-up-soft); }
+html[data-skin] .tl-side-sell { color: var(--ui-down); background: var(--ui-down-soft); }
+
+/* ---------- Tailwind dark-class patch layer (Workplace, Compare, Tree Map, search) ---------- */
+html[data-skin] [class*="bg-slate-950"],
+html[data-skin] [class*="bg-[#06101d]"],
+html[data-skin] [class*="bg-[#07111f]"],
+html[data-skin] [class*="bg-[#020617]"] { background-color: var(--ui-panel) !important; }
+html[data-skin] [class*="bg-white/5"],
+html[data-skin] [class*="bg-white/6"],
+html[data-skin] [class*="bg-white/8"],
+html[data-skin] [class*="bg-white/10"] { background-color: var(--ui-panel-2) !important; }
+html[data-skin] [class*="bg-[radial-gradient"] { background: transparent !important; }
+html[data-skin] [class*="border-white"] { border-color: var(--ui-line) !important; }
+html[data-skin] [class*="text-white"] { color: var(--ui-ink) !important; }
+html[data-skin] [class*="text-slate-100"],
+html[data-skin] [class*="text-slate-200"],
+html[data-skin] [class*="text-slate-300"] { color: var(--ui-ink-2) !important; }
+html[data-skin] [class*="text-slate-400"],
+html[data-skin] [class*="text-slate-500"] { color: var(--ui-muted) !important; }
+html[data-skin] [class*="text-slate-600"] { color: var(--ui-faint) !important; }
+html[data-skin] [class*="text-teal-"],
+html[data-skin] [class*="text-sky-"] { color: var(--ui-accent) !important; }
+html[data-skin] [class*="text-emerald-"] { color: var(--ui-up) !important; }
+html[data-skin] [class*="text-rose-"] { color: var(--ui-down) !important; }
+html[data-skin] [class*="bg-teal-"],
+html[data-skin] [class*="bg-sky-"] { background-color: var(--ui-accent-soft) !important; }
+html[data-skin] [class*="bg-emerald-"] { background-color: var(--ui-up-soft) !important; }
+html[data-skin] [class*="bg-rose-"] { background-color: var(--ui-down-soft) !important; }
+html[data-skin] [class*="ring-"] { --tw-ring-color: var(--ui-line) !important; }
+html[data-skin] [class*="shadow-"] { box-shadow: none !important; }
+html[data-skin] [class*="backdrop-blur"] { backdrop-filter: none !important; }
+html[data-skin] [class*="tracking-["], html[data-skin] .uppercase { letter-spacing: 0 !important; text-transform: none !important; }
+html[data-skin] input,
+html[data-skin] select,
+html[data-skin] textarea { background-color: var(--ui-input) !important; color: var(--ui-ink) !important; border-color: var(--ui-line) !important; }
+html[data-skin] input::placeholder { color: var(--ui-faint); }
+html[data-skin] option, html[data-skin] optgroup { background-color: var(--ui-panel); color: var(--ui-ink); }
+html[data-skin] [data-timeframe-tab="active"],
+html[data-skin] [data-chart-mode-tab="active"],
+html[data-skin] [data-chart-control-tab="active"] { background-color: var(--ui-ink) !important; color: var(--ui-panel) !important; box-shadow: none !important; }
+html[data-skin] [data-timeframe-tab="inactive"],
+html[data-skin] [data-chart-mode-tab="inactive"],
+html[data-skin] [data-chart-control-tab="inactive"] { background-color: transparent !important; color: var(--ui-muted) !important; }
+html[data-skin] [data-timeframe-tab="inactive"]:hover,
+html[data-skin] [data-chart-mode-tab="inactive"]:hover,
+html[data-skin] [data-chart-control-tab="inactive"]:hover { background-color: var(--ui-panel-2) !important; color: var(--ui-ink) !important; }
+html[data-skin] [class*="rounded-[2"], html[data-skin] .rounded-3xl { border-radius: 14px !important; }
+html[data-skin] .rounded-2xl { border-radius: 10px !important; }
+html[data-skin] .portfolio-dashboard,
+html[data-skin] .workplace-page { background: transparent !important; }

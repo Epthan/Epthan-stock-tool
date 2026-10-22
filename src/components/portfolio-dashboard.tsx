@@ -26,7 +26,7 @@ function PerformanceChart({ data, drawdown = false }: { data: PortfolioAnalytics
   const currentIndex = Math.min(hovered ?? data.points.length - 1, data.points.length - 1);
   const current = data.points[currentIndex];
   return <div className="pd-chart">
-    <div className="pd-chart-readout" aria-live="polite"><span>{current.date}</span>{drawdown ? <strong className="pd-negative">{percent(current.drawdown)}</strong> : <><span><i style={{ background: "#14b8a6" }} />Portfolio <strong>{percent(current.portfolio)}</strong></span><span><i style={{ background: "#a78bfa" }} />Benchmark <strong>{percent(current.benchmark)}</strong></span><span>Excess <strong>{(current.portfolio - current.benchmark).toFixed(2)} pp</strong></span></>}</div>
+    <div className="pd-chart-readout" aria-live="polite"><span>{current.date}</span>{drawdown ? <strong className="pd-negative">{percent(current.drawdown)}</strong> : <><span><i style={{ background: "var(--ui-chart-line)" }} />Portfolio <strong>{percent(current.portfolio)}</strong></span><span><i style={{ background: "var(--ui-chart-bench)" }} />Benchmark <strong>{percent(current.benchmark)}</strong></span><span>Excess <strong>{(current.portfolio - current.benchmark).toFixed(2)} pp</strong></span></>}</div>
     <svg viewBox="0 0 900 260" role="img" aria-label={drawdown ? "Portfolio drawdown" : "Cumulative portfolio and benchmark returns"} onPointerMove={(event) => {
       const bounds = event.currentTarget.getBoundingClientRect();
       const position = (event.clientX - bounds.left) / bounds.width * 900;
@@ -37,9 +37,9 @@ function PerformanceChart({ data, drawdown = false }: { data: PortfolioAnalytics
         return <g key={index}><line x1="55" x2="870" y1={scaleY(value)} y2={scaleY(value)} className="pd-grid-line" /><text x="45" y={scaleY(value) + 4} textAnchor="end" className="pd-chart-label">{value.toFixed(1)}%</text></g>;
       })}
       <line x1="55" x2="870" y1={scaleY(0)} y2={scaleY(0)} className="pd-grid-line" strokeDasharray="4 4" />
-      {drawdown ? <path d={`${path("drawdown")} L870,${scaleY(0)} L55,${scaleY(0)} Z`} fill="rgba(251,113,133,0.12)" /> : <path d={path("benchmark")} fill="none" stroke="#a78bfa" strokeWidth="2" />}
-      <path d={path(drawdown ? "drawdown" : "portfolio")} fill="none" stroke={drawdown ? "#fb7185" : "#14b8a6"} strokeWidth="2.5" />
-      {hovered !== null && <g><line x1={scaleX(currentIndex)} x2={scaleX(currentIndex)} y1="22" y2="227" className="pd-grid-line" /><circle cx={scaleX(currentIndex)} cy={scaleY(drawdown ? current.drawdown : current.portfolio)} r="4" fill={drawdown ? "#fb7185" : "#14b8a6"} /></g>}
+      {drawdown ? <path d={`${path("drawdown")} L870,${scaleY(0)} L55,${scaleY(0)} Z`} style={{ fill: "var(--ui-dd)" }} /> : <path d={path("benchmark")} fill="none" style={{ stroke: "var(--ui-chart-bench)" }} strokeDasharray="5 4" strokeWidth="2" />}
+      <path d={path(drawdown ? "drawdown" : "portfolio")} fill="none" style={{ stroke: drawdown ? "var(--ui-down)" : "var(--ui-chart-line)" }} strokeWidth="2.5" />
+      {hovered !== null && <g><line x1={scaleX(currentIndex)} x2={scaleX(currentIndex)} y1="22" y2="227" className="pd-grid-line" /><circle cx={scaleX(currentIndex)} cy={scaleY(drawdown ? current.drawdown : current.portfolio)} r="4" style={{ fill: drawdown ? "var(--ui-down)" : "var(--ui-chart-line)" }} /></g>}
       {[0, Math.floor((data.points.length - 1) / 2), data.points.length - 1].map((index, labelIndex) => <text key={labelIndex} x={scaleX(index)} y="252" textAnchor={labelIndex === 0 ? "start" : labelIndex === 2 ? "end" : "middle"} className="pd-chart-label">{data.points[index].date}</text>)}
     </svg>
   </div>;
@@ -177,9 +177,9 @@ export function PortfolioDashboard() {
     { label: text("Weekly observations", "周收益样本数"), portfolio: String(data.points.length - 1), market: String(data.points.length - 1) },
   ];
   return <main className="portfolio-dashboard">
-    <button ref={sidebarToggle} type="button" className="pd-sidebar-toggle" aria-label={text("Toggle portfolio navigation", "展开或收起组合导航")} aria-expanded={sidebarOpen} aria-controls="portfolio-sidebar" onClick={() => setSidebarOpen((open) => !open)}><span aria-hidden="true">{sidebarOpen ? "×" : "☰"}</span></button>
-    {sidebarOpen && <button type="button" className="pd-sidebar-backdrop" aria-label={text("Close portfolio navigation", "关闭组合导航")} tabIndex={-1} onClick={() => { setSidebarOpen(false); sidebarToggle.current?.focus(); }} />}
-    <aside ref={sidebarRef} id="portfolio-sidebar" className={`pd-sidebar ${sidebarOpen ? "is-open" : ""}`} aria-label={text("Portfolio navigation", "组合导航")}>
+
+
+    <aside ref={sidebarRef} id="portfolio-sidebar" className="pd-sidebar pd-topbar" aria-label={text("Portfolio navigation", "组合导航")}>
       <details className="pd-portfolio-menu" ref={portfolioMenu}>
         <summary className="pd-sidebar-brand" aria-label={text("Switch portfolio", "切换投资组合")}><span className="pd-brand-mark">{activePortfolio.initials}</span><span className="pd-portfolio-identity"><small>{text("Portfolio", "投资组合")}</small><strong>{portfolioName}</strong></span><span className="pd-menu-chevron" aria-hidden="true">⌄</span></summary>
         <div className="pd-portfolio-options" role="group" aria-label={text("Portfolios", "投资组合列表")}>
@@ -187,12 +187,12 @@ export function PortfolioDashboard() {
           {[...portfolios].sort((left, right) => Number(!!right.trades?.length) - Number(!!left.trades?.length)).map((portfolio) => <button type="button" key={portfolio.id} aria-pressed={portfolio.id === portfolioId} onClick={() => selectPortfolio(portfolio.id)}><span className="pd-brand-mark">{portfolio.initials}</span><span><strong>{chinese ? portfolio.nameZh ?? portfolio.name : portfolio.name}</strong><small>{portfolio.trades?.length ? `${portfolio.trades.length} ${text("trades · recorded", "笔交易 · 真实记录")}` : `${portfolio.symbols.length} ${text("stocks · demo / no trades", "只股票 · 演示或无交易")}`}</small></span><span className="pd-menu-check" aria-hidden="true">{portfolio.id === portfolioId ? "✓" : ""}</span></button>)}
         </div>
       </details>
-      <p className="pd-eyebrow">{text("ANALYTICS", "投资分析")}</p>
-      <nav>{navigation.map((item) => <button key={item.id} className={`pd-side-link ${view === item.id ? "is-active" : ""}`} aria-current={view === item.id ? "page" : undefined} onClick={() => { setView(item.id); setSidebarOpen(false); sidebarToggle.current?.focus(); }}><span>{item.number}</span>{item.label}</button>)}</nav>
-      <div className="pd-sidebar-footer"><span className="pd-demo-dot" />{portfolioName}<small>{activePortfolio.symbols.length} {analyticsAvailable ? text("holdings · USD · Demo", "只持仓 · 美元 · 演示") : text("saved stocks", "只已保存股票")}</small><Link href="/portfolio" className="pd-side-link">{text("Trade log", "交易记录")} ↗</Link><Link href="/" className="pd-workplace-link">{text("Open Workplace", "前往 Workplace")} ↗</Link></div>
+
+      <nav>{navigation.map((item) => <button key={item.id} className={`pd-side-link ${view === item.id ? "is-active" : ""}`} aria-current={view === item.id ? "page" : undefined} onClick={() => { setView(item.id); setSidebarOpen(false); }}>{item.label}</button>)}</nav>
+      <Link href="/portfolio" className="pd-topbar-link">{text("Trade log", "交易记录")} ↗</Link>
     </aside>
     <div className="pd-content">
-      <header className="pd-heading"><div><p className="pd-eyebrow">{portfolioName} / {text("PERSONAL INVESTOR", "个人投资者")}</p><h1>{navigation.find((item) => item.id === view)?.label}</h1><p className="pd-muted">{text("Portfolio performance, exposures and the drivers behind your returns.", "了解组合表现、风险暴露，以及收益背后的驱动因素。")}</p></div></header>
+      <h1 className="pd-sr-only">{portfolioName} · {navigation.find((item) => item.id === view)?.label}</h1>
       {analyticsAvailable && recordedPortfolio && <div className="ta-switch-banner" role="note"><span>{text("You are viewing simulated demo data. Your recorded portfolio", "当前为模拟演示数据。你的真实记录组合")} <strong>{chinese ? recordedPortfolio.nameZh ?? recordedPortfolio.name : recordedPortfolio.name}</strong> {text(`has ${recordedPortfolio.trades!.length} trades.`, `已有 ${recordedPortfolio.trades!.length} 笔交易。`)}</span><button className="pd-workplace-link" onClick={() => selectPortfolio(recordedPortfolio.id)}>{text("Switch to it", "切换过去")} →</button></div>}
       {analyticsAvailable && view === "trades" ? <section className="pd-pending"><h2>{text("Trade analysis needs recorded trades", "交易分析需要真实交易记录")}</h2><p>{text("Demo portfolios hold simulated positions without buys or sells, so there is nothing to measure: win rate, payoff, holding behaviour and exit timing all come from your own trade log.", "演示组合只有模拟持仓，没有买卖记录，无法衡量交易行为：胜率、盈亏比、持有习惯和卖点质量都来自你自己的交易记录。")}</p>{recordedPortfolio ? <button className="pd-workplace-link" onClick={() => selectPortfolio(recordedPortfolio.id)}>{text("Open", "打开")} {chinese ? recordedPortfolio.nameZh ?? recordedPortfolio.name : recordedPortfolio.name} →</button> : <Link href="/portfolio" className="pd-workplace-link">{text("Record trades", "去录入交易")} ↗</Link>}</section> : analyticsAvailable ? <>
       <div className="pd-toolbar"><div className="pd-segments" aria-label={text("Time range", "时间范围")}>{ranges.map((option) => <button key={option} aria-pressed={range === option} className={range === option ? "is-active" : ""} onClick={() => setRange(option)}>{option}</button>)}</div><label className="pd-benchmark">{text("Benchmark", "基准")}<select value={benchmark} onChange={(event) => setBenchmark(event.target.value as Benchmark)}><option>SPY</option><option>QQQ</option></select></label><span className="pd-data-stamp"><span className="pd-demo-dot" />{text("SIMULATED", "模拟数据")} · {data.endDate}</span></div>

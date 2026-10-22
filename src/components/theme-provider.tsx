@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
-type ThemeChoice = "auto" | "day" | "night";
+/** Skins: 灰白 (gray, light), 黑金 (gold, light content + graphite frame), 夜间 (night). */
+export type ThemeChoice = "auto" | "gray" | "gold" | "night";
+export type Skin = "gray" | "gold" | "night";
 type ResolvedTheme = "day" | "night";
 
 type Coordinates = {
@@ -12,6 +14,8 @@ type Coordinates = {
 
 type ThemeContextValue = {
   choice: ThemeChoice;
+  skin: Skin;
+  /** Luminance of the content area; kept for code that only distinguishes light/dark. */
   resolvedTheme: ResolvedTheme;
   setChoice: (choice: ThemeChoice) => void;
 };
@@ -29,8 +33,10 @@ function subscribeTheme(listener: () => void) {
 }
 
 function readThemeChoice(): ThemeChoice {
-  const stored = window.localStorage.getItem(storageKey);
-  return stored === "day" || stored === "night" ? stored : "auto";
+  let stored: string | null = null;
+  try { stored = window.localStorage.getItem(storageKey); } catch {}
+  if (stored === "day") return "gray"; // legacy value
+  return stored === "gray" || stored === "gold" || stored === "night" ? stored : "auto";
 }
 
 function serverThemeChoice(): ThemeChoice {
@@ -115,7 +121,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [now, setNow] = useState(() => new Date());
 
-  const resolvedTheme = choice === "auto" ? getAutoTheme(now, coordinates) : choice;
+  const skin: Skin = choice === "auto" ? (getAutoTheme(now, coordinates) === "day" ? "gray" : "night") : choice;
+  const resolvedTheme: ResolvedTheme = skin === "night" ? "night" : "day";
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -141,20 +148,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
+    document.documentElement.dataset.skin = skin;
     document.documentElement.dataset.themeChoice = choice;
     document.documentElement.style.colorScheme = resolvedTheme === "day" ? "light" : "dark";
-  }, [choice, resolvedTheme]);
+  }, [choice, resolvedTheme, skin]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
       choice,
+      skin,
       resolvedTheme,
       setChoice(nextChoice) {
-        window.localStorage.setItem(storageKey, nextChoice);
+        try { window.localStorage.setItem(storageKey, nextChoice); } catch {}
         window.dispatchEvent(new Event("portfolio-theme-change"));
       },
     }),
-    [choice, resolvedTheme],
+    [choice, resolvedTheme, skin],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
@@ -169,3 +178,6 @@ export function useTheme() {
 
   return context;
 }
+
+/** Inline, pre-hydration script: applies the saved skin before first paint (no flash). */
+export const themeBootScript = `(function(){try{var c=localStorage.getItem("${storageKey}");if(c==="day")c="gray";var h=new Date().getHours();var s=(c==="gray"||c==="gold"||c==="night")?c:(h>=6&&h<18?"gray":"night");var d=document.documentElement;d.dataset.skin=s;d.dataset.theme=s==="night"?"night":"day";d.style.colorScheme=s==="night"?"dark":"light";}catch(e){}})();`;

@@ -2,7 +2,6 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { useTheme } from "@/components/theme-provider";
-import { useLanguage } from "@/components/language-provider";
 import {
   CandlestickSeries,
   ColorType,
@@ -41,6 +40,12 @@ const movingAverageColors: Record<MovingAverageKey, string> = {
   50: "#a78bfa",
   200: "#f472b6",
 };
+
+function withAlpha(hex: string, alpha: number) {
+  const value = hex.replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(value)) return hex;
+  return `rgba(${parseInt(value.slice(0, 2), 16)}, ${parseInt(value.slice(2, 4), 16)}, ${parseInt(value.slice(4, 6), 16)}, ${alpha})`;
+}
 
 function calculateMovingAverage(candles: CandlePoint[], period: MovingAverageKey) {
   let sum = 0;
@@ -93,8 +98,7 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
   { candles, chartStyle, heightClassName = "h-[320px]", movingAverages, onTimeframeChange, timeframe }: StockChartProps,
   ref,
 ) {
-  const { messages } = useLanguage();
-  const { resolvedTheme } = useTheme();
+  const { skin } = useTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartApiRef = useRef<IChartApi | null>(null);
   const lastSuggestedAtRef = useRef(0);
@@ -112,25 +116,33 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
       return;
     }
 
+    // Colours come from the active skin's CSS tokens (theme.css).
+    const style = getComputedStyle(document.documentElement);
+    const token = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
+    const colors = {
+      panel: token("--ui-panel", "#ffffff"), muted: token("--ui-muted", "#4a5462"), grid: token("--ui-grid", "#e1e6eb"),
+      line: token("--ui-line", "#c5cdd5"), ink: token("--ui-chart-line", "#0e1620"), up: token("--ui-up", "#0b7a55"), down: token("--ui-down", "#c23a2b"),
+    };
     const chart = createChart(container, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: resolvedTheme === "day" ? "#ffffff" : "#07111f" },
-        textColor: resolvedTheme === "day" ? "#526477" : "#94a3b8",
+        background: { type: ColorType.Solid, color: colors.panel },
+        textColor: colors.muted,
+        fontFamily: "var(--font-plex), system-ui, sans-serif",
       },
       grid: {
-        vertLines: { color: resolvedTheme === "day" ? "#e8edf1" : "rgba(255,255,255,0.06)" },
-        horzLines: { color: resolvedTheme === "day" ? "#e8edf1" : "rgba(255,255,255,0.06)" },
+        vertLines: { color: colors.grid },
+        horzLines: { color: colors.grid },
       },
       crosshair: {
-        vertLine: { color: resolvedTheme === "day" ? "#94a3b8" : "rgba(226,232,240,0.22)" },
-        horzLine: { color: resolvedTheme === "day" ? "#94a3b8" : "rgba(226,232,240,0.22)" },
+        vertLine: { color: colors.muted },
+        horzLine: { color: colors.muted },
       },
       rightPriceScale: {
-        borderColor: "rgba(255,255,255,0.08)",
+        borderColor: colors.line,
       },
       timeScale: {
-        borderColor: "rgba(255,255,255,0.08)",
+        borderColor: colors.line,
       },
     });
     chartApiRef.current = chart;
@@ -145,14 +157,14 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
     const priceSeries =
       chartStyle === "candles"
         ? chart.addSeries(CandlestickSeries, {
-            upColor: resolvedTheme === "day" ? "#059669" : "#34d399",
-            downColor: resolvedTheme === "day" ? "#e11d48" : "#fb7185",
+            upColor: colors.up,
+            downColor: colors.down,
             borderVisible: false,
-            wickUpColor: resolvedTheme === "day" ? "#059669" : "#34d399",
-            wickDownColor: resolvedTheme === "day" ? "#e11d48" : "#fb7185",
+            wickUpColor: colors.up,
+            wickDownColor: colors.down,
           })
         : chart.addSeries(LineSeries, {
-            color: "#38bdf8",
+            color: colors.ink,
             lineWidth: 2,
             crosshairMarkerRadius: 4,
             priceLineVisible: false,
@@ -163,7 +175,7 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
         type: "volume",
       },
       priceScaleId: "",
-      color: "rgba(45, 212, 191, 0.35)",
+      color: colors.line,
     });
 
     if (chartStyle === "candles") {
@@ -197,7 +209,7 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
         time: candle.time as UTCTimestamp,
         value: candle.volume,
         color:
-          candle.close >= candle.open ? "rgba(52, 211, 153, 0.35)" : "rgba(251, 113, 133, 0.35)",
+          withAlpha(candle.close >= candle.open ? colors.up : colors.down, 0.35),
       })),
     );
 
@@ -277,40 +289,18 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
       chartApiRef.current = null;
       chart.remove();
     };
-  }, [candles, chartStyle, movingAverages, onTimeframeChange, timeframe, resolvedTheme]);
+  }, [candles, chartStyle, movingAverages, onTimeframeChange, timeframe, skin]);
 
   return (
     <div className="space-y-3">
       <div className={`${heightClassName} w-full`}>
         <div ref={containerRef} className="h-full w-full" />
       </div>
-      <div className="flex flex-wrap gap-x-5 gap-y-2 rounded-2xl border border-white/8 bg-slate-950/30 px-4 py-3 text-xs text-slate-400">
-        {chartStyle === "candles" ? (
-          <>
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-              <span>{messages.chart.candleGreen}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
-              <span>{messages.chart.candleRed}</span>
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
-            <span>{messages.chart.lineChartLegend}</span>
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
-          <span>{messages.chart.volumeGreen}</span>
+      {movingAverages.length > 0 && (
+        <div className="chart-ma-legend">
+          {movingAverages.map((period) => <span key={period}><i style={{ background: movingAverageColors[period] }} />MA {period}</span>)}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
-          <span>{messages.chart.volumeRed}</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 });

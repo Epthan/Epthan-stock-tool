@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
-import { AppNav } from "@/components/app-nav";
+import { IBM_Plex_Sans, Noto_Sans_SC } from "next/font/google";
+import { AppShell } from "@/components/app-shell";
 import { LanguageProvider } from "@/components/language-provider";
 import { StockSelectionProvider } from "@/components/stock-selection-provider";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider, themeBootScript } from "@/components/theme-provider";
 import "./globals.css";
 import "./portfolio-dashboard.css";
 import "./portfolio-manager.css";
@@ -12,20 +12,27 @@ import "./product-refinement.css";
 import "./backtest.css";
 import "./trade-ledger.css";
 import "./trader-analytics.css";
+import "./theme.css";
+import "./redesign.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Both fonts are SIL Open Font License: free for commercial use and web embedding.
+const plex = IBM_Plex_Sans({
+  variable: "--font-plex",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const notoSansSC = Noto_Sans_SC({
+  variable: "--font-noto-sc",
+  weight: ["400", "500", "700"],
+  display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
-  title: "Stock Market Workplace",
-  description: "A web-based US stock dashboard focused on quotes, charts, watchlists, and market overview.",
+  title: "Stock Tool",
+  description: "Personal market workspace and portfolio analytics.",
 };
 
 export default function RootLayout({
@@ -37,14 +44,16 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plex.variable} ${notoSansSC.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#020617]">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
+      <body className="min-h-full">
         <LanguageProvider>
           <ThemeProvider>
             <StockSelectionProvider>
-              <AppNav />
-              {children}
+              <AppShell>{children}</AppShell>
             </StockSelectionProvider>
           </ThemeProvider>
         </LanguageProvider>
