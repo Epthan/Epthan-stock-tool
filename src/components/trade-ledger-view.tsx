@@ -5,6 +5,8 @@ import { TTL, fetchCached } from "@/lib/client-cache";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { BackupControls } from "@/components/data-sync";
+import { CsvImportDialog } from "@/components/csv-import-dialog";
+import { CASH_KINDS, cashLabel, cashSign, cashSummary, type CashKind } from "@/lib/cash-ledger";
 import { PortfolioTradesDialog } from "@/components/portfolio-trades-dialog";
 import { useStockSelection } from "@/components/stock-selection-provider";
 import { legacyMigrationKey, usePortfolios, type LegacyMigration } from "@/hooks/use-portfolios";
@@ -35,11 +37,15 @@ function subscribeNever() { return () => {}; }
 export function TradeLedgerView() {
   const { locale } = useLanguage();
   const text = (english: string, chinese: string) => (locale === "zh" ? chinese : english);
-  const { portfolios, activePortfolio, selectPortfolio } = usePortfolios();
+  const { portfolios, activePortfolio, selectPortfolio, saveCash, deleteCash } = usePortfolios();
   const { pickSymbol } = useStockSelection();
   const [editor, setEditor] = useState<{ symbol: string } | null>(null);
   const [quotes, setQuotes] = useState<Record<string, Quote | null>>({});
   const [filter, setFilter] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [cashForm, setCashForm] = useState<{ kind: CashKind; date: string; amount: string; symbol: string; note: string }>({ kind: "deposit", date: tradeDate(new Date().toISOString()), amount: "", symbol: "", note: "" });
+  const [cashError, setCashError] = useState("");
 
   const migrationRaw = useSyncExternalStore(subscribeNever, () => { try { return window.localStorage.getItem(legacyMigrationKey); } catch { return null; } }, () => null);
   const migration = useMemo(() => { try { return JSON.parse(migrationRaw ?? "null") as LegacyMigration | null; } catch { return null; } }, [migrationRaw]);
@@ -78,6 +84,25 @@ export function TradeLedgerView() {
   const totalUnrealized = mixedCurrency || quotesMissing || quotesPending ? null : openPositions.reduce((sum, position) => sum + (position.unrealized ?? 0), 0);
   const totalRealized = mixedCurrency ? null : positions.reduce((sum, position) => sum + position.realized, 0);
 
+  const cashEntries = useMemo(() => activePortfolio.cash ?? [], [activePortfolio]);
+  const cash = useMemo(() => cashSummary(cashEntries, trades), [cashEntries, trades]);
+  const hasCash = cashEntries.length > 0;
+  const accountValue = totalMarket !== null && !mixedCurrency ? totalMarket + cash.balance : null;
+  const totalReturn = accountValue !== null && cash.deposits > 0 ? accountValue - cash.netContributions : null;
+  const cashRows = useMemo(() => [...cashEntries].sort((left, right) => right.date.localeCompare(left.date)), [cashEntries]);
+
+  function addCash(event: React.FormEvent) {
+    event.preventDefault();
+    const amount = Number(cashForm.amount);
+    try {
+      saveCash(activePortfolio.id, { id: crypto.randomUUID(), kind: cashForm.kind, date: cashForm.date, amount: Math.round(amount * 100) / 100, ...(cashForm.symbol.trim() ? { symbol: cashForm.symbol.trim().toUpperCase() } : {}), ...(cashForm.note.trim() ? { note: cashForm.note.trim().slice(0, 500) } : {}) });
+      setCashForm({ ...cashForm, amount: "", symbol: "", note: "" });
+      setCashError("");
+    } catch (reason) {
+      setCashError(reason instanceof Error && reason.message === "INVALID_TIME" ? text("Date cannot be in the future.", "日期不能晚于今天。") : text("Enter an amount greater than 0.", "请输入大于 0 的金额。"));
+    }
+  }
+
   const ledger = useMemo(() => {
     const query = filter.trim().toUpperCase();
     return [...trades]
@@ -114,6 +139,7 @@ export function TradeLedgerView() {
           </select>
         </label>
         <button className="tl-primary" onClick={() => setEditor({ symbol: "" })}>{text("+ Add trade", "+ 新增交易")}</button>
+        <button className="tl-button" onClick={() => setImporting(true)}>{text("Import CSV", "导入 CSV")}</button>
         <BackupControls zh={locale === "zh"} />
         <Link className="tl-link" href="/dashboard">{text("Dashboard", "组合分析")} ↗</Link>
       </div>
@@ -123,6 +149,8 @@ export function TradeLedgerView() {
       `Imported ${migration.imported} trade${migration.imported === 1 ? "" : "s"} from the previous trade log into this portfolio${migration.skipped ? `; ${migration.skipped} invalid record${migration.skipped === 1 ? " was" : "s were"} skipped (e.g. a sale exceeding holdings or a future date)` : ""}. The old records are kept untouched as a backup.`,
       `已将旧版交易日志中的 ${migration.imported} 笔交易导入本组合${migration.skipped ? `；${migration.skipped} 笔无效记录被跳过（如卖出超过持仓或日期晚于今天）` : ""}。旧数据保留未动，作为备份。`)}</p>}
 
+    {notice && <p className="tl-notice" role="status">{notice}</p>}
+
     <section className="tl-metrics" aria-label={text("Ledger summary", "账本概览")}>
       <article><span>{text("Trades", "交易笔数")}</span><strong>{trades.length}</strong><small>{symbols.length} {text("securities", "只证券")}</small></article>
       <article><span>{text("Open positions", "持仓数")}</span><strong>{openPositions.length}</strong><small>{text("Average-cost method", "平均成本法")}</small></article>
@@ -130,6 +158,14 @@ export function TradeLedgerView() {
       <article><span>{text("Unrealized P&L", "未实现盈亏")}</span><strong className={tone(totalUnrealized)}>{quotesPending && openPositions.length ? "…" : signed(totalUnrealized)}</strong><small>{text("vs. average cost", "相对平均成本")}</small></article>
       <article><span>{text("Realized P&L", "已实现盈亏")}</span><strong className={tone(totalRealized)}>{signed(totalRealized)}</strong><small>{text("Excl. fees & dividends", "不含费用与分红")}</small></article>
     </section>
+
+    {hasCash && <section className="tl-metrics tl-metrics-cash" aria-label={text("Cash summary", "现金概览")}>
+      <article><span>{text("Cash balance", "现金余额")}</span><strong className={cash.balance < -0.005 ? "tl-negative" : ""}>{money(cash.balance)}</strong><small>{cash.balance < -0.005 ? text("Negative — a deposit may be missing", "为负，可能漏记入金") : text("Deposits + sells + income − buys − costs", "入金+卖出+收入−买入−费用")}</small></article>
+      <article><span>{text("Net contributions", "净投入")}</span><strong>{money(cash.netContributions)}</strong><small>{text("Deposits − withdrawals", "入金 − 出金")}</small></article>
+      <article><span>{text("Dividends & interest", "分红与利息")}</span><strong className={tone(cash.income)}>{signed(cash.income)}</strong><small>{text("Cash income", "现金收入")}</small></article>
+      <article><span>{text("Fees & tax", "费用与税")}</span><strong className={tone(-cash.costs)}>{signed(-cash.costs)}</strong><small>{text("Brokerage, withholding", "佣金、预扣税等")}</small></article>
+      <article><span>{text("Account value", "账户总值")}</span><strong>{quotesPending && openPositions.length ? "…" : money(accountValue)}</strong><small className={tone(totalReturn)}>{totalReturn !== null ? `${text("Total return", "总收益")} ${signed(totalReturn)}${cash.netContributions > 0 ? ` (${signed((totalReturn / cash.netContributions) * 100)}%)` : ""}` : text("Holdings + cash", "持仓 + 现金")}</small></article>
+    </section>}
 
     {!trades.length ? <section className="tl-empty">
       <h2>{text("No trades recorded in this portfolio", "此组合暂无交易记录")}</h2>
@@ -176,6 +212,32 @@ export function TradeLedgerView() {
         {!ledger.length && <p className="tl-muted">{text("No trades match this filter.", "没有符合筛选条件的交易。")}</p>}
       </section>
     </>}
+
+    <section className="tl-section">
+      <div className="tl-section-heading"><div><h2>{text("Cash ledger", "现金账本")}</h2><p>{text("Deposits, withdrawals, dividends, interest, fees and tax. Buys and sells move cash automatically.", "入金、出金、分红、利息、费用和税。买卖交易会自动计入现金变动。")}</p></div></div>
+      <form className="cl-form" onSubmit={addCash}>
+        <label>{text("Type", "类型")}<select value={cashForm.kind} onChange={(event) => setCashForm({ ...cashForm, kind: event.target.value as CashKind })}>{CASH_KINDS.map((kind) => <option key={kind} value={kind}>{cashLabel[kind][locale === "zh" ? 1 : 0]}</option>)}</select></label>
+        <label>{text("Date", "日期")}<input type="date" required value={cashForm.date} onChange={(event) => setCashForm({ ...cashForm, date: event.target.value })} /></label>
+        <label>{text("Amount", "金额")}<input type="number" min="0.01" step="0.01" required value={cashForm.amount} onChange={(event) => setCashForm({ ...cashForm, amount: event.target.value })} /></label>
+        <label>{text("Symbol (optional)", "代码（可选）")}<input value={cashForm.symbol} onChange={(event) => setCashForm({ ...cashForm, symbol: event.target.value })} /></label>
+        <label>{text("Note (optional)", "备注（可选）")}<input maxLength={500} value={cashForm.note} onChange={(event) => setCashForm({ ...cashForm, note: event.target.value })} /></label>
+        <button className="tl-primary" type="submit">{text("Add", "添加")}</button>
+      </form>
+      {cashError && <p className="tl-negative" role="alert">{cashError}</p>}
+      {hasCash ? <div className="tl-scroll"><table>
+        <thead><tr>{[text("Date", "日期"), text("Type", "类型"), text("Symbol", "代码"), text("Amount", "金额"), text("Note", "备注"), ""].map((label, index) => <th key={index} className={index === 2 || index === 4 ? "tl-left" : undefined}>{label}</th>)}</tr></thead>
+        <tbody>{cashRows.map((entry) => <tr key={entry.id}>
+          <td>{entry.date}</td>
+          <td>{cashLabel[entry.kind][locale === "zh" ? 1 : 0]}</td>
+          <td className="tl-left">{entry.symbol ?? ""}</td>
+          <td className={cashSign[entry.kind] > 0 ? "cl-in" : "cl-out"}>{cashSign[entry.kind] > 0 ? "+" : "−"}{money(entry.amount)}</td>
+          <td className="tl-note">{entry.note ?? ""}</td>
+          <td><button className="tl-row-button" onClick={() => deleteCash(activePortfolio.id, entry.id)}>{text("Delete", "删除")}</button></td>
+        </tr>)}</tbody>
+      </table></div> : <p className="tl-muted">{text("No cash entries yet. Record your deposits to see cash balance, net contributions and total return.", "还没有现金流水。录入入金后即可看到现金余额、净投入和总收益。")}</p>}
+    </section>
+
+    {importing && <CsvImportDialog portfolioId={activePortfolio.id} zh={locale === "zh"} onClose={(message) => { setImporting(false); if (message) setNotice(message); }} />}
 
     {editor && <PortfolioTradesDialog key={`${activePortfolio.id}:${editor.symbol}`} portfolioId={activePortfolio.id} symbol={editor.symbol} onClose={() => setEditor(null)} />}
   </main>;

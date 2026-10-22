@@ -76,3 +76,31 @@ html[data-theme="day"] .tl-primary { color: #fff; }
   .tl-tools { width: 100%; }
   .tl-tools input { flex: 1; }
 }
+
+/* CSV import dialog */
+.ci-dialog { width: min(980px, calc(100vw - 24px)); max-height: calc(100vh - 40px); padding: 0; border: 1px solid var(--tl-line); border-radius: 10px; background: var(--tl-surface); color: var(--tl-ink); box-shadow: 0 24px 80px rgb(0 0 0 / .35); }
+.ci-dialog::backdrop { background: rgb(8 12 18 / .55); backdrop-filter: blur(4px); }
+.ci-dialog[open] { display: flex; flex-direction: column; }
+.ci-top, .ci-actions { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--tl-line); }
+.ci-top strong { flex: 1; font-size: 15px; }
+.ci-actions { border-bottom: 0; border-top: 1px solid var(--tl-line); justify-content: flex-end; }
+.ci-actions .tl-muted { margin-right: auto; }
+.ci-actions .tl-primary:disabled { opacity: .45; cursor: not-allowed; }
+.ci-body { padding: 16px 18px; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
+.ci-file { align-self: flex-start; cursor: pointer; padding: 9px 14px; }
+.ci-options, .ci-mapping { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.ci-options { grid-template-columns: 2fr 1fr 1fr; }
+.ci-options label, .ci-mapping label, .cl-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--tl-muted); min-width: 0; }
+.ci-options select, .ci-options input, .ci-mapping select, .cl-form select, .cl-form input { padding: 7px 8px; border: 1px solid var(--tl-line); border-radius: 6px; background: var(--tl-surface); color: var(--tl-ink); font-size: 12px; min-width: 0; }
+.ci-counts { font-size: 13px; }
+.ci-preview { max-height: 340px; overflow: auto; border: 1px solid var(--tl-line); border-radius: 6px; }
+.ci-preview td, .ci-preview th { padding: 6px 10px; font-size: 12px; }
+@media (max-width: 700px) { .ci-options { grid-template-columns: 1fr; } }
+
+/* Cash ledger */
+.cl-form { display: grid; grid-template-columns: 130px 140px 120px 110px minmax(0, 1fr) auto; gap: 8px; align-items: end; margin-bottom: 12px; }
+.cl-form .tl-primary { padding: 8px 14px; }
+.cl-in { color: var(--tl-positive); }
+.cl-out { color: var(--tl-negative); }
+.tl-metrics.tl-metrics-cash { grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 10px; }
+@media (max-width: 900px) { .cl-form { grid-template-columns: 1fr 1fr; } .cl-form .tl-primary { grid-column: span 2; } }

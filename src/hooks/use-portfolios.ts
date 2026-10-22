@@ -3,8 +3,9 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { demoPortfolios } from "@/lib/portfolio-analytics";
 import { importLegacyTrades, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
+import { validateCashEntries, type CashEntry } from "@/lib/cash-ledger";
 
-export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[] };
+export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[]; cash?: CashEntry[] };
 const symbolOrder = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"];
 export const initialPortfolios: ManagedPortfolio[] = demoPortfolios.map((portfolio) => ({
   id: portfolio.id, name: portfolio.name, nameZh: portfolio.nameZh, initials: portfolio.initials, demoId: portfolio.id,
@@ -124,6 +125,30 @@ export function usePortfolios() {
       const trades = previous.some((item) => item.id === trade.id) ? previous.map((item) => item.id === trade.id ? trade : item) : [...previous, trade];
       validatePortfolioTrades(trades);
       save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, trades, symbols: [...new Set([...item.symbols, trade.symbol])] } : item) });
+    },
+    saveCash(portfolioId: string, entry: CashEntry) {
+      const current = readState();
+      const portfolio = current.portfolios.find((item) => item.id === portfolioId);
+      if (!portfolio) throw new Error("PORTFOLIO_NOT_FOUND");
+      const previous = portfolio.cash ?? [];
+      const cash = previous.some((item) => item.id === entry.id) ? previous.map((item) => item.id === entry.id ? entry : item) : [...previous, entry];
+      validateCashEntries(cash);
+      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, cash } : item) });
+    },
+    deleteCash(portfolioId: string, entryId: string) {
+      const current = readState();
+      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, cash: (item.cash ?? []).filter((entry) => entry.id !== entryId) } : item) });
+    },
+    /** Bulk add from a CSV import. Everything is validated together; nothing is saved if anything fails. */
+    importRecords(portfolioId: string, newTrades: PortfolioTrade[], newCash: CashEntry[]) {
+      const current = readState();
+      const portfolio = current.portfolios.find((item) => item.id === portfolioId);
+      if (!portfolio) throw new Error("PORTFOLIO_NOT_FOUND");
+      const trades = [...(portfolio.trades ?? []), ...newTrades];
+      const cash = [...(portfolio.cash ?? []), ...newCash];
+      validatePortfolioTrades(trades);
+      validateCashEntries(cash);
+      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, trades, cash, symbols: [...new Set([...item.symbols, ...newTrades.map((trade) => trade.symbol)])] } : item) });
     },
     deleteTrade(portfolioId: string, tradeId: string) {
       const current = readState();
