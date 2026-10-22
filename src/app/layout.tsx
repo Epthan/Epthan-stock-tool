@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { IBM_Plex_Sans, Noto_Sans_SC } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import { LanguageProvider } from "@/components/language-provider";
 import { StockSelectionProvider } from "@/components/stock-selection-provider";
@@ -15,20 +14,9 @@ import "./trader-analytics.css";
 import "./theme.css";
 import "./redesign.css";
 
-// Both fonts are SIL Open Font License: free for commercial use and web embedding.
-const plex = IBM_Plex_Sans({
-  variable: "--font-plex",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  display: "swap",
-});
-
-const notoSansSC = Noto_Sans_SC({
-  variable: "--font-noto-sc",
-  weight: ["400", "500", "700"],
-  display: "swap",
-  preload: false,
-});
+// IBM Plex Sans + Noto Sans SC: both SIL Open Font License (free for commercial use and web embedding).
+// Loaded as a stylesheet so they work without build-time font fetching.
+const fontsHref = "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap";
 
 export const metadata: Metadata = {
   title: "Stock Tool",
@@ -44,10 +32,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${plex.variable} ${notoSansSC.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href={fontsHref} />
       </head>
       <body className="min-h-full">
         <LanguageProvider>

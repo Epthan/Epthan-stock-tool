@@ -116,7 +116,7 @@
 }
 
 /* ---------- Base ---------- */
-:root { --background: var(--ui-bg); --foreground: var(--ui-ink); }
+:root { --background: var(--ui-bg); --foreground: var(--ui-ink); --font-plex: "IBM Plex Sans"; --font-noto-sc: "Noto Sans SC"; }
 html body {
   background: var(--ui-bg);
   color: var(--ui-ink);
