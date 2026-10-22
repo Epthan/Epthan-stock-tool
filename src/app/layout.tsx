@@ -10,6 +10,7 @@ import "./portfolio-dashboard.css";
 import "./portfolio-manager.css";
 import "./product-refinement.css";
 import "./backtest.css";
+import "./trade-ledger.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

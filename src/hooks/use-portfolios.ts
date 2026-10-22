@@ -2,7 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { demoPortfolios } from "@/lib/portfolio-analytics";
-import { validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
+import { importLegacyTrades, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
 
 export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[] };
 const symbolOrder = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"];
@@ -13,17 +13,53 @@ export const initialPortfolios: ManagedPortfolio[] = demoPortfolios.map((portfol
 const portfoliosKey = "stock-tool.portfolios.v1";
 const activeKey = "stock-tool.active-portfolio.v1";
 const changeEvent = "portfolio-selection-change";
+const legacyTradesKey = "stock-tool.portfolio-trades.v1";
+export const legacyMigrationKey = "stock-tool.legacy-trades-migrated.v1";
+export type LegacyMigration = { portfolioId: string | null; imported: number; skipped: number; at: string };
 const defaultSnapshot = JSON.stringify({ portfolios: initialPortfolios, activeId: "balanced" });
 
-function readState() {
-  let portfolios = initialPortfolios;
+function storedPortfolios(): ManagedPortfolio[] | null {
   try {
     const stored: unknown = JSON.parse(window.localStorage.getItem(portfoliosKey) ?? "null");
     if (Array.isArray(stored) && stored.length > 0) {
       const clean = stored.filter((item): item is ManagedPortfolio => !!item && typeof item.id === "string" && typeof item.name === "string" && item.name.trim().length > 0 && typeof item.initials === "string" && Array.isArray(item.symbols) && item.symbols.every((symbol: unknown) => typeof symbol === "string"));
-      if (clean.length) portfolios = clean;
+      if (clean.length) return clean;
     }
   } catch {}
+  return null;
+}
+
+/**
+ * One-time move of the old /portfolio trade log into the unified portfolio store.
+ * The legacy key is left in place (read-only) as a backup; the flag prevents re-import.
+ */
+let migrationChecked = false;
+function migrateLegacyTrades() {
+  if (migrationChecked) return;
+  migrationChecked = true;
+  try {
+    if (window.localStorage.getItem(legacyMigrationKey)) return;
+    const raw = window.localStorage.getItem(legacyTradesKey);
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    const { trades, skipped } = importLegacyTrades(parsed);
+    let portfolioId: string | null = null;
+    if (trades.length) {
+      const portfolios = storedPortfolios() ?? initialPortfolios;
+      let name = "Imported Trade Log";
+      for (let index = 2; portfolios.some((portfolio) => portfolio.name.toLowerCase() === name.toLowerCase()); index++) name = `Imported Trade Log ${index}`;
+      portfolioId = crypto.randomUUID();
+      const imported: ManagedPortfolio = { id: portfolioId, name, nameZh: "导入的交易记录", initials: "TL", symbols: [...new Set(trades.map((trade) => trade.symbol))], trades };
+      window.localStorage.setItem(portfoliosKey, JSON.stringify([...portfolios, imported]));
+      window.localStorage.setItem(activeKey, portfolioId);
+    }
+    const result: LegacyMigration = { portfolioId, imported: trades.length, skipped, at: new Date().toISOString() };
+    window.localStorage.setItem(legacyMigrationKey, JSON.stringify(result));
+  } catch {}
+}
+
+function readState() {
+  migrateLegacyTrades();
+  const portfolios = storedPortfolios() ?? initialPortfolios;
   const saved = window.localStorage.getItem(activeKey);
   return { portfolios, activeId: portfolios.find((portfolio) => portfolio.id === saved)?.id ?? portfolios[0].id };
 }

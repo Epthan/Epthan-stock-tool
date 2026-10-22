@@ -1,4 +1,4 @@
-export type PortfolioTrade = { id: string; symbol: string; side: "buy" | "sell"; tradedAt: string; price: number; quantity: number };
+export type PortfolioTrade = { id: string; symbol: string; side: "buy" | "sell"; tradedAt: string; price: number; quantity: number; note?: string };
 
 export function tradeDate(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -35,4 +35,33 @@ export function getTradePosition(trades: PortfolioTrade[], symbol: string) {
     }
   }
   return { quantity, averageCost: quantity > 1e-8 ? cost / quantity : null, realized };
+}
+
+/**
+ * Convert records from the retired `/portfolio` trade log (stock-tool.portfolio-trades.v1)
+ * into portfolio trades. Records are replayed in date order; any record that would fail
+ * validation (bad fields, future date, or selling more than held) is skipped and counted.
+ */
+export function importLegacyTrades(raw: unknown): { trades: PortfolioTrade[]; skipped: number } {
+  if (!Array.isArray(raw)) return { trades: [], skipped: 0 };
+  const candidates = raw
+    .map((item): PortfolioTrade | null => {
+      if (!item || typeof item !== "object") return null;
+      const record = item as Record<string, unknown>;
+      const symbol = typeof record.symbol === "string" ? record.symbol.trim().toUpperCase() : "";
+      const side = record.side === "sell" ? "sell" : record.side === "buy" ? "buy" : null;
+      const tradedAt = typeof record.tradedAt === "string" ? tradeDate(record.tradedAt) : "";
+      const price = Number(record.price);
+      const quantity = Number(record.quantity);
+      if (!symbol || !side || !tradedAt) return null;
+      const note = typeof record.note === "string" && record.note.trim() ? record.note.trim().slice(0, 500) : undefined;
+      return { id: typeof record.id === "string" && record.id ? record.id : crypto.randomUUID(), symbol, side, tradedAt, price: Math.round((price + Number.EPSILON) * 100) / 100, quantity, ...(note ? { note } : {}) };
+    });
+  let skipped = candidates.filter((item) => !item).length;
+  const accepted: PortfolioTrade[] = [];
+  const ordered = (candidates.filter(Boolean) as PortfolioTrade[]).sort((left, right) => left.tradedAt.localeCompare(right.tradedAt) || (left.side === right.side ? 0 : left.side === "buy" ? -1 : 1));
+  for (const trade of ordered) {
+    try { validatePortfolioTrades([...accepted, trade]); accepted.push(trade); } catch { skipped += 1; }
+  }
+  return { trades: accepted, skipped };
 }

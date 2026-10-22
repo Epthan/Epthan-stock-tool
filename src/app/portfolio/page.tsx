@@ -1,5 +1,5 @@
-import { PortfolioView } from "@/components/portfolio-view";
+import { TradeLedgerView } from "@/components/trade-ledger-view";
 
 export default function PortfolioPage() {
-  return <PortfolioView />;
+  return <TradeLedgerView />;
 }
