@@ -215,3 +215,65 @@ html[data-skin] .trade-ledger .tl-metrics, html[data-skin] .trade-ledger .tl-sec
 html[data-skin] .pm-launcher, html[data-skin] .pm-launcher * { color: var(--ui-accent) !important; }
 html[data-skin] .workplace-page .wpx-company > .wpx-card { background: var(--ui-panel-2) !important; border: 1px solid var(--ui-line-soft) !important; border-radius: 12px !important; padding: 16px 18px !important; }
 html[data-skin] .workplace-page .wpx-company > .wpx-card-plain { background: transparent !important; border: 0 !important; padding: 0 !important; }
+
+/* =====================================================================
+   Frosted glass — only on layers that sit over scrolling content
+   (top bar, sticky tabs, menus, dialogs, mobile nav). Falls back to
+   solid colours where backdrop-filter is unsupported.
+   ===================================================================== */
+:root, :root[data-skin="gray"] { --ui-glass: rgba(228, 232, 236, 0.66); --ui-glass-panel: rgba(255, 255, 255, 0.72); --ui-glass-edge: rgba(255, 255, 255, 0.6); --ui-scrim: rgba(14, 22, 32, 0.28); }
+:root[data-skin="gold"] { --ui-glass: rgba(230, 228, 224, 0.66); --ui-glass-panel: rgba(255, 255, 255, 0.72); --ui-glass-edge: rgba(255, 255, 255, 0.6); --ui-scrim: rgba(22, 24, 27, 0.32); --ui-glass-rail: rgba(31, 34, 38, 0.82); }
+:root[data-skin="night"] { --ui-glass: rgba(16, 21, 27, 0.62); --ui-glass-panel: rgba(28, 36, 48, 0.70); --ui-glass-edge: rgba(255, 255, 255, 0.08); --ui-scrim: rgba(0, 0, 0, 0.45); }
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .shell-top,
+  html[data-skin] .portfolio-dashboard .pd-sidebar.pd-topbar {
+    background: var(--ui-glass);
+    -webkit-backdrop-filter: saturate(170%) blur(18px);
+    backdrop-filter: saturate(170%) blur(18px);
+  }
+  /* Dashboard tabs stay pinned under the top bar while the page scrolls */
+  @media (min-width: 1101px) {
+    html[data-skin] .portfolio-dashboard .pd-sidebar.pd-topbar { position: sticky !important; top: 64px !important; z-index: 45; }
+  }
+
+  /* Menus and dropdowns */
+  .shell-search [class*="absolute"],
+  html[data-skin] .pd-topbar .pd-portfolio-options,
+  .wpx-menu > div,
+  html[data-skin] .wpx-quote-actions .wp-watchlist-menu,
+  html[data-skin] .wpx-controls .wp-chart-menu > div {
+    background: var(--ui-glass-panel) !important;
+    -webkit-backdrop-filter: saturate(180%) blur(22px);
+    backdrop-filter: saturate(180%) blur(22px);
+    border: 1px solid var(--ui-glass-edge) !important;
+    box-shadow: var(--ui-overlay), inset 0 1px 0 var(--ui-glass-edge) !important;
+  }
+
+  /* Dialogs: frosted sheet over a softly blurred page */
+  html[data-skin] .pm-dialog {
+    background: var(--ui-glass-panel);
+    -webkit-backdrop-filter: saturate(180%) blur(28px);
+    backdrop-filter: saturate(180%) blur(28px);
+    border: 1px solid var(--ui-glass-edge);
+  }
+  html[data-skin] .pm-dialog::backdrop {
+    background: var(--ui-scrim);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  /* Mobile bottom navigation */
+  @media (max-width: 760px) {
+    .shell-rail {
+      background: var(--ui-glass-rail, var(--ui-glass));
+      -webkit-backdrop-filter: saturate(170%) blur(18px);
+      backdrop-filter: saturate(170%) blur(18px);
+    }
+  }
+}
+html[data-skin] .pd-topbar .pd-portfolio-options button { color: var(--ui-ink); background: transparent; }
+html[data-skin] .pd-topbar .pd-portfolio-options button:hover { background: var(--ui-accent-soft); }
+html[data-skin] .pd-topbar .pd-portfolio-options button[aria-pressed="true"] { background: var(--ui-accent-soft); }
+html[data-skin] .pd-topbar .pd-portfolio-options p, html[data-skin] .pd-topbar .pd-portfolio-options small { color: var(--ui-muted); }
+html[data-skin] .pd-topbar .pd-menu-check { color: var(--ui-accent); }
