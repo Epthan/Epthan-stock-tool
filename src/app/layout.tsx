@@ -11,6 +11,7 @@ import "./portfolio-manager.css";
 import "./product-refinement.css";
 import "./backtest.css";
 import "./trade-ledger.css";
+import "./trader-analytics.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

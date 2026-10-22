@@ -4,8 +4,9 @@ import {
   createContext,
   useContext,
   useEffect,
+  useCallback,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -376,19 +377,32 @@ function detectBrowserLocale(): Locale {
   return language.startsWith("zh") ? "zh" : "en";
 }
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof window === "undefined") {
-      return "en";
-    }
+const localeEvent = "stock-tool-locale-change";
+function readLocale(): Locale {
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored === "zh" || stored === "en") return stored;
+  } catch {}
+  return detectBrowserLocale();
+}
+function subscribeLocale(listener: () => void) {
+  window.addEventListener("storage", listener);
+  window.addEventListener(localeEvent, listener);
+  return () => { window.removeEventListener("storage", listener); window.removeEventListener(localeEvent, listener); };
+}
+function writeLocale(next: Locale) {
+  try { window.localStorage.setItem(storageKey, next); } catch {}
+  window.dispatchEvent(new Event(localeEvent));
+}
 
-    const stored = window.localStorage.getItem(storageKey) as Locale | null;
-    return stored === "zh" || stored === "en" ? stored : detectBrowserLocale();
-  });
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  // Server renders English; the client switches to the saved/browser locale right after hydration,
+  // so the first client render matches the server HTML (no hydration mismatch).
+  const locale = useSyncExternalStore<Locale>(subscribeLocale, readLocale, () => "en");
+  const setLocaleState = useCallback((next: Locale | ((current: Locale) => Locale)) => writeLocale(typeof next === "function" ? next(readLocale()) : next), []);
 
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-    window.localStorage.setItem(storageKey, locale);
   }, [locale]);
 
   const value = useMemo<LanguageContextValue>(
@@ -398,7 +412,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       setLocale: setLocaleState,
       toggleLocale: () => setLocaleState((current) => (current === "en" ? "zh" : "en")),
     }),
-    [locale],
+    [locale, setLocaleState],
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;

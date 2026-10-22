@@ -41,3 +41,18 @@ Add a unified cash/trade/dividend/fee ledger and adjusted historical price adapt
 There is now one trade store: `stock-tool.portfolios.v1` (trades live on each portfolio). `/portfolio` is the Trade Log page for the active portfolio — positions rebuilt with the average-cost method, latest quotes, full trade list with notes, and CSV export. Adding/editing/deleting uses the same trade dialog as Workplace and Dashboard, so all three pages stay in sync.
 
 Legacy migration: on first load, records in the retired `stock-tool.portfolio-trades.v1` key are imported once into a new portfolio "Imported Trade Log" (dates normalised to `YYYY-MM-DD`, symbols upper-cased, notes kept). Records that fail validation (e.g. selling more than held, future dates) are skipped and counted. The legacy key is left untouched as a backup; `stock-tool.legacy-trades-migrated.v1` records the result and prevents re-import.
+
+## Trader analytics (2026-10-22)
+
+Recorded portfolios now compute, server-side in `src/lib/trader-analytics.ts` (called from `analyzePortfolio`):
+
+- **Trade analysis view** (`/dashboard` → 交易分析): each sell is a closed trade (P&L on average cost, holding days FIFO-weighted). Win rate, payoff ratio, profit factor, expectancy, winner vs loser holding period, return histogram, price change 20 trading days after each sell, 5/20-day excess after each buy vs benchmark, monthly activity (trades after losing vs winning months), closed-trade table.
+- **Performance & risk**: annualized return/volatility, Sharpe/Sortino (rf 4%, `RISK_FREE_RATE`), Calmar, OLS alpha (annualized, t-stat) and beta, market vs residual return split, up/down capture, rolling 63-day excess and beta, monthly return calendar.
+- **Allocation & risk**: risk contribution vs weight (1-year covariance, current weights), correlation heatmap, top-3 weight, HHI / effective positions, weight-vs-contribution scatter.
+- **Holdings**: vs cost, risk contribution, distance from 52-week high, days held; beta moved to the symbol tooltip.
+- **Overview**: KPIs replaced with value, period P&L, return (excess in note), annualized alpha, Sharpe, max drawdown, profit factor, win rate; cumulative return chart now carries a drawdown pane; "Behind the numbers" is a rule engine (`src/lib/trader-insights.ts`) with minimum sample sizes.
+- Demo portfolios show a banner linking to a recorded portfolio when one exists; recorded portfolios sort first in the selector.
+
+Fix: `LanguageProvider` now reads the saved locale via `useSyncExternalStore`, removing the hydration mismatch when the UI language is Chinese.
+
+Not done (needs new data): cash/dividend/fee ledger with TWR vs IRR; trade tags and per-tag attribution; sector grouping; backtest overlay on actual trades.

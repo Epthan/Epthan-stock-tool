@@ -1,5 +1,6 @@
 import { getTradePosition, type PortfolioTrade } from "@/lib/portfolio-trades";
 import type { PortfolioRange } from "@/lib/portfolio-analytics";
+import { monthlyActivity, monthlyReturns, positionRisk, priceContext, returnStatistics, rollingSeries, tradeAnalytics, type DailyReturn } from "@/lib/trader-analytics";
 
 export type DailyPrice = { date: string; close: number };
 export type SecurityHistory = { symbol: string; name: string; currency: string; prices: DailyPrice[] };
@@ -98,8 +99,34 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
     const beta = pairs.length >= 60 && variance > 0 ? pairs.reduce((sum, pair) => sum + (pair.stock - averageStock) * (pair.market - averageMarket), 0) / variance : null;
     return { symbol: security.symbol, name: security.name, ...position, price, value, weight: last.value > 0 ? value / last.value * 100 : 0, unrealized: position.averageCost == null ? 0 : position.quantity * ((price ?? 0) - position.averageCost), contribution: (last.contributions[security.symbol] ?? 0) - (baseline?.contributions[security.symbol] ?? 0), beta, betaSamples: pairs.length };
   });
+  // ---- Trader analytics -------------------------------------------------
+  const allReturns: DailyReturn[] = rows.map((row, index) => {
+    const previousIndex = index ? rows[index - 1].index : 1;
+    const previousBench = index ? rows[index - 1].benchmarkIndex : 1;
+    return { date: row.date, portfolio: previousIndex > 0 ? row.index / previousIndex - 1 : 0, benchmark: row.benchmarkIndex / previousBench - 1 };
+  });
+  const periodReturns = allReturns.filter((row) => row.date >= rows[firstIndex].date);
+  const statistics = returnStatistics(periodReturns);
+  const rolling = rollingSeries(allReturns).filter((row) => row.date >= rows[firstIndex].date);
+  const months = monthlyReturns(allReturns);
+  const trading = tradeAnalytics(ordered, securities, benchmark, cutoff);
+  const activity = monthlyActivity(ordered, months);
+  const risk = positionRisk(holdings.map((holding) => ({ symbol: holding.symbol, value: holding.value })), securities, end);
+  const openedSince = new Map<string, string | null>();
+  const running = new Map<string, number>();
+  for (const trade of ordered) {
+    const before = running.get(trade.symbol) ?? 0;
+    const after = before + (trade.side === "buy" ? trade.quantity : -trade.quantity);
+    if (before <= 1e-8 && after > 1e-8) openedSince.set(trade.symbol, trade.tradedAt);
+    if (after <= 1e-8) openedSince.set(trade.symbol, null);
+    running.set(trade.symbol, Math.max(0, after));
+  }
+  const enriched = holdings.map((holding) => {
+    const context = priceContext(securities.find((security) => security.symbol === holding.symbol)?.prices ?? [], end, holding.quantity > 1e-8 ? openedSince.get(holding.symbol) ?? null : null);
+    return { ...holding, ...context, vsCost: holding.averageCost && holding.price ? (holding.price / holding.averageCost - 1) * 100 : null, riskContribution: risk.contributions.find((item) => item.symbol === holding.symbol)?.risk ?? null };
+  });
   const covered = holdings.filter((holding) => holding.beta != null).reduce((sum, holding) => sum + holding.value, 0);
-  return { points, holdings, currency: benchmark.currency, start: points[0].date, end, value: last.value, pnl: last.pnl - (baseline?.pnl ?? 0), realized: holdings.reduce((sum, holding) => sum + holding.realized, 0), unrealized: holdings.reduce((sum, holding) => sum + holding.unrealized, 0), beta: covered > 0 && Math.abs(covered - last.value) < 0.01 ? holdings.reduce((sum, holding) => sum + holding.value / covered * (holding.beta ?? 0), 0) : null, betaCoverage: last.value > 0 ? covered / last.value * 100 : 0, returnPercent: points.at(-1)!.portfolio, excess: points.at(-1)!.portfolio - points.at(-1)!.benchmark, maxDrawdown: Math.min(...points.map((point) => point.drawdown)) };
+  return { points, holdings: enriched, statistics, rolling, months, trading, activity, risk, currency: benchmark.currency, start: points[0].date, end, value: last.value, pnl: last.pnl - (baseline?.pnl ?? 0), realized: holdings.reduce((sum, holding) => sum + holding.realized, 0), unrealized: holdings.reduce((sum, holding) => sum + holding.unrealized, 0), beta: covered > 0 && Math.abs(covered - last.value) < 0.01 ? holdings.reduce((sum, holding) => sum + holding.value / covered * (holding.beta ?? 0), 0) : null, betaCoverage: last.value > 0 ? covered / last.value * 100 : 0, returnPercent: points.at(-1)!.portfolio, excess: points.at(-1)!.portfolio - points.at(-1)!.benchmark, maxDrawdown: Math.min(...points.map((point) => point.drawdown)) };
 }
 
 export type LivePortfolioAnalysis = ReturnType<typeof analyzePortfolio>;

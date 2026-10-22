@@ -5,7 +5,7 @@ import { useLanguage } from "@/components/language-provider";
 import { buildPerformanceInsights, type ReturnPoint } from "@/lib/performance-insights";
 
 type Series = { name: string; color: string; values: (number | null)[] };
-function InsightChart({ dates, series, unit, label }: { dates: string[]; series: Series[]; unit: string; label: string }) {
+export function InsightChart({ dates, series, unit, label }: { dates: string[]; series: Series[]; unit: string; label: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const values = series.flatMap((line) => line.values.filter((value): value is number => value != null && Number.isFinite(value)));
   const min = Math.min(0, ...values);
@@ -17,7 +17,7 @@ function InsightChart({ dates, series, unit, label }: { dates: string[]; series:
   const y = (value: number) => 20 + (high - value) / (high - low) * 195;
   const index = Math.min(hover ?? dates.length - 1, dates.length - 1);
   return <div className="pd-chart"><div className="pd-chart-readout"><span>{dates[index]}</span>{series.map((line) => <span className="pd-series-legend" key={line.name}><i style={{ background: line.color }} aria-hidden="true" />{line.name}<strong>{line.values[index] == null ? "—" : `${line.values[index]!.toFixed(2)} ${unit}`}</strong></span>)}</div><svg viewBox="0 0 900 250" role="img" aria-label={label} onPointerLeave={() => setHover(null)} onPointerMove={(event) => { const bounds = event.currentTarget.getBoundingClientRect(); setHover(Math.max(0, Math.min(dates.length - 1, Math.round(((event.clientX - bounds.left) / bounds.width * 900 - 65) / 805 * (dates.length - 1))))); }}>
-    {[0, 1, 2, 3, 4].map((level) => { const value = low + (high - low) * level / 4; return <g key={level}><line x1="65" x2="870" y1={y(value)} y2={y(value)} className="pd-grid-line" /><text x="55" y={y(value) + 4} textAnchor="end" className="pd-chart-label">{value.toFixed(1)}{unit === "pp" ? "pp" : "%"}</text></g>; })}
+    {[0, 1, 2, 3, 4].map((level) => { const value = low + (high - low) * level / 4; return <g key={level}><line x1="65" x2="870" y1={y(value)} y2={y(value)} className="pd-grid-line" /><text x="55" y={y(value) + 4} textAnchor="end" className="pd-chart-label">{value.toFixed(unit === "%" || unit === "pp" ? 1 : 2)}{unit === "pp" ? "pp" : unit === "%" ? "%" : ""}</text></g>; })}
     <line x1="65" x2="870" y1={y(0)} y2={y(0)} className="pd-grid-line" strokeDasharray="4 4" />
     {series.map((line) => { let open = false; const path = line.values.map((value, pointIndex) => { if (value == null || !Number.isFinite(value)) { open = false; return ""; } const segment = `${open ? "L" : "M"}${x(pointIndex)},${y(value)}`; open = true; return segment; }).join(" "); return <path key={line.name} d={path} fill="none" stroke={line.color} strokeWidth="2.3" />; })}
     {hover != null && <line x1={x(index)} x2={x(index)} y1="20" y2="215" className="pd-grid-line" />}

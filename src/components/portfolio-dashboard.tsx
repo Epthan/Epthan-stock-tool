@@ -13,7 +13,7 @@ import { getPortfolioAnalytics, type Benchmark, type PortfolioAnalytics, type Po
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const percent = (value: number) => `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 const ranges: PortfolioRange[] = ["1M", "3M", "6M", "YTD", "1Y", "ALL"];
-type View = "overview" | "performance" | "allocation" | "holdings" | "methodology";
+type View = "overview" | "trades" | "performance" | "allocation" | "holdings" | "methodology";
 
 function PerformanceChart({ data, drawdown = false }: { data: PortfolioAnalytics; drawdown?: boolean }) {
   const [hovered, setHovered] = useState<number | null>(null);
@@ -95,6 +95,7 @@ export function PortfolioDashboard() {
   const portfolioName = chinese ? activePortfolio.nameZh ?? activePortfolio.name : activePortfolio.name;
   const originalPortfolio = initialPortfolios.find((portfolio) => portfolio.id === activePortfolio.demoId);
   const analyticsAvailable = !(activePortfolio.trades?.length) && !!originalPortfolio && originalPortfolio.symbols.length === activePortfolio.symbols.length && originalPortfolio.symbols.every((symbol) => activePortfolio.symbols.includes(symbol));
+  const recordedPortfolio = portfolios.find((portfolio) => portfolio.id !== activePortfolio.id && portfolio.trades?.length);
   const portfolioMenu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     function closeOnOutside(event: PointerEvent) {
@@ -132,10 +133,11 @@ export function PortfolioDashboard() {
   const visibleHoldings = data.holdings.filter((holding) => `${holding.symbol} ${holding.name}`.toLowerCase().includes(filter.toLowerCase())).sort((left, right) => sort === "symbol" ? left.symbol.localeCompare(right.symbol) : sort === "pnl" ? right.pnl - left.pnl : right.marketValue - left.marketValue);
   const navigation: { id: View; label: string; number: string }[] = [
     { id: "overview", label: text("Overview", "组合概览"), number: "01" },
-    { id: "performance", label: text("Performance & risk", "表现与风险"), number: "02" },
-    { id: "allocation", label: text("Allocation & drivers", "配置与贡献"), number: "03" },
-    { id: "holdings", label: text("Holdings", "持仓明细"), number: "04" },
-    { id: "methodology", label: text("Data & methodology", "数据与口径"), number: "05" },
+    { id: "trades", label: text("Trade analysis", "交易分析"), number: "02" },
+    { id: "performance", label: text("Performance & risk", "表现与风险"), number: "03" },
+    { id: "allocation", label: text("Allocation & risk", "配置与风险"), number: "04" },
+    { id: "holdings", label: text("Holdings", "持仓明细"), number: "05" },
+    { id: "methodology", label: text("Data & methodology", "数据与口径"), number: "06" },
   ];
   const metrics = [
     { label: text("Total assets", "总资产"), value: money(data.totalValue), note: text("Securities + cash · USD", "证券 + 现金 · 美元") },
@@ -182,7 +184,7 @@ export function PortfolioDashboard() {
         <summary className="pd-sidebar-brand" aria-label={text("Switch portfolio", "切换投资组合")}><span className="pd-brand-mark">{activePortfolio.initials}</span><span className="pd-portfolio-identity"><small>{text("Portfolio", "投资组合")}</small><strong>{portfolioName}</strong></span><span className="pd-menu-chevron" aria-hidden="true">⌄</span></summary>
         <div className="pd-portfolio-options" role="group" aria-label={text("Portfolios", "投资组合列表")}>
           <p>{text("Switch portfolio", "切换投资组合")}</p>
-          {portfolios.map((portfolio) => <button type="button" key={portfolio.id} aria-pressed={portfolio.id === portfolioId} onClick={() => selectPortfolio(portfolio.id)}><span className="pd-brand-mark">{portfolio.initials}</span><span><strong>{chinese ? portfolio.nameZh ?? portfolio.name : portfolio.name}</strong><small>{portfolio.symbols.length} {text("holdings · USD", "只持仓 · 美元")}</small></span><span className="pd-menu-check" aria-hidden="true">{portfolio.id === portfolioId ? "✓" : ""}</span></button>)}
+          {[...portfolios].sort((left, right) => Number(!!right.trades?.length) - Number(!!left.trades?.length)).map((portfolio) => <button type="button" key={portfolio.id} aria-pressed={portfolio.id === portfolioId} onClick={() => selectPortfolio(portfolio.id)}><span className="pd-brand-mark">{portfolio.initials}</span><span><strong>{chinese ? portfolio.nameZh ?? portfolio.name : portfolio.name}</strong><small>{portfolio.trades?.length ? `${portfolio.trades.length} ${text("trades · recorded", "笔交易 · 真实记录")}` : `${portfolio.symbols.length} ${text("stocks · demo / no trades", "只股票 · 演示或无交易")}`}</small></span><span className="pd-menu-check" aria-hidden="true">{portfolio.id === portfolioId ? "✓" : ""}</span></button>)}
         </div>
       </details>
       <p className="pd-eyebrow">{text("ANALYTICS", "投资分析")}</p>
@@ -191,7 +193,8 @@ export function PortfolioDashboard() {
     </aside>
     <div className="pd-content">
       <header className="pd-heading"><div><p className="pd-eyebrow">{portfolioName} / {text("PERSONAL INVESTOR", "个人投资者")}</p><h1>{navigation.find((item) => item.id === view)?.label}</h1><p className="pd-muted">{text("Portfolio performance, exposures and the drivers behind your returns.", "了解组合表现、风险暴露，以及收益背后的驱动因素。")}</p></div></header>
-      {analyticsAvailable ? <>
+      {analyticsAvailable && recordedPortfolio && <div className="ta-switch-banner" role="note"><span>{text("You are viewing simulated demo data. Your recorded portfolio", "当前为模拟演示数据。你的真实记录组合")} <strong>{chinese ? recordedPortfolio.nameZh ?? recordedPortfolio.name : recordedPortfolio.name}</strong> {text(`has ${recordedPortfolio.trades!.length} trades.`, `已有 ${recordedPortfolio.trades!.length} 笔交易。`)}</span><button className="pd-workplace-link" onClick={() => selectPortfolio(recordedPortfolio.id)}>{text("Switch to it", "切换过去")} →</button></div>}
+      {analyticsAvailable && view === "trades" ? <section className="pd-pending"><h2>{text("Trade analysis needs recorded trades", "交易分析需要真实交易记录")}</h2><p>{text("Demo portfolios hold simulated positions without buys or sells, so there is nothing to measure: win rate, payoff, holding behaviour and exit timing all come from your own trade log.", "演示组合只有模拟持仓，没有买卖记录，无法衡量交易行为：胜率、盈亏比、持有习惯和卖点质量都来自你自己的交易记录。")}</p>{recordedPortfolio ? <button className="pd-workplace-link" onClick={() => selectPortfolio(recordedPortfolio.id)}>{text("Open", "打开")} {chinese ? recordedPortfolio.nameZh ?? recordedPortfolio.name : recordedPortfolio.name} →</button> : <Link href="/portfolio" className="pd-workplace-link">{text("Record trades", "去录入交易")} ↗</Link>}</section> : analyticsAvailable ? <>
       <div className="pd-toolbar"><div className="pd-segments" aria-label={text("Time range", "时间范围")}>{ranges.map((option) => <button key={option} aria-pressed={range === option} className={range === option ? "is-active" : ""} onClick={() => setRange(option)}>{option}</button>)}</div><label className="pd-benchmark">{text("Benchmark", "基准")}<select value={benchmark} onChange={(event) => setBenchmark(event.target.value as Benchmark)}><option>SPY</option><option>QQQ</option></select></label><span className="pd-data-stamp"><span className="pd-demo-dot" />{text("SIMULATED", "模拟数据")} · {data.endDate}</span></div>
       {(view === "overview" || view === "performance") && <section className="pd-metrics" aria-label={text("Key portfolio metrics", "组合核心指标")}>{(view === "overview" ? metrics.slice(0, 4) : [metrics[4], { label: text("Current drawdown", "当前回撤"), value: percent(data.points.at(-1)?.drawdown ?? 0), note: text("Below selected-period peak", "相对区间前高"), tone: "negative" }, { label: text("Annualized volatility", "年化波动率"), value: volatility("portfolio")?.toFixed(2).concat("%") ?? "—", note: text("Weekly observations", "周度观测") }, metrics[5]]).map((metric) => <article className="pd-metric" key={metric.label}><p className="pd-metric-help">{metric.label}<abbr title={metric.note} aria-label={metric.note}>ⓘ</abbr></p><strong className={metric.tone ? `pd-${metric.tone}` : ""}>{metric.value}</strong><small>{metric.note}</small></article>)}</section>}
       {view === "overview" && <div className="pd-primary-grid"><section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Cumulative returns", "累计收益")}</h2><p>{text("Portfolio vs", "组合对比")} {benchmark} · {data.startDate} — {data.endDate}</p></div>{view === "overview" ? <button className="pd-button" onClick={() => setView("performance")}>{text("Explore performance", "查看表现详情")} ↗</button> : <span className="pd-badge">{text("WEEKLY", "周度")}</span>}</div><PerformanceChart data={data} /></section>{view === "overview" && <section className="pd-section pd-insights"><p className="pd-eyebrow">{text("PORTFOLIO BRIEF", "组合分析摘要")}</p><h2>{text("Behind the numbers", "数字背后的发现")}</h2><article><small>01 / {text("PERFORMANCE", "表现")}</small><p>{text("Portfolio returned", "组合收益")} <strong>{percent(data.returnPercent)}</strong>, {text("with excess return of", "相对基准超额收益为")} <strong>{data.excess.toFixed(2)} pp</strong> {text("against", "对比")} {benchmark}.</p></article><article><small>02 / {text("CONTRIBUTION", "贡献")}</small><p><strong>{sorted[0].symbol}</strong> {text("is the largest contributor", "是最大贡献持仓")} ({money(sorted[0].pnl)}). {text("Lowest contribution", "最低贡献")}: <strong>{sorted[sorted.length - 1].symbol}</strong> ({money(sorted[sorted.length - 1].pnl)}).</p></article><article><small>03 / {text("EXPOSURE", "风险暴露")}</small><p><strong>{largest.symbol}</strong> {text("accounts for", "占总资产")} <strong>{data.largestWeight.toFixed(1)}%</strong>. {text("Equity beta is", "不含现金的持仓 β 为")} <strong>{data.equityBeta.toFixed(2)}</strong>.</p></article><small className="pd-muted">{text("Selected period · simulated observations", "所选区间 · 模拟观测数据")}</small></section>}</div>}
