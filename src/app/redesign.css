@@ -284,3 +284,37 @@ html[data-skin] .pd-topbar .pd-menu-check { color: var(--ui-accent); }
 @keyframes pd-pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 .portfolio-dashboard:has(.pd-updating) :is(.rd-hero, .rd-row, .rd-panel, .pd-section, .pd-metrics, .pd-primary-grid) { opacity: .55; transition: opacity .15s; }
 @media (prefers-reduced-motion: reduce) { .pd-updating::before { animation: none; opacity: 1; } }
+
+/* Tablet & phone: the top bar wraps to two rows, so let it scroll away and pin the dashboard tabs instead */
+@media (max-width: 1100px) {
+  .shell-top { position: relative; }
+  html[data-skin] .portfolio-dashboard .pd-sidebar.pd-topbar { position: sticky !important; top: 0 !important; z-index: 45; }
+}
+@media (max-width: 760px) {
+  .pd-topbar-link { display: none; }
+  .pd-topbar .pd-portfolio-menu { padding: 4px 0; }
+  html[data-skin] .portfolio-dashboard .pd-topbar .pd-side-link { padding: 12px 0 10px; }
+}
+/* Tabs must scroll sideways inside their row instead of widening the page */
+.pd-topbar nav { min-width: 0; -webkit-overflow-scrolling: touch; }
+.pd-topbar nav::-webkit-scrollbar { display: none; }
+@media (max-width: 760px) {
+  .pd-topbar nav { flex: 1 1 100%; gap: 22px; padding-right: 16px; }
+  .wpx-tools nav { overflow-x: auto; min-width: 0; }
+}
+html[data-skin] .portfolio-dashboard .pd-sidebar.pd-topbar nav { flex-direction: row !important; overflow-x: auto !important; overflow-y: hidden !important; }
+html[data-skin] .portfolio-dashboard .pd-sidebar.pd-topbar .pd-side-link { width: auto !important; white-space: nowrap !important; }
+/* Page content never grows wider than the viewport; wide tables scroll inside their own boxes */
+.shell-main > * { min-width: 0; max-width: 100%; }
+html[data-skin] .trade-ledger { width: 100%; box-sizing: border-box; }
+.trade-ledger .tl-scroll, .portfolio-dashboard .pd-table-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 760px) { html[data-skin] .trade-ledger { padding: 16px 16px 32px; } .tl-heading-actions { width: 100%; } }
+
+/* Touch screens: comfortable tap targets (≥ 40px) */
+@media (pointer: coarse) {
+  .shell-seg button, html[data-skin] .pd-segments button, html[data-skin] .wpx-seg button, .wpx-tools nav button,
+  .pd-button, .tl-button, .tl-row-button, .shell-btn, .wpx-menu summary, html[data-skin] .wpx-controls .wp-chart-menu summary,
+  html[data-skin] .wpx-quote-actions .wp-add-watchlist summary, .wpx-icon-btn, .pd-benchmark select, .wpx-input { min-height: 40px; }
+  .wpx-watch-remove { opacity: 1; width: 32px; height: 32px; left: auto; right: 4px; }
+  .wpx-watch-pick { padding-right: 44px; }
+}
