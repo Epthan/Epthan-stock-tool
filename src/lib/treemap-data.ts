@@ -65,64 +65,30 @@ async function scrapeConstituents(index: TreemapIndexKey) {
   }
 
   const html = await response.text();
+  return parseConstituentTable(html, index);
+}
+
+/**
+ * Find the constituents table by its header row (works whether or not it has the "wikitable" class, and whether the
+ * ticker cell is a <td> or a row-header <th>), then read ticker / company / sector by column position.
+ */
+export function parseConstituentTable(html: string, index: TreemapIndexKey): Constituent[] {
   const $ = cheerio.load(html);
-
-  if (index === "sp100") {
-    const table = $("table.wikitable")
-      .toArray()
-      .find((candidate) => {
-        const headerText = $(candidate)
-          .find("th")
-          .toArray()
-          .map((node) => textOf($(node).text()).toLowerCase())
-          .join(" | ");
-
-        return (
-          headerText.includes("symbol") &&
-          headerText.includes("sector") &&
-          (headerText.includes("company") || headerText.includes("name"))
-        );
-      });
-
-    if (!table) {
-      throw new Error("Could not locate S&P 100 constituents table");
-    }
-
-    return $(table)
-      .find("tbody tr")
-      .toArray()
-      .map((row) => {
-        const cells = $(row).find("td");
-        const symbol = textOf($(cells[0]).text()).replace(".", "-");
-        const name = textOf($(cells[1]).text());
-        const sector = textOf($(cells[2]).text()) || "Other";
-
-        return symbol ? { symbol, name, sector } : null;
-      })
-      .filter(Boolean) as Constituent[];
+  const headerOf = (table: Parameters<typeof $>[0]) => $(table).find("tr").first().find("th, td").toArray().map((cell) => textOf($(cell).text()).toLowerCase());
+  for (const table of $("table").toArray()) {
+    const headers = headerOf(table);
+    const ticker = headers.findIndex((header) => /^(ticker|symbol)/.test(header));
+    const company = headers.findIndex((header) => /^(company|name|security)/.test(header));
+    const sector = headers.findIndex((header) => /sector|industry/.test(header));
+    if (ticker < 0 || company < 0) continue;
+    const rows = $(table).find("tr").toArray().slice(1).map((row) => {
+      const cells = $(row).find("th, td").toArray().map((cell) => textOf($(cell).text()));
+      const symbol = (cells[ticker] ?? "").replace(".", "-").toUpperCase();
+      return /^[A-Z][A-Z0-9-]{0,9}$/.test(symbol) ? { symbol, name: cells[company] ?? symbol, sector: (sector >= 0 ? cells[sector] : "") || "Other" } : null;
+    }).filter(Boolean) as Constituent[];
+    if (rows.length >= 50) return rows;
   }
-
-  const table = $("table.wikitable")
-    .toArray()
-    .find((candidate) => {
-      const headerText = $(candidate).find("th").toArray().map((node) => textOf($(node).text()).toLowerCase()).join(" | ");
-      return headerText.includes("ticker") && headerText.includes("company");
-    });
-
-  if (!table) {
-    throw new Error("Could not locate Nasdaq-100 constituents table");
-  }
-
-  const rows = $(table).find("tbody tr").toArray();
-  return rows
-    .map((row) => {
-      const cells = $(row).find("td");
-      const symbol = textOf($(cells[0]).text()).replace(".", "-");
-      const name = textOf($(cells[1]).text());
-      const sector = textOf($(cells[2]).text()) || "Other";
-      return symbol ? { symbol, name, sector } : null;
-    })
-    .filter(Boolean) as Constituent[];
+  throw new Error(`Could not locate ${index === "sp100" ? "S&P 100" : "Nasdaq-100"} constituents table`);
 }
 
 async function mapConstituentChange(item: Constituent, timeframe: TimeframeKey) {
