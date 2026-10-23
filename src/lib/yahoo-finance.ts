@@ -64,26 +64,42 @@ export async function getYahooQuoteSummary(symbol: string) {
  * rows with some null fields (e.g. an unfinished current-day bar); chart() returns them and we drop them.
  */
 type DailyBar = { date: Date; open: number | null; high: number | null; low: number | null; close: number; volume: number | null };
+export type SplitEvent = { date: string; ratio: number };
+export type DividendEvent = { date: string; amount: number };
+type DailyData = { rows: DailyBar[]; splits: SplitEvent[]; dividends: DividendEvent[] };
+const day = (date: Date) => date.toISOString().slice(0, 10);
 
-/** Daily bars, cached 30 minutes. A cached wider range for the same symbol serves narrower requests. */
-const dailyCover: Map<string, { from: string; to: string; expires: number; rows: Promise<DailyBar[]> }> = ((globalThis as { __yahooDaily?: Map<string, { from: string; to: string; expires: number; rows: Promise<DailyBar[]> }> }).__yahooDaily ??= new Map());
-export async function getYahooHistorical(symbol: string, period1: string, period2: string) {
+/** Daily bars plus split / dividend events, cached 30 minutes. A cached wider range for the same symbol serves narrower requests. */
+const dailyCover: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> = ((globalThis as { __yahooDaily2?: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> }).__yahooDaily2 ??= new Map());
+async function getDaily(symbol: string, period1: string, period2: string): Promise<DailyData> {
   const now = Date.now();
   const cover = dailyCover.get(symbol);
+  const within = (date: string) => date >= period1 && date < period2;
   if (cover && cover.expires > now && cover.from <= period1 && cover.to >= period2) {
-    const rows = await cover.rows;
-    return rows.filter((row) => { const day = row.date.toISOString().slice(0, 10); return day >= period1 && day < period2; });
+    const data = await cover.data;
+    return { rows: data.rows.filter((row) => within(day(row.date))), splits: data.splits.filter((item) => within(item.date)), dividends: data.dividends.filter((item) => within(item.date)) };
   }
-  const rows = cached(`daily:${symbol}:${period1}:${period2}`, 30 * MINUTE, async () => {
-    const chart = await yahooFinance.chart(symbol, { period1, period2, interval: "1d", includePrePost: false });
-    return chart.quotes
-      .filter((row) => row.close != null && Number.isFinite(row.close) && row.close > 0)
-      .map((row): DailyBar => ({ date: row.date, open: row.open ?? null, high: row.high ?? null, low: row.low ?? null, close: row.close as number, volume: row.volume ?? null }));
+  const data = cached(`daily:${symbol}:${period1}:${period2}`, 30 * MINUTE, async (): Promise<DailyData> => {
+    const chart = await yahooFinance.chart(symbol, { period1, period2, interval: "1d", includePrePost: false, events: "div|split" });
+    return {
+      rows: chart.quotes
+        .filter((row) => row.close != null && Number.isFinite(row.close) && row.close > 0)
+        .map((row): DailyBar => ({ date: row.date, open: row.open ?? null, high: row.high ?? null, low: row.low ?? null, close: row.close as number, volume: row.volume ?? null })),
+      splits: (chart.events?.splits ?? []).filter((item) => item.numerator > 0 && item.denominator > 0).map((item) => ({ date: day(item.date), ratio: item.numerator / item.denominator })).sort((a, b) => a.date.localeCompare(b.date)),
+      dividends: (chart.events?.dividends ?? []).filter((item) => item.amount > 0).map((item) => ({ date: day(item.date), amount: item.amount })).sort((a, b) => a.date.localeCompare(b.date)),
+    };
   });
   const widest = !cover || cover.expires <= now || (period1 <= cover.from && period2 >= cover.to);
-  if (widest) dailyCover.set(symbol, { from: period1, to: period2, expires: now + 30 * MINUTE, rows });
-  rows.catch(() => { if (dailyCover.get(symbol)?.rows === rows) dailyCover.delete(symbol); });
-  return rows;
+  if (widest) dailyCover.set(symbol, { from: period1, to: period2, expires: now + 30 * MINUTE, data });
+  data.catch(() => { if (dailyCover.get(symbol)?.data === data) dailyCover.delete(symbol); });
+  return data;
+}
+export async function getYahooHistorical(symbol: string, period1: string, period2: string) {
+  return (await getDaily(symbol, period1, period2)).rows;
+}
+export async function getYahooCorporateActions(symbol: string, period1: string, period2: string) {
+  const { splits, dividends } = await getDaily(symbol, period1, period2);
+  return { splits, dividends };
 }
 
 export async function searchYahooSymbols(query: string) {

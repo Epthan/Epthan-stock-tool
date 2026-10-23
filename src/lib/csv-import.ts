@@ -1,5 +1,6 @@
 import { tradeDate, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
 import { validateCashEntries, type CashEntry, type CashKind } from "@/lib/cash-ledger";
+import type { StockSplit } from "@/lib/corporate-actions";
 
 /**
  * Broker CSV import. Works with any CSV that has a header row: columns are matched by name
@@ -131,7 +132,7 @@ function classify(action: string): "buy" | "sell" | CashKind | null {
 }
 
 export type ImportRow = { line: number; status: "trade" | "cash" | "duplicate" | "skipped"; reason?: string; trade?: PortfolioTrade; cash?: CashEntry[] };
-export type ImportOptions = { headerRow: number; mapping: Mapping; dateOrder: DateOrder; suffix: string; existingTrades: PortfolioTrade[]; existingCash: CashEntry[] };
+export type ImportOptions = { headerRow: number; mapping: Mapping; dateOrder: DateOrder; suffix: string; existingTrades: PortfolioTrade[]; existingCash: CashEntry[]; splits?: StockSplit[] };
 
 const reasonText = {
   date: ["Unreadable date", "日期无法识别"], kind: ["Unknown transaction type", "无法识别交易类型"], fields: ["Missing symbol, quantity or price", "缺少代码、数量或价格"],
@@ -216,7 +217,7 @@ export function buildImport(rows: string[][], options: ImportOptions): ImportRow
   const accepted = [...existingTrades];
   const tradeRows = parsed.filter((row) => row.trade).sort((a, b) => a.trade!.tradedAt.localeCompare(b.trade!.tradedAt) || (a.trade!.side === b.trade!.side ? 0 : a.trade!.side === "buy" ? -1 : 1));
   for (const row of tradeRows) {
-    try { validatePortfolioTrades([...accepted, row.trade!]); accepted.push(row.trade!); }
+    try { validatePortfolioTrades([...accepted, row.trade!], options.splits); accepted.push(row.trade!); }
     catch { row.status = "skipped"; row.reason = "shares"; row.cash = []; }
   }
   validateCashEntries(parsed.flatMap((row) => row.cash ?? []));

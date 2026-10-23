@@ -17,7 +17,7 @@ export function PortfolioTradesDialog({ portfolioId, symbol: initialSymbol, onCl
   const { portfolios, saveTrade, deleteTrade } = usePortfolios();
   const portfolio = portfolios.find((item) => item.id === portfolioId);
   const records = (portfolio?.trades ?? []).filter((trade) => trade.symbol === symbol).sort((left, right) => tradeDate(right.tradedAt).localeCompare(tradeDate(left.tradedAt)));
-  const position = getTradePosition(portfolio?.trades ?? [], symbol);
+  const position = getTradePosition(portfolio?.trades ?? [], symbol, portfolio?.splits);
   const [form, setForm] = useState({ id: "", side: "buy" as "buy" | "sell", tradedAt: localDate(), price: "", quantity: "", note: "" });
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");

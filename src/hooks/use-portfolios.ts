@@ -4,8 +4,9 @@ import { useMemo, useSyncExternalStore } from "react";
 import { demoPortfolios } from "@/lib/portfolio-analytics";
 import { importLegacyTrades, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
 import { validateCashEntries, type CashEntry } from "@/lib/cash-ledger";
+import { sameSplits, type StockSplit } from "@/lib/corporate-actions";
 
-export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[]; cash?: CashEntry[] };
+export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[]; cash?: CashEntry[]; splits?: StockSplit[] };
 const symbolOrder = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"];
 export const initialPortfolios: ManagedPortfolio[] = demoPortfolios.map((portfolio) => ({
   id: portfolio.id, name: portfolio.name, nameZh: portfolio.nameZh, initials: portfolio.initials, demoId: portfolio.id,
@@ -123,8 +124,16 @@ export function usePortfolios() {
       if (!portfolio) throw new Error("PORTFOLIO_NOT_FOUND");
       const previous = portfolio.trades ?? [];
       const trades = previous.some((item) => item.id === trade.id) ? previous.map((item) => item.id === trade.id ? trade : item) : [...previous, trade];
-      validatePortfolioTrades(trades);
+      validatePortfolioTrades(trades, portfolio.splits);
       save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, trades, symbols: [...new Set([...item.symbols, trade.symbol])] } : item) });
+    },
+    /** Store auto-detected splits (no-op when unchanged, so it never triggers a sync loop). */
+    setSplits(portfolioId: string, splits: StockSplit[]) {
+      const current = readState();
+      const portfolio = current.portfolios.find((item) => item.id === portfolioId);
+      if (!portfolio || sameSplits(portfolio.splits, splits)) return false;
+      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, splits } : item) });
+      return true;
     },
     saveCash(portfolioId: string, entry: CashEntry) {
       const current = readState();
@@ -146,7 +155,7 @@ export function usePortfolios() {
       if (!portfolio) throw new Error("PORTFOLIO_NOT_FOUND");
       const trades = [...(portfolio.trades ?? []), ...newTrades];
       const cash = [...(portfolio.cash ?? []), ...newCash];
-      validatePortfolioTrades(trades);
+      validatePortfolioTrades(trades, portfolio.splits);
       validateCashEntries(cash);
       save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, trades, cash, symbols: [...new Set([...item.symbols, ...newTrades.map((trade) => trade.symbol)])] } : item) });
     },
@@ -155,7 +164,7 @@ export function usePortfolios() {
       const portfolio = current.portfolios.find((item) => item.id === portfolioId);
       if (!portfolio) throw new Error("PORTFOLIO_NOT_FOUND");
       const trades = (portfolio.trades ?? []).filter((trade) => trade.id !== tradeId);
-      validatePortfolioTrades(trades);
+      validatePortfolioTrades(trades, portfolio.splits);
       save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, trades } : item) });
     },
   };

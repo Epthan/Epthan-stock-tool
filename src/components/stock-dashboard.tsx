@@ -546,7 +546,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
     for (const portfolio of portfolios) {
       const trades = portfolio.trades?.filter((trade) => trade.symbol === resolvedSelectedSymbol) ?? [];
       if (!trades.length) continue;
-      const position = getTradePosition(portfolio.trades ?? [], resolvedSelectedSymbol);
+      const position = getTradePosition(portfolio.trades ?? [], resolvedSelectedSymbol, portfolio.splits);
       if (position.quantity <= 1e-8 || position.averageCost == null) continue;
       return { portfolio, ...position };
     }

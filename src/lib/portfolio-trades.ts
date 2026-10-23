@@ -1,3 +1,5 @@
+import { applySplits, type StockSplit } from "@/lib/corporate-actions";
+
 export type PortfolioTrade = { id: string; symbol: string; side: "buy" | "sell"; tradedAt: string; price: number; quantity: number; note?: string };
 
 export function tradeDate(value: string) {
@@ -7,7 +9,8 @@ export function tradeDate(value: string) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-export function validatePortfolioTrades(trades: PortfolioTrade[]) {
+export function validatePortfolioTrades(rawTrades: PortfolioTrade[], splits?: StockSplit[]) {
+  const trades = applySplits(rawTrades, splits);
   const quantities = new Map<string, number>();
   const ids = new Set<string>();
   for (const trade of [...trades].sort((left, right) => tradeDate(left.tradedAt).localeCompare(tradeDate(right.tradedAt)))) {
@@ -21,7 +24,9 @@ export function validatePortfolioTrades(trades: PortfolioTrade[]) {
   }
 }
 
-export function getTradePosition(trades: PortfolioTrade[], symbol: string) {
+/** Position on today's share basis (pre-split trades are restated). */
+export function getTradePosition(rawTrades: PortfolioTrade[], symbol: string, splits?: StockSplit[]) {
+  const trades = applySplits(rawTrades.filter((item) => item.symbol === symbol), splits);
   let quantity = 0;
   let cost = 0;
   let realized = 0;

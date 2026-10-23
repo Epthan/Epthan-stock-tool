@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { BackupControls } from "@/components/data-sync";
 import { CsvImportDialog } from "@/components/csv-import-dialog";
+import { useCorporateActions } from "@/hooks/use-corporate-actions";
+import { splitFactor, splitLabel } from "@/lib/corporate-actions";
 import { CASH_KINDS, cashLabel, cashSign, cashSummary, type CashKind } from "@/lib/cash-ledger";
 import { PortfolioTradesDialog } from "@/components/portfolio-trades-dialog";
 import { useStockSelection } from "@/components/stock-selection-provider";
@@ -68,13 +70,13 @@ export function TradeLedgerView() {
   }, [symbolKey]);
 
   const positions = useMemo(() => symbols.map((symbol) => {
-    const position = getTradePosition(trades, symbol);
+    const position = getTradePosition(trades, symbol, activePortfolio.splits);
     const quote = quotes[symbol];
     const open = position.quantity > 1e-8;
     const marketValue = open && quote ? quote.price * position.quantity : open ? null : 0;
     const unrealized = open && quote && position.averageCost !== null ? (quote.price - position.averageCost) * position.quantity : open ? null : 0;
     return { symbol, ...position, open, quote, marketValue, unrealized, tradeCount: trades.filter((trade) => trade.symbol === symbol).length };
-  }).sort((left, right) => Number(right.open) - Number(left.open) || (right.marketValue ?? 0) - (left.marketValue ?? 0)), [symbols, trades, quotes]);
+  }).sort((left, right) => Number(right.open) - Number(left.open) || (right.marketValue ?? 0) - (left.marketValue ?? 0)), [symbols, trades, quotes, activePortfolio.splits]);
 
   const openPositions = positions.filter((position) => position.open);
   const currencies = new Set(openPositions.map((position) => position.quote?.currency).filter(Boolean));
@@ -102,6 +104,29 @@ export function TradeLedgerView() {
     } catch (reason) {
       setCashError(reason instanceof Error && reason.message === "INVALID_TIME" ? text("Date cannot be in the future.", "日期不能晚于今天。") : text("Enter an amount greater than 0.", "请输入大于 0 的金额。"));
     }
+  }
+
+  // ---- Splits applied & dividends that may be missing from the cash ledger ----
+  const actions = useCorporateActions(activePortfolio);
+  const appliedSplits = useMemo(() => (activePortfolio.splits ?? []).filter((split) => trades.some((trade) => trade.symbol === split.symbol && tradeDate(trade.tradedAt) < split.date)), [activePortfolio.splits, trades]);
+  const missingDividends = useMemo(() => {
+    if (!actions) return [];
+    return actions.dividends.flatMap((dividend) => {
+      // Entitled if the shares were held at the close before the ex-date. Yahoo's per-share amounts are
+      // split-adjusted, so shares are counted on today's basis too.
+      const held = trades.filter((trade) => trade.symbol === dividend.symbol && tradeDate(trade.tradedAt) < dividend.date)
+        .reduce((sum, trade) => sum + (trade.side === "buy" ? 1 : -1) * trade.quantity * splitFactor(activePortfolio.splits, trade.symbol, trade.tradedAt), 0);
+      if (held <= 1e-8) return [];
+      const from = new Date(`${dividend.date}T00:00:00Z`); from.setUTCDate(from.getUTCDate() - 7);
+      const to = new Date(`${dividend.date}T00:00:00Z`); to.setUTCDate(to.getUTCDate() + 75);
+      const recorded = cashEntries.some((entry) => entry.kind === "dividend" && entry.symbol === dividend.symbol && entry.date >= from.toISOString().slice(0, 10) && entry.date <= to.toISOString().slice(0, 10));
+      return recorded ? [] : [{ ...dividend, shares: held, total: Math.round(held * dividend.amount * 100) / 100 }];
+    }).filter((item) => item.total >= 0.01).sort((left, right) => right.date.localeCompare(left.date));
+  }, [actions, trades, cashEntries, activePortfolio.splits]);
+  function addDividends(items: typeof missingDividends) {
+    try {
+      for (const item of items) saveCash(activePortfolio.id, { id: crypto.randomUUID(), kind: "dividend", date: item.date, amount: item.total, symbol: item.symbol, note: `${item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} × ${item.amount} (ex-date, gross)` });
+    } catch { setCashError(text("Could not add dividends.", "无法添加分红。")); }
   }
 
   const ledger = useMemo(() => {
@@ -151,6 +176,7 @@ export function TradeLedgerView() {
       `已将旧版交易日志中的 ${migration.imported} 笔交易导入本组合${migration.skipped ? `；${migration.skipped} 笔无效记录被跳过（如卖出超过持仓或日期晚于今天）` : ""}。旧数据保留未动，作为备份。`)}</p>}
 
     {notice && <p className="tl-notice" role="status">{notice}</p>}
+    {appliedSplits.length > 0 && <p className="tl-notice" role="status">{text("Share splits applied to earlier trades: ", "已按拆股调整之前的交易：")}{appliedSplits.map((split) => `${split.symbol} ${split.date} ${splitLabel(split.ratio)}`).join(" · ")}{text(". Records stay as typed; positions, costs and analytics use today's share count.", "。原始记录保持不变，持仓、成本和分析都按现在的股数计算。")}</p>}
 
     <section className="tl-metrics" aria-label={text("Ledger summary", "账本概览")}>
       <article><span>{text("Trades", "交易笔数")}</span><strong>{trades.length}</strong><small>{symbols.length} {text("securities", "只证券")}</small></article>
@@ -203,8 +229,8 @@ export function TradeLedgerView() {
             <td>{tradeDate(trade.tradedAt)}</td>
             <td className="tl-symbol tl-left">{trade.symbol}</td>
             <td><span className={`tl-side tl-side-${trade.side}`}>{trade.side === "buy" ? text("Buy", "买入") : text("Sell", "卖出")}</span></td>
-            <td>{trade.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}</td>
-            <td>{money(trade.price)}</td>
+            <td>{trade.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}{(() => { const factor = splitFactor(activePortfolio.splits, trade.symbol, trade.tradedAt); return factor !== 1 ? <small title={text("After share split", "拆股调整后")}>{text("now", "现")} {(trade.quantity * factor).toLocaleString(undefined, { maximumFractionDigits: 4 })}</small> : null; })()}</td>
+            <td>{money(trade.price)}{(() => { const factor = splitFactor(activePortfolio.splits, trade.symbol, trade.tradedAt); return factor !== 1 ? <small>{text("now", "现")} {money(trade.price / factor)}</small> : null; })()}</td>
             <td>{money(trade.price * trade.quantity)}</td>
             <td className="tl-note">{trade.note ?? ""}</td>
             <td><button className="tl-row-button" onClick={() => setEditor({ symbol: trade.symbol })}>{text("Edit", "编辑")}</button></td>
@@ -216,6 +242,14 @@ export function TradeLedgerView() {
 
     <section className="tl-section">
       <div className="tl-section-heading"><div><h2>{text("Cash ledger", "现金账本")}</h2><p>{text("Deposits, withdrawals, dividends, interest, fees and tax. Buys and sells move cash automatically.", "入金、出金、分红、利息、费用和税。买卖交易会自动计入现金变动。")}</p></div></div>
+      {missingDividends.length > 0 && <div className="cl-suggest">
+        <div className="cl-suggest-head"><strong>{text(`${missingDividends.length} dividend${missingDividends.length === 1 ? "" : "s"} may be missing`, `可能漏记了 ${missingDividends.length} 笔分红`)}</strong><span>{text("Estimated from Yahoo per-share dividends × shares held before the ex-date, gross of withholding tax. Check against your broker statement.", "按 Yahoo 每股分红 × 除息日前持股数估算，税前金额，请与券商结单核对。")}</span><button className="tl-button" onClick={() => addDividends(missingDividends)}>{text("Add all", "全部添加")}</button></div>
+        <div className="tl-scroll"><table><tbody>{missingDividends.slice(0, 12).map((item) => <tr key={`${item.symbol}:${item.date}`}>
+          <td>{item.date}</td><td className="tl-left tl-symbol">{item.symbol}</td><td>{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} × {item.amount}</td><td className="cl-in">+{money(item.total)}</td>
+          <td><button className="tl-row-button" onClick={() => addDividends([item])}>{text("Add", "添加")}</button></td>
+        </tr>)}</tbody></table></div>
+        {missingDividends.length > 12 && <p className="tl-muted">{text(`${missingDividends.length - 12} more not shown; "Add all" includes them.`, `另有 ${missingDividends.length - 12} 笔未显示，“全部添加”会一并加入。`)}</p>}
+      </div>}
       <form className="cl-form" onSubmit={addCash}>
         <label>{text("Type", "类型")}<select value={cashForm.kind} onChange={(event) => setCashForm({ ...cashForm, kind: event.target.value as CashKind })}>{CASH_KINDS.map((kind) => <option key={kind} value={kind}>{cashLabel[kind][locale === "zh" ? 1 : 0]}</option>)}</select></label>
         <label>{text("Date", "日期")}<input type="date" required value={cashForm.date} onChange={(event) => setCashForm({ ...cashForm, date: event.target.value })} /></label>

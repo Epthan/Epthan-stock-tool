@@ -39,7 +39,7 @@ export function CsvImportDialog({ portfolioId, zh, onClose }: { portfolioId: str
   const header = rows[headerRow] ?? [];
   const result = useMemo(() => {
     if (!rows.length || !portfolio) return null;
-    try { return buildImport(rows, { headerRow, mapping, dateOrder, suffix, existingTrades: portfolio.trades ?? [], existingCash: portfolio.cash ?? [] }); }
+    try { return buildImport(rows, { headerRow, mapping, dateOrder, suffix, existingTrades: portfolio.trades ?? [], existingCash: portfolio.cash ?? [], splits: portfolio.splits }); }
     catch { return null; }
   }, [rows, headerRow, mapping, dateOrder, suffix, portfolio]);
   const counts = useMemo(() => {

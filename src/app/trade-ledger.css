@@ -104,3 +104,8 @@ html[data-theme="day"] .tl-primary { color: #fff; }
 .cl-out { color: var(--tl-negative); }
 .tl-metrics.tl-metrics-cash { margin-top: 10px; }
 @media (max-width: 900px) { .cl-form { grid-template-columns: 1fr 1fr; } .cl-form .tl-primary { grid-column: span 2; } }
+.cl-suggest { margin-bottom: 14px; padding: 12px 14px; border: 1px dashed color-mix(in srgb, var(--tl-accent) 55%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--tl-accent) 6%, transparent); }
+.cl-suggest-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-bottom: 8px; }
+.cl-suggest-head strong { font-size: 13px; }
+.cl-suggest-head span { flex: 1; min-width: 220px; font-size: 11px; color: var(--tl-muted); }
+.cl-suggest td { padding: 6px 10px; }
