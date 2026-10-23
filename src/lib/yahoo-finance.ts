@@ -78,7 +78,7 @@ async function getDaily(symbol: string, period1: string, period2: string): Promi
     const data = await cover.data;
     return { rows: data.rows.filter((row) => within(row.day)), splits: data.splits.filter((item) => within(item.date)), dividends: data.dividends.filter((item) => within(item.date)) };
   }
-  const data = cached(`daily:${symbol}:${period1}:${period2}`, 30 * MINUTE, async (): Promise<DailyData> => {
+  const data = cached(`daily2:${symbol}:${period1}:${period2}`, 30 * MINUTE, async (): Promise<DailyData> => {
     const chart = await yahooFinance.chart(symbol, { period1, period2, interval: "1d", includePrePost: false, events: "div|split" });
     // Bar timestamps are the session open in UTC; for Asia-Pacific exchanges that falls on the previous UTC day,
     // so dates are taken in the exchange's own time zone.
