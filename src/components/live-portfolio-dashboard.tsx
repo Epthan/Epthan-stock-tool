@@ -20,14 +20,14 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
   const [benchmark, setBenchmark] = useState<Benchmark>("SPY");
   const [state, setState] = useState<{ key: string; data?: LivePortfolioAnalysis; error?: string }>({ key: "" });
   const [retry, setRetry] = useState(0);
-  const tradesJson = JSON.stringify(portfolio.trades ?? []);
+  const tradesJson = JSON.stringify({ trades: portfolio.trades ?? [], cash: portfolio.cash ?? [] });
   const requestKey = `${portfolio.id}:${tradesJson}:${range}:${benchmark}:${retry}`;
   const hasTrades = !!portfolio.trades?.length;
   useEffect(() => {
-    const trades = JSON.parse(tradesJson);
+    const { trades, cash } = JSON.parse(tradesJson) as { trades: unknown[]; cash: unknown[] };
     if (!trades.length) return;
     let active = true;
-    const request = (forRange: PortfolioRange): [string, RequestInit] => [`analysis:${tradesJson}:${forRange}:${benchmark}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trades, range: forRange, benchmark }) }];
+    const request = (forRange: PortfolioRange): [string, RequestInit] => [`analysis:${tradesJson}:${forRange}:${benchmark}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trades, cash, range: forRange, benchmark }) }];
     const [key, init] = request(range);
     if (retry > 0) forgetCached(key);
     fetchCached<{ result: LivePortfolioAnalysis }>(key, "/api/market/portfolio-analysis", TTL.analysis, init, (fresh) => { if (active) setState({ key: requestKey, data: fresh.result }); })
@@ -74,7 +74,7 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
   const residual = st && st.betaComponent != null ? st.totalReturn - st.betaComponent : null;
   return <>
     <div className="pd-toolbar"><div className="pd-segments">{(["1M", "3M", "6M", "YTD", "1Y", "ALL"] as const).map((option) => <button key={option} className={range === option ? "is-active" : ""} aria-pressed={range === option} onClick={() => setRange(option)}>{option}</button>)}</div><label className="pd-benchmark">{text("Benchmark", "基准")}<select value={benchmark} onChange={(event) => setBenchmark(event.target.value as Benchmark)}><option>SPY</option><option>QQQ</option></select></label><span className="pd-data-stamp">{loading && data ? <span className="pd-updating" role="status">{text("Updating…", "更新中…")}</span> : <>{text("RECORDED TRADES + MARKET DATA", "已录入交易 + 真实行情")}{data && ` · ${data.end}`}</>}</span></div>
-    <details className="pd-calculation-note"><summary>{text("Daily close · securities only", "日收盘估值 · 仅证券资产")} ⓘ</summary><p>{text("Cash, dividends, fees and FX excluded. Returns include first-day trading P&L and are estimated using date-only transactions. The zero baseline is the prior trading close; both series use the same start.", "不含现金、股息、手续费和汇率影响。收益采用仅日期交易近似计算，包含首日交易盈亏；零点为前一交易日收盘，组合与基准使用相同起点。")}</p></details>
+    <details className="pd-calculation-note"><summary>{text("Daily close · holdings return", "日收盘估值 · 持仓收益")} ⓘ</summary><p>{text("Holdings return includes dividends, interest, fees and tax from the cash ledger; idle cash and FX are excluded (the Account panel includes cash). Returns are estimated from date-only transactions and include first-day trading P&L. The zero baseline is the prior trading close; both series use the same start.", "持仓收益已计入现金账本里的分红、利息、费用和税；不含闲置现金和汇率影响（含现金的结果见“账户”面板）。收益按仅日期的交易近似计算，包含首日交易盈亏；零点为前一交易日收盘，组合与基准使用相同起点。")}</p></details>
     {view === "holdings" && <div className="pd-section-heading"><h2>{text("Recorded positions", "实际录入持仓")}</h2><div className="pd-table-tools">{data && <span className="pd-badge">{data.currency}</span>}<button type="button" className="pd-button" aria-label={text("Add stock transaction", "添加股票交易")} title={text("Add stock transaction", "添加股票交易")} onClick={() => onUpdateHolding("")}>＋</button></div></div>}
     {!hasTrades ? <section className="pd-pending"><h2>{text("No recorded positions yet", "尚未录入可分析持仓")}</h2><p>{text("Your stocks are saved, but quantities and purchase prices are needed to calculate market value and returns. Record a buy in the Trade log or Workplace to unlock analytics.", "股票清单已保存，但计算市值和收益需要买入日期、价格及数量。请先在交易记录页或 Workplace 记录买入交易。")}</p><p>{portfolio.symbols.join(" · ")}</p><Link href="/portfolio" className="pd-workplace-link">{text("Open Trade log", "前往交易记录")} ↗</Link></section> : !data || !st ? <section className="pd-pending" role="status"><h2>{error ? text("Analysis unavailable", "分析暂不可用") : text("Calculating your portfolio…", "正在计算你的组合分析…")}</h2><p>{error ?? text("Loading historical prices and reconstructing recorded positions.", "正在获取历史行情，按已录入交易重建持仓。")}</p>{error && <button className="pd-button" onClick={() => setRetry((value) => value + 1)}>{text("Retry", "重试")}</button>}</section> : <>
       {unrecorded.length > 0 && <p className="pd-muted">{text("Excluded: no trades recorded", "未录入交易，未计入分析")}: {unrecorded.join(", ")}</p>}
@@ -114,6 +114,23 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
               <InsightList insights={insights} limit={3} />
             </aside>
           </section>
+          {data.account && (() => {
+            const account = data.account;
+            const cells: [string, string, string | undefined, string | undefined][] = [
+              [text("Account value", "账户总值"), decimal(account.value), text("Holdings + cash", "持仓 + 现金"), undefined],
+              [text("Net contributions", "净投入"), decimal(account.netContributions), text(`Since ${account.since}`, `自 ${account.since}`), undefined],
+              [text("Total gain", "总收益"), signedAmount(account.gain), account.netContributions > 0 ? percent(account.gain / account.netContributions * 100) : undefined, toneOf(account.gain)],
+              [text("Account return (TWR)", "账户收益（时间加权）"), account.periodReturn == null ? "—" : percent(account.periodReturn), rangeLabel, toneOf(account.periodReturn)],
+              [account.years >= 1 ? text("Money-weighted, p.a.", "资金加权年化") : text("Money-weighted", "资金加权收益"), account.years >= 1 ? (account.mwrAnnual == null ? "—" : percent(account.mwrAnnual)) : (account.mwrCumulative == null ? "—" : percent(account.mwrCumulative)), text("Your timing of deposits counts", "计入你入金出金的时点"), toneOf(account.years >= 1 ? account.mwrAnnual : account.mwrCumulative)],
+              [text("Cash", "现金"), decimal(account.cash), account.cashWeight == null ? undefined : text(`${account.cashWeight.toFixed(1)}% of account`, `占账户 ${account.cashWeight.toFixed(1)}%`), account.cash < -0.01 ? "pd-negative" : undefined],
+            ];
+            return <section className="rd-panel rd-account" aria-label={text("Account", "账户")}>
+              <div className="rd-panel-head"><h2>{text("Account, including cash", "账户（含现金）")}</h2><span>{text("Holdings return above excludes idle cash; this view includes it", "上方收益只看持仓；这里把闲置现金也算进来")}</span></div>
+              <dl className="rd-account-grid">{cells.map(([label, value, note, tone]) => <div key={label}><dt>{label}</dt><dd className={tone ?? ""}>{value}</dd>{note && <small>{note}</small>}</div>)}</dl>
+              {account.negativeCash && <p className="rd-account-warn">{text("Cash went negative at some point — a deposit is probably missing, so account returns are not shown. Add it in the cash ledger.", "现金余额曾为负数，很可能漏记了入金，所以账户收益暂不计算。请在现金账本里补上。")}</p>}
+              {account.pendingCash > 0 && <p className="pd-table-note">{text(`${account.pendingCash} cash entr${account.pendingCash === 1 ? "y is" : "ies are"} after the last close and not counted yet.`, `${account.pendingCash} 条现金流水晚于最近收盘日，暂未计入。`)}</p>}
+            </section>;
+          })()}
           <section className="rd-row">
             <div className="rd-panel rd-grow">
               <div className="rd-panel-head"><h2>{text("Cumulative return and drawdown", "累计收益与回撤")}</h2><span>{data.start} — {data.end}</span></div>
@@ -132,6 +149,7 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
             <div className="rd-panel rd-half">
               <div className="rd-panel-head"><h2>{text("Where the P&L came from", "盈亏来源")}</h2><span>{text("Selected period · includes closed positions", "所选区间 · 含已平仓")}</span></div>
               <div className="rd-contrib">{contributions.map((holding) => <div key={holding.symbol}><button className="pd-symbol" onClick={() => onPick(holding.symbol)}>{holding.symbol}</button><span className="rd-contrib-track"><span className={holding.contribution >= 0 ? "is-up" : "is-down"} style={{ width: `${Math.abs(holding.contribution) / maxContribution * 100}%` }} /></span><strong className={toneOf(holding.contribution)}>{signedAmount(holding.contribution)}</strong></div>)}</div>
+              {Math.abs(data.otherContribution) >= 0.005 && <div className="rd-contrib-other"><span>{text("Cash items without a symbol", "未指定代码的现金收支")}</span><strong className={toneOf(data.otherContribution)}>{signedAmount(data.otherContribution)}</strong></div>}
               <p className="rd-total"><span>{text("Total, reconciled to period P&L", "合计，与区间盈亏一致")}</span><strong className={toneOf(data.pnl)}>{signedAmount(data.pnl)}</strong></p>
             </div>
           </section>
@@ -192,7 +210,7 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
       {view === "methodology" && <section className="pd-section pd-methodology"><h2>{text("Analysis methodology", "计算口径")}</h2>{[
         text("Market value uses recorded remaining quantities and Yahoo Finance daily close prices. Cash balance and external funding are unknown and excluded.", "市值采用已录入的剩余数量与 Yahoo 日收盘价，未知现金余额及外部资金流水不计入。"),
         text("Daily securities return = (closing securities value + sale proceeds) / (previous closing value + purchase amounts) − 1. Buys are treated at day start and sells at day end. Daily returns are geometrically linked. With date-only trades this is an approximation, not account TWR or IRR.", "日证券收益率 =（日末证券市值 + 当日卖出金额）/（前日证券市值 + 当日买入金额）− 1，买入视为期初、卖出视为期末，再逐日连乘。仅有日期的交易采用该近似约定，不称为账户 TWR 或 IRR。"),
-        text("P&L contribution = ending market value − beginning market value + sales − purchases. Realized P&L uses average cost across all recorded trades; period P&L follows the selected range. Dividends, fees and corporate actions are not automatically booked.", "区间盈亏贡献 = 期末市值 − 期初市值 + 卖出金额 − 买入金额。已实现盈亏采用全部已录入交易的平均成本法，区间盈亏跟随筛选；股息、费用与公司行动尚未自动入账。"),
+        text("P&L contribution = ending market value − beginning market value + sales − purchases + dividends − fees and tax booked to that symbol. Realized P&L uses average cost across all recorded trades; period P&L follows the selected range. Account return is time-weighted (deposits and withdrawals neutralised); money-weighted return (XIRR) reflects when you added or took out money. Corporate actions are not adjusted.", "区间盈亏贡献 = 期末市值 − 期初市值 + 卖出金额 − 买入金额 + 该代码的分红 − 费用和税。已实现盈亏采用全部已录入交易的平均成本法，区间盈亏跟随筛选。账户收益为时间加权（剔除入金出金影响）；资金加权收益（XIRR）反映你入金出金的时点。拆股等公司行动暂未调整。"),
         text(`Risk-adjusted: annualized return = compounded period return ^ (252 / days) − 1; volatility = daily sample std × √252; Sharpe = (annual return − ${(RISK_FREE_RATE * 100).toFixed(0)}%) ÷ volatility; Sortino uses downside deviation; Calmar = annual return ÷ |max drawdown|. Shown only with ≥40 trading days; short windows are unstable.`, `风险调整：年化收益 = 区间复合收益 ^ (252 / 天数) − 1；年化波动 = 日收益样本标准差 × √252；Sharpe =（年化收益 − ${(RISK_FREE_RATE * 100).toFixed(0)}% 无风险利率）÷ 年化波动；Sortino 只计下行波动；Calmar = 年化收益 ÷ |最大回撤|。至少 40 个交易日才显示，短区间估计不稳定。`),
         text("Alpha & beta: OLS of daily portfolio return on benchmark return over the selected period. Alpha is the annualized intercept (×252), with its t-statistic; |t| ≥ 2 is treated as significant. Market part = β × benchmark period return; the residual is attributed to selection and timing. Up/down capture = mean portfolio return ÷ mean benchmark return on benchmark up/down days (≥5 days each).", "Alpha 与 β：所选区间内，组合日收益对基准日收益做最小二乘回归。Alpha 为截距 ×252 年化，并给出 t 值，|t| ≥ 2 视为显著。市场部分 = β × 基准区间收益，剩余部分归为选股与择时。上行 / 下行捕获率 = 基准上涨 / 下跌日组合平均收益 ÷ 基准平均收益（各需 ≥5 天）。"),
         text("Trade analytics: each sell is one closed trade; P&L and return use the average cost at the time of the sale (consistent with realized P&L). Holding days match the sold shares to the oldest lots (FIFO), weighted by quantity. Win rate, payoff ratio (avg win ÷ avg loss), profit factor (gross win ÷ gross loss) and expectancy (average P&L per closed trade) cover sells inside the selected range. After-exit and after-entry changes use the close 20 (and 5) trading days later; entry excess subtracts the benchmark over the same window.", "交易分析：每笔卖出视为一笔已平仓交易，盈亏与收益率按卖出时的平均成本计算（与已实现盈亏一致）；持有天数按先进先出（FIFO）匹配卖出股份与最早买入批次，再按数量加权。胜率、盈亏比（平均盈利 ÷ 平均亏损）、Profit Factor（总盈利 ÷ 总亏损）、期望值（每笔已平仓交易平均盈亏）统计所选区间内的卖出。卖出后 / 买入后变化取第 20（及 5）个交易日收盘；买入超额再减去同期基准收益。"),

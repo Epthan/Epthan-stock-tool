@@ -55,4 +55,13 @@ Recorded portfolios now compute, server-side in `src/lib/trader-analytics.ts` (c
 
 Fix: `LanguageProvider` now reads the saved locale via `useSyncExternalStore`, removing the hydration mismatch when the UI language is Chinese.
 
-Not done (needs new data): cash/dividend/fee ledger with TWR vs IRR; trade tags and per-tag attribution; sector grouping; backtest overlay on actual trades.
+Not done (needs new data): trade tags and per-tag attribution; sector grouping; backtest overlay on actual trades.
+
+
+## Cash ledger, account return and broker import
+
+- Each portfolio has a cash ledger (`cash`: deposit, withdrawal, dividend, interest, fee, tax). Buys and sells move cash automatically.
+- **Holdings return** (chart, statistics) now books dividends, interest, fees and tax on the day they settle (weekend entries roll to the next trading day). Deposits and withdrawals do not affect it.
+- **Account panel** (shown once a deposit is recorded): account value = holdings + cash; time-weighted account return with external flows at the start of the day; money-weighted return via XIRR (annualised once history is at least one year). If the cash balance ever goes negative, account returns are withheld because a deposit is probably missing.
+- **CSV import** (`src/lib/csv-import.ts`): header aliases for IBKR, CommSec (`B 100 CBA @ 115.50` details, brokerage implied from the debit), Stake, SelfWealth, Chinese brokers (GBK) and this app's own export. It dedupes against existing records, replays sells against holdings, and saves all-or-nothing.
+- Data is stored server-side in `data/store.json` (`/api/store`) and mirrored to localStorage; backup and restore are on the Trade log page.

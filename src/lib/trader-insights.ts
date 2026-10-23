@@ -16,6 +16,24 @@ export function buildTraderInsights(data: LivePortfolioAnalysis, benchmark: stri
   const risk = data.risk;
   const topic = { performance: { en: "Performance", zh: "收益" }, risk: { en: "Risk", zh: "风险" }, behaviour: { en: "Behaviour", zh: "交易行为" }, edge: { en: "Edge", zh: "交易优势" } };
 
+  // 0. Cash: idle-cash drag and cost of trading
+  const account = data.account;
+  if (account && !account.negativeCash && account.cashWeight != null && account.cashWeight > 25 && account.periodReturn != null && s.totalReturn != null && s.totalReturn - account.periodReturn > 1) {
+    out.push({ tone: "warning", topic: topic.performance, score: 80,
+      en: `${f1(account.cashWeight)}% of the account is idle cash. Holdings returned ${f1(s.totalReturn)}% but the whole account only ${f1(account.periodReturn)}% — the cash is diluting results. Either put it to work or count it as a deliberate defensive position.`,
+      zh: `账户里 ${f1(account.cashWeight)}% 是闲置现金。持仓收益 ${f1(s.totalReturn)}%，整个账户只有 ${f1(account.periodReturn)}%，现金在稀释收益。要么投入使用，要么明确把它当作防守仓位。` });
+  }
+  if (account && account.negativeCash) {
+    out.push({ tone: "warning", topic: topic.risk, score: 95,
+      en: "Cash balance went negative at some point: a deposit is probably missing from the cash ledger, so account-level returns are withheld.",
+      zh: "现金余额曾为负数：现金账本很可能漏记了入金，因此暂不计算账户层面的收益。" });
+  }
+  if (account && account.costs > 0 && data.pnl > 0 && account.costs / (data.pnl + account.costs) > 0.15) {
+    out.push({ tone: "warning", topic: topic.behaviour, score: 72,
+      en: `Fees and tax (${f2(account.costs)}) ate ${f1(account.costs / (data.pnl + account.costs) * 100)}% of gross profit. Fewer, larger trades — or a cheaper broker — would keep more of it.`,
+      zh: `费用和税（${f2(account.costs)}）吃掉了 ${f1(account.costs / (data.pnl + account.costs) * 100)}% 的毛利润。减少交易次数、提高单笔金额，或换佣金更低的券商，能留住更多。` });
+  }
+
   // 1. Index-hugging vs genuine alpha
   if (s.correlation != null && s.alphaT != null && s.alphaAnnual != null) {
     if (s.correlation > 0.9 && Math.abs(s.alphaT) < 2) {
