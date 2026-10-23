@@ -1,95 +1,62 @@
 # Stock Tool
 
-Stock Tool is a personal market dashboard built for fast monitoring, chart review, watch list management, and lightweight portfolio tracking.
+A personal trading workstation: market research, a trade and cash ledger, and portfolio analytics that answer
+"am I actually beating the index, and which of my approaches makes money?". Runs locally; data comes from Yahoo Finance.
 
-## Current Status
+## Start
 
-- Built with `Next.js + TypeScript + Tailwind CSS`
-- Includes a multi-panel stock dashboard homepage
-- Uses a server-side `Yahoo Finance` proxy through `yahoo-finance2`
-- Falls back to local `mock` data when Yahoo requests fail
-- Supports multilingual UI with English and Chinese
+| What | How |
+|---|---|
+| Use it on this PC | double-click `start-localhost.bat` → <http://localhost:3000> |
+| Use it on your phone (same Wi-Fi) | double-click `start-phone.bat` → it builds, prints the address, e.g. `http://192.168.1.20:3001` |
+| From a terminal | `npm install` once, then `npm run dev` |
 
-## Main Features
+`start-phone.bat` exposes the app to everyone on the same network. Only run it on a network you trust.
 
-- Dashboard with market overview cards
-- Watch Lists creation and management
-- Fuzzy symbol and company search
-- Stock chart with multiple timeframes
-- Auto `Line / Candles` chart mode
-- Moving average toggles
-- Company detail panels
-- 52-week price position bar
-- Volume vs average volume visualization
-- Watch list mini sparklines
-- Multi Watch page
-- Tree Map page
-- Portfolio dashboard and unified per-portfolio trade log
+## Pages
 
-## Run Locally
+| Page | Route | What it is for |
+|---|---|---|
+| Market | `/` | Watch lists, chart (line / candles, MAs), company facts, your position in the stock, strategy backtest overlaid with your real trades |
+| Portfolio | `/dashboard` | Overview, trade analysis, performance & risk, allocation & risk, holdings, methodology |
+| Trades | `/portfolio` | Trade log per portfolio, cash ledger, CSV import, backup / restore, ledger currency |
+| Compare | `/compare` | Watch list or holdings rebased to 0% on one chart, plus a side-by-side table |
+| Heatmap | `/treemap` | S&P 100 / Nasdaq 100 / watch list / holdings, sized by market cap or position value |
+
+Three skins (灰白 gray, 黑金 gold, 夜间 night) and Chinese / English are switched in the top bar.
+
+## Your data
+
+- Portfolios, trades, cash entries, splits and watch lists are saved in **`data/store.json`** in this folder (and mirrored in the browser). Every device that opens the app sees the same data.
+- **Back up**: Trades page → 备份数据 downloads a JSON file. **Restore**: 恢复备份 replaces everything with a backup.
+- `data/` is git-ignored so trades never end up in version control.
+
+## What the numbers include
+
+- **Holdings return** — time-weighted, daily closes, includes dividends, interest, fees and tax from the cash ledger.
+- **Account return** — holdings + cash (shown once a deposit is recorded): time-weighted and money-weighted (XIRR).
+- **Splits** are detected automatically; trades before a split are restated to today's share count (records stay as typed).
+- **Currencies** — each portfolio has a ledger currency; foreign prices and trades are converted at the day's FX rate. Cash can settle in the ledger currency (CommSec style) or per currency (Stake / IBKR style).
+- Full formulas: [PORTFOLIO_DASHBOARD.md](PORTFOLIO_DASHBOARD.md). Architecture and file map: [PROJECT_HANDOFF.md](PROJECT_HANDOFF.md).
+
+## Importing from a broker
+
+Trades page → 导入 CSV. Recognises IBKR, CommSec (incl. "B 100 CBA @ 115.50" details), Stake, SelfWealth, Chinese brokers
+(GBK files), and this app's own export. You can fix the column mapping, date format and symbol suffix (e.g. `.AX`) before importing;
+duplicates are skipped and nothing is saved if validation fails.
+
+## Checks
 
 ```bash
-npm install
-npm run dev
+npm run lint          # ESLint
+npm test              # unit tests for every calculation (vitest)
+npx playwright install chromium   # once
+npm run build && npm run test:smoke   # opens every page with mocked market data
+npm run check         # lint + typecheck + unit tests
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+## Notes
 
-## Environment Variables
-
-Copy `.env.example` to `.env.local` if you want to adjust runtime settings:
-
-```bash
-NEXT_PUBLIC_DATA_PROVIDER=yahoo
-NEXT_PUBLIC_DEFAULT_SYMBOL=AAPL
-```
-
-## Current Data Integration
-
-- `/api/market/dashboard`: dashboard quote cards and watch list data
-- `/api/market/candles?symbol=AAPL`: chart candle data for a single symbol
-- `/api/market/quote?symbol=AAPL`: single-symbol quote data
-- `/api/market/search?q=apple`: symbol and company search
-- `/api/market/company?symbol=AAPL`: company detail data
-- `/api/market/sparklines`: mini chart data for watch list rows
-- `/api/market/treemap`: treemap data for indexes or custom watch lists
-
-Technical notes:
-
-- Charts are rendered with `lightweight-charts`
-- Treemap layout uses `d3-hierarchy`
-- Data is fetched through the server-side `yahoo-finance2` library
-- The Yahoo-based setup is best suited for personal use rather than production-grade market infrastructure
-
-## Market Coverage
-
-The current symbol handling supports:
-
-- US equities
-- China A-shares
-- Hong Kong equities
-- Korea equities
-
-Examples:
-
-- `AAPL`
-- `600519.SS`
-- `000001.SZ`
-- `0700.HK`
-- `005930.KS`
-
-## Useful Routes
-
-- `/` — Dashboard
-- `/compare` — Multi Watch
-- `/treemap` — Tree Map
-- `/dashboard` — Portfolio Dashboard (analytics per portfolio)
-- `/portfolio` — Trade Log (unified per-portfolio ledger; same data as Workplace and Dashboard)
-
-## Suggested Next Steps
-
-1. Add index switching for multiple markets.
-2. Add a market filter to symbol search.
-3. Improve Tree Map with hover tooltips and click-through behavior.
-4. Add CSV import for trade logs.
-5. Replace the current Yahoo-based setup with a more official market data source if long-term public deployment is needed.
+- Yahoo Finance via `yahoo-finance2` is fine for personal use, not for production market data. Requests are cached, retried with
+  backoff on rate limits, and the last good value is served if Yahoo is down. No simulated prices are ever shown as real.
+- Supported symbols: US (`AAPL`), ASX (`BHP.AX`), Hong Kong (`0700.HK`), China A-shares (`600519.SS`, `000001.SZ`), Korea (`005930.KS`) and others Yahoo covers.

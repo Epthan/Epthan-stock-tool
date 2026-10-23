@@ -1,264 +1,89 @@
-# Stock Tool Project Handoff
-
-## Overview
-
-This is a web-based US stock dashboard project focused on personal market watching and portfolio tracking.
-
-Current stack:
-
-- Next.js 16
-- TypeScript
-- Tailwind CSS
-- lightweight-charts
-- yahoo-finance2
-- d3-hierarchy
-
-Primary market focus:
-
-- US equities
-
-## Main Pages
-
-### 1. Dashboard
-
-Route:
-
-- `/`
-
-Main features:
-
-- US market overview cards
-- Watch Lists management
-- Symbol/company fuzzy search
-- Stock chart with multiple timeframes
-- Auto `Line / Candles` mode
-- Moving average toggles
-- Company detail cards
-- 52W position bar
-- Volume vs average volume bar
-- Watch list mini sparklines
-- Local persistence for watch lists
-
-Important files:
-
-- `src/components/stock-dashboard.tsx`
-- `src/components/stock-chart.tsx`
-- `src/components/symbol-search-box.tsx`
-- `src/lib/watchlists.ts`
-
-### 2. Multi Watch
-
-Route:
-
-- `/compare`
-
-Main features:
-
-- Choose a watch list
-- Render all symbols in that watch list
-- Shared timeframe
-- Shared chart mode
-- Shared moving average toggles
-
-Important file:
-
-- `src/components/compare-view.tsx`
-
-### 3. Tree Map
-
-Route:
-
-- `/treemap`
-
-Main features:
-
-- Source mode switch:
-  - Indexes
-  - Watch Lists
-- Index options:
-  - S&P 100
-  - Nasdaq 100
-- Custom treemap from one or more selected watch lists
-- Sector-grouped treemap layout
-- Loading overlay
-- Reduced label clutter for tiny tiles
-
-Current note:
-
-- Watch Lists mode was recently adjusted to stop flickering by memoizing derived arrays and stabilizing request dependencies.
-
-Important files:
-
-- `src/components/treemap-view.tsx`
-- `src/app/api/market/treemap/route.ts`
-- `src/lib/treemap-data.ts`
-
-### 4. Portfolio / Trade Log
-
-Route:
-
-- `/portfolio`
-
-Main features:
-
-- Record buy/sell trades locally in browser storage
-- Fields:
-  - symbol
-  - side
-  - quantity
-  - price
-  - traded date
-  - note
-- Calculates:
-  - open positions
-  - average cost
-  - realized P&L
-  - unrealized P&L
-  - market value
-- Local equity curve with timeframe selector
-- Mobile-friendly layout
-  - desktop table
-  - mobile card list
-
-Important file:
-
-- `src/components/portfolio-view.tsx`
-
-## Data Sources
-
-### Market / Quote / Chart Data
-
-- Yahoo Finance via `yahoo-finance2`
-
-Relevant files:
-
-- `src/lib/yahoo-finance.ts`
-- `src/app/api/market/dashboard/route.ts`
-- `src/app/api/market/candles/route.ts`
-- `src/app/api/market/quote/route.ts`
-- `src/app/api/market/search/route.ts`
-- `src/app/api/market/company/route.ts`
-- `src/app/api/market/sparklines/route.ts`
-
-### Treemap Constituents
-
-- S&P 100 from Wikipedia
-- Nasdaq 100 from Wikipedia
-
-Relevant file:
-
-- `src/lib/treemap-data.ts`
-
-## Local Storage Usage
-
-### Watch Lists
-
-Storage keys:
-
-- `stock-tool.watchlists.v2`
-- `stock-tool.active-watchlist-id.v2`
-- legacy fallback: `stock-tool.watchlist`
-
-Relevant file:
-
-- `src/lib/watchlists.ts`
-
-### Locale
-
-Storage key:
-
-- `stock-tool.locale.v1`
-
-Relevant file:
-
-- `src/components/language-provider.tsx`
-
-### Portfolio Trades
-
-Storage key:
-
-- `stock-tool.portfolio-trades.v1`
-
-Relevant file:
-
-- `src/components/portfolio-view.tsx`
-
-## Language System
-
-Current behavior:
-
-- Two-language UI
-  - Chinese
-  - English
-- Browser default language decides initial locale
-- Manual language toggle in navbar
-- Selection persists in local storage
-
-Important files:
-
-- `src/components/language-provider.tsx`
-- `src/components/app-nav.tsx`
-- `src/app/layout.tsx`
-
-## Recent UX Decisions
-
-- Search box moved to top-right of dashboard header
-- Watch Lists text standardized
-- 1D / 2D default chart style is `Line`
-- 5D and above default chart style is `Candles`
-- Manual chart mode override remains available
-- Chart legend added under charts
-- Watch list row remove action changed to a small gray close icon
-- Watch list sparklines follow selected timeframe, but always stay as line charts
-- Treemap labels hidden for very small boxes
-- Tree Map now groups companies by sector
-- Portfolio page adjusted for mobile
-
-## Known Assumptions / Calculation Rules
-
-### Portfolio P&L
-
-- Realized P&L uses average cost method
-- Unrealized P&L uses latest fetched market price
-- Data is local only, not server-backed
-
-### Tree Map
-
-- Tile area is based on absolute percent move magnitude
-- Tile color indicates positive or negative move
-
-## Development Status
-
-Last verified commands:
-
-- `npm run lint`
-- `npm run build`
-
-Both were passing at the time this handoff file was created.
-
-## Suggested Next Steps
-
-1. Finish full bilingual coverage for any remaining smaller labels/messages.
-2. Improve Tree Map with hover tooltip and click-through to stock detail.
-3. Add editing for portfolio trades.
-4. Add portfolio contribution / allocation visualization.
-5. Add optional import/export for watch lists and trade logs.
-
-## Quick File Map
-
-- `src/app/page.tsx`
-- `src/app/compare/page.tsx`
-- `src/app/treemap/page.tsx`
-- `src/app/portfolio/page.tsx`
-- `src/components/app-nav.tsx`
-- `src/components/language-provider.tsx`
-- `src/components/stock-dashboard.tsx`
-- `src/components/stock-chart.tsx`
-- `src/components/symbol-search-box.tsx`
-- `src/components/compare-view.tsx`
-- `src/components/treemap-view.tsx`
-- `src/components/portfolio-view.tsx`
-- `src/lib/watchlists.ts`
-- `src/lib/yahoo-finance.ts`
-- `src/lib/treemap-data.ts`
-
+# Stock Tool — handoff
+
+Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · lightweight-charts 5 · d3-hierarchy · yahoo-finance2 3.
+Everything runs on one machine; the browser talks only to this app's `/api/*` routes, which talk to Yahoo.
+
+## 1. Architecture in one picture
+
+```
+Browser (React)                          Next.js server (route handlers)                Yahoo Finance
+──────────────────────────────           ─────────────────────────────────              ─────────────
+localStorage  ⇄  DataSync  ⇄  /api/store  →  data/store.json
+fetchCached (client cache, SWR, retry) → /api/market/*  →  lib/yahoo-finance.ts  (cache, retry, stale-if-error) → quote / chart / quoteSummary
+                                         /api/market/portfolio-analysis → lib/live-portfolio.ts (+ trader-analytics, breakdowns, cash-ledger, fx, corporate-actions)
+```
+
+## 2. Data model (`src/hooks/use-portfolios.ts`, `src/lib/*`)
+
+| Type | Where | Notes |
+|---|---|---|
+| `ManagedPortfolio` | `use-portfolios.ts` | `trades`, `cash`, `splits`, `baseCurrency`, `cashMode`, `demoId` |
+| `PortfolioTrade` | `lib/portfolio-trades.ts` | price in the security's quote unit; optional `note`, `tags` |
+| `CashEntry` | `lib/cash-ledger.ts` | deposit / withdrawal / dividend / interest / fee / tax / fx; optional `currency` |
+| `StockSplit` | `lib/corporate-actions.ts` | auto-detected by `CorporateActionSync`; trades restated with `applySplits` |
+| Watch lists | `lib/watchlists.ts` | `stock-tool.watchlists.v2` |
+
+Storage keys synced to the server are listed in `lib/synced-keys.ts`. `DataSync` (mounted in `AppShell`) uploads on first run,
+then the server wins on load / focus / every 30 s; local writes are pushed (debounced). Restore replaces the store.
+
+Demo portfolios (`lib/portfolio-analytics.ts`) have no trades; the dashboard buys their fixed share counts two years ago and the
+analysis route fills in the real close (`demo: true`), so demo and recorded portfolios use the same code and layout.
+
+## 3. Analysis pipeline (`/api/market/portfolio-analysis/route.ts`)
+
+1. Validate trades and cash; fetch daily bars + split events for every symbol (exchange-local dates, unfinished bars dropped).
+2. Restate trades for splits; validate holdings.
+3. Normalise minor currency units, fetch FX series, build one calendar across markets (forward-fill holidays), convert prices and trades to the ledger currency.
+4. `analyzePortfolio` (`lib/live-portfolio.ts`): holdings TWR incl. income/costs, contributions, account TWR + XIRR, trade analytics (FIFO holding days, tags), risk.
+5. `buildBreakdowns` (`lib/breakdowns.ts`): sector (Yahoo profile), holding period, tag attribution.
+
+Formulas and conventions: `PORTFOLIO_DASHBOARD.md`.
+
+## 4. File map
+
+| Area | Files |
+|---|---|
+| Shell, theme, language | `components/app-shell.tsx`, `theme-provider.tsx`, `language-provider.tsx`, `app/layout.tsx` |
+| Market page | `components/stock-dashboard.tsx`, `stock-chart.tsx`, `chart-lightbox.tsx`, `symbol-search-box.tsx`, `portfolio-manager.tsx` |
+| Backtest | `components/backtest-panel.tsx`, `lib/backtest.ts`, `lib/real-vs-backtest.ts`, `api/market/backtest` |
+| Portfolio dashboard | `components/portfolio-dashboard.tsx` (shell + demo), `live-portfolio-dashboard.tsx`, `trade-analysis.tsx`, `trader-charts.tsx`, `performance-insights.tsx`, `breakdown-table.tsx` |
+| Trades page | `components/trade-ledger-view.tsx`, `portfolio-trades-dialog.tsx`, `csv-import-dialog.tsx`, `data-sync.tsx` |
+| Compare / Heatmap | `components/compare-view.tsx`, `treemap-view.tsx`, `lib/treemap-data.ts` |
+| States | `components/state-panel.tsx` (`StatePanel`, `ErrorState` with auto-retry), `lib/friendly-error.ts`, `app/error.tsx` |
+| Calculations | `lib/live-portfolio.ts`, `trader-analytics.ts`, `trader-insights.ts`, `breakdowns.ts`, `cash-ledger.ts`, `fx.ts`, `corporate-actions.ts`, `csv-import.ts`, `portfolio-trades.ts` |
+| Data access | `lib/yahoo-finance.ts` (server cache), `lib/client-cache.ts` (browser cache) |
+
+API routes (`src/app/api`): `store`, `market/{dashboard,quote,candles,company,search,treemap,portfolio-analysis,corporate-actions,fx,backtest}`.
+
+## 5. Styles
+
+| File | Contents |
+|---|---|
+| `app/theme.css` | `--ui-*` tokens for the three skins (`html[data-skin=gray|gold|night]`), app shell, native form controls |
+| `app/components.css` | Dashboard / dialogs / Market / backtest / trade-log component styles (merged from six legacy files, tokens only) |
+| `app/redesign.css` | Redesigned Dashboard and Market layouts, frosted glass, mobile rules, breakdowns, states |
+| `app/pages.css` | Compare and Heatmap pages, shared `pg-*` page scaffold |
+
+Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "var(--…)" }}`. The legacy files
+`portfolio-dashboard.css`, `portfolio-manager.css`, `product-refinement.css`, `backtest.css`, `trade-ledger.css`,
+`trader-analytics.css`, `components/app-nav.tsx` and `api/market/sparklines` are no longer used and can be deleted.
+
+## 6. Caching and failure handling
+
+- Server (`lib/yahoo-finance.ts`): TTL per type (quotes 20 s, charts 1–15 min, daily 30 min, profiles 6 h), shared in-flight requests,
+  3 attempts with backoff on 429 / 5xx / network errors, stale-if-error.
+- Browser (`lib/client-cache.ts`): stale-while-revalidate, 3 attempts on network / 429 / 5xx.
+- UI: `ErrorState` explains the failure and retries transient ones after 20 s; Market shows placeholders, never simulated prices.
+
+## 7. Tests
+
+- `tests/unit/*.test.ts` (vitest): positions, validation, splits, legacy import, tags, cash & FX, holdings/account returns,
+  contribution reconciliation, XIRR, breakdowns, CSV import, error classification.
+- `tests/smoke/app.spec.ts` (Playwright): every page with Yahoo "down", dashboard with an analysis fixture, trade log. APIs are mocked,
+  nothing is written to `data/store.json`.
+
+## 8. Known limits / next
+
+- Corporate actions other than splits (spin-offs, mergers) are not handled.
+- Dividend suggestions use Yahoo per-share amounts × shares held; withholding tax must be entered separately.
+- Mobile app: plan is PWA first, then a Capacitor wrapper, reusing this UI.
