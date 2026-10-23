@@ -1,4 +1,5 @@
 import type { PortfolioTrade } from "@/lib/portfolio-trades";
+import { chronological } from "@/lib/lots";
 
 /** Annual risk-free rate assumed for Sharpe / Sortino. Shown in the methodology notes. */
 export const RISK_FREE_RATE = 0.04;
@@ -133,17 +134,16 @@ function forwardChange(prices: Price[], date: string, base: number, offset: numb
 
 export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], benchmark: Series, cutoff: string) {
   const priceBySymbol = new Map(securities.map((security) => [security.symbol, security.prices]));
-  const ordered = [...trades].sort((left, right) => left.tradedAt.localeCompare(right.tradedAt));
+  const ordered = chronological(trades);
   const closed: ClosedTrade[] = [];
   const entries: EntryTrade[] = [];
-  const state = new Map<string, { quantity: number; cost: number; lots: { date: string; quantity: number; tags: string[] }[] }>();
+  const state = new Map<string, { quantity: number; lots: { date: string; quantity: number; unitCost: number; tags: string[] }[] }>();
   for (const trade of ordered) {
-    const position = state.get(trade.symbol) ?? { quantity: 0, cost: 0, lots: [] };
+    const position = state.get(trade.symbol) ?? { quantity: 0, lots: [] };
     const prices = priceBySymbol.get(trade.symbol) ?? [];
     if (trade.side === "buy") {
       position.quantity += trade.quantity;
-      position.cost += trade.quantity * trade.price;
-      position.lots.push({ date: trade.tradedAt, quantity: trade.quantity, tags: trade.tags ?? [] });
+      position.lots.push({ date: trade.tradedAt, quantity: trade.quantity, unitCost: trade.price, tags: trade.tags ?? [] });
       if (trade.tradedAt >= cutoff) {
         const after5 = forwardChange(prices, trade.tradedAt, trade.price, 5);
         const after20 = forwardChange(prices, trade.tradedAt, trade.price, 20);
@@ -153,24 +153,25 @@ export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], b
         entries.push({ id: trade.id, symbol: trade.symbol, date: trade.tradedAt, price: trade.price, after5, after20, excess5: after5 != null && bench5 != null ? after5 - bench5 : null, excess20: after20 != null && bench20 != null ? after20 - bench20 : null });
       }
     } else {
-      const averageCost = position.quantity > 0 ? position.cost / position.quantity : trade.price;
-      // FIFO lot matching only for holding-period measurement; P&L stays on average cost.
+      // Parcels are closed first-in, first-out: cost, P&L, holding period and entry tags all come from the matched parcels.
       let remaining = trade.quantity;
       let weightedDays = 0;
+      let matchedCost = 0;
       const tagged = new Map<string, number>();
       while (remaining > 1e-9 && position.lots.length) {
         const lot = position.lots[0];
         const used = Math.min(lot.quantity, remaining);
         weightedDays += used * days(lot.date, trade.tradedAt);
+        matchedCost += used * lot.unitCost;
         // Tags on the sale itself also count (e.g. "stop-loss"); entry tags come from the lots.
         for (const tag of lot.tags.length ? lot.tags : ["__untagged"]) tagged.set(tag, (tagged.get(tag) ?? 0) + used / Math.max(1, lot.tags.length));
         lot.quantity -= used;
         remaining -= used;
         if (lot.quantity <= 1e-9) position.lots.shift();
       }
-      position.cost -= averageCost * trade.quantity;
+      const averageCost = matchedCost > 0 ? matchedCost / trade.quantity : trade.price;
       position.quantity -= trade.quantity;
-      if (position.quantity <= 1e-8) { position.quantity = 0; position.cost = 0; position.lots = []; }
+      if (position.quantity <= 1e-8) { position.quantity = 0; position.lots = []; }
       if (trade.tradedAt >= cutoff) {
         closed.push({
           id: trade.id, symbol: trade.symbol, exitDate: trade.tradedAt, quantity: trade.quantity, exitPrice: trade.price, averageCost,

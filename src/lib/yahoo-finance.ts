@@ -1,5 +1,6 @@
 import YahooFinance from "yahoo-finance2";
 import type { TimeframeKey } from "@/lib/mock-market";
+import { archiveCoverage, archiveForget, archiveRead, archiveSplits, archiveWrite } from "@/lib/server/price-archive";
 
 const yahooFinance = new YahooFinance();
 
@@ -92,6 +93,64 @@ export type SplitEvent = { date: string; ratio: number };
 export type DividendEvent = { date: string; amount: number };
 type DailyData = { rows: DailyBar[]; splits: SplitEvent[]; dividends: DividendEvent[] };
 
+/** One Yahoo chart() download of daily bars and events for [period1, period2), dated in the exchange's time zone. */
+async function downloadDaily(symbol: string, period1: string, period2: string): Promise<DailyData> {
+  const chart = await yahooFinance.chart(symbol, { period1, period2, interval: "1d", includePrePost: false, events: "div|split" });
+  // Bar timestamps are the session open in UTC; for Asia-Pacific exchanges that falls on the previous UTC day,
+  // so dates are taken in the exchange's own time zone.
+  const offset = (chart.meta.gmtoffset ?? 0) * 1000;
+  const localDay = (date: Date) => new Date(date.getTime() + offset).toISOString().slice(0, 10);
+  const sessionEnd = chart.meta.currentTradingPeriod?.regular?.end;
+  const todayLocal = localDay(new Date());
+  const unfinished = (date: Date) => localDay(date) === todayLocal && !(sessionEnd && Date.now() > new Date(sessionEnd).getTime());
+  return {
+    rows: chart.quotes
+      .filter((row) => row.close != null && Number.isFinite(row.close) && row.close > 0 && !unfinished(row.date))
+      .map((row): DailyBar => ({ day: localDay(row.date), date: row.date, open: row.open ?? null, high: row.high ?? null, low: row.low ?? null, close: row.close as number, volume: row.volume ?? null })),
+    splits: (chart.events?.splits ?? []).filter((item) => item.numerator > 0 && item.denominator > 0).map((item) => ({ date: localDay(item.date), ratio: item.numerator / item.denominator })).sort((a, b) => a.date.localeCompare(b.date)),
+    dividends: (chart.events?.dividends ?? []).filter((item) => item.amount > 0).map((item) => ({ date: localDay(item.date), amount: item.amount })).sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
+const shiftDay = (day: string, days: number) => new Date(Date.parse(`${day}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+const TAIL_DAYS = 14;
+
+/**
+ * Daily data through the local archive (data/prices.db):
+ * - history already archived from period1 → download only the last ~2 weeks and append
+ * - a new split, or a stored close that no longer matches Yahoo (history restated) → full re-download
+ * - archive downloaded within 30 minutes and covering the window → no network at all (e.g. after a restart)
+ * - Yahoo down → serve the archive when it has bars for the window
+ */
+export async function loadDaily(symbol: string, period1: string, period2: string): Promise<DailyData> {
+  const cover = archiveCoverage(symbol);
+  const read = () => archiveRead(symbol, period1, period2);
+  if (cover && cover.from <= period1 && cover.lastDay && cover.bars > 0) {
+    if (cover.to >= period2 && Date.now() - Date.parse(cover.fetchedAt) < 30 * MINUTE) return read()!;
+    const tailStart = shiftDay(cover.lastDay, -TAIL_DAYS) > period1 ? shiftDay(cover.lastDay, -TAIL_DAYS) : period1;
+    let tail: DailyData | null = null;
+    try { tail = await withRetry(() => downloadDaily(symbol, tailStart, period2)); }
+    catch (error) { const stale = read(); if (stale?.rows.length) return stale; throw error; }
+    const known = new Set(archiveSplits(symbol));
+    const stored = new Map(archiveRead(symbol, tailStart, period2)?.rows.map((row) => [row.day, row.close]) ?? []);
+    const restated = tail.rows.some((row) => { const old = stored.get(row.day); return old != null && Math.abs(row.close / old - 1) > 0.02; });
+    if (!tail.splits.some((split) => !known.has(split.date)) && !restated) {
+      archiveWrite(symbol, tail, tailStart, period2, false);
+      return read()!;
+    }
+    archiveForget(symbol); // a split re-bases every earlier price: start over
+  }
+  try {
+    const full = await withRetry(() => downloadDaily(symbol, period1, period2));
+    archiveWrite(symbol, full, period1, period2, true);
+    return full;
+  } catch (error) {
+    const stale = read();
+    if (stale?.rows.length) return stale;
+    throw error;
+  }
+}
+
 /** Daily bars plus split / dividend events, cached 30 minutes. A cached wider range for the same symbol serves narrower requests. */
 const dailyCover: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> = ((globalThis as { __yahooDaily3?: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> }).__yahooDaily3 ??= new Map());
 async function getDaily(symbol: string, period1: string, period2: string): Promise<DailyData> {
@@ -102,23 +161,7 @@ async function getDaily(symbol: string, period1: string, period2: string): Promi
     const data = await cover.data;
     return { rows: data.rows.filter((row) => within(row.day)), splits: data.splits.filter((item) => within(item.date)), dividends: data.dividends.filter((item) => within(item.date)) };
   }
-  const data = cached(`daily2:${symbol}:${period1}:${period2}`, 30 * MINUTE, async (): Promise<DailyData> => {
-    const chart = await yahooFinance.chart(symbol, { period1, period2, interval: "1d", includePrePost: false, events: "div|split" });
-    // Bar timestamps are the session open in UTC; for Asia-Pacific exchanges that falls on the previous UTC day,
-    // so dates are taken in the exchange's own time zone.
-    const offset = (chart.meta.gmtoffset ?? 0) * 1000;
-    const localDay = (date: Date) => new Date(date.getTime() + offset).toISOString().slice(0, 10);
-    const sessionEnd = chart.meta.currentTradingPeriod?.regular?.end;
-    const todayLocal = localDay(new Date());
-    const unfinished = (date: Date) => localDay(date) === todayLocal && !(sessionEnd && Date.now() > new Date(sessionEnd).getTime());
-    return {
-      rows: chart.quotes
-        .filter((row) => row.close != null && Number.isFinite(row.close) && row.close > 0 && !unfinished(row.date))
-        .map((row): DailyBar => ({ day: localDay(row.date), date: row.date, open: row.open ?? null, high: row.high ?? null, low: row.low ?? null, close: row.close as number, volume: row.volume ?? null })),
-      splits: (chart.events?.splits ?? []).filter((item) => item.numerator > 0 && item.denominator > 0).map((item) => ({ date: localDay(item.date), ratio: item.numerator / item.denominator })).sort((a, b) => a.date.localeCompare(b.date)),
-      dividends: (chart.events?.dividends ?? []).filter((item) => item.amount > 0).map((item) => ({ date: localDay(item.date), amount: item.amount })).sort((a, b) => a.date.localeCompare(b.date)),
-    };
-  });
+  const data = cached(`daily2:${symbol}:${period1}:${period2}`, 30 * MINUTE, () => loadDaily(symbol, period1, period2));
   const widest = !cover || cover.expires <= now || (period1 <= cover.from && period2 >= cover.to);
   if (widest) dailyCover.set(symbol, { from: period1, to: period2, expires: now + 30 * MINUTE, data });
   data.catch(() => { if (dailyCover.get(symbol)?.data === data) dailyCover.delete(symbol); });

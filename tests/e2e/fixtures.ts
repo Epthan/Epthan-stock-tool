@@ -39,7 +39,7 @@ export async function mockMarket(page: Page, options: MockOptions = {}) {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const p = url.pathname, q = url.searchParams;
-    if (p === "/api/store" && !options.mockStore) return route.continue();
+    if (p.startsWith("/api/store") && !options.mockStore) return route.continue();
     if (p === "/api/store") return route.fulfill({ json: route.request().method() === "GET" ? { version: 1, updatedAt: null, data: {} } : { updatedAt: "x", keys: [] } });
     if (options.down) return route.fulfill({ status: 503, json: { message: "HTTP 503 Service Unavailable (test)" } });
     const json = (body: unknown) => route.fulfill({ json: body });

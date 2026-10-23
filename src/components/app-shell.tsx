@@ -16,6 +16,7 @@ const icons = {
   trades: <><path d="M5 4h14v16H5z" /><path d="M8.5 9h7M8.5 13h7M8.5 17h4" /></>,
   compare: <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />,
   heatmap: <path d="M3.5 3.5h9v9h-9zM12.5 3.5h8v5h-8zM12.5 8.5h8v12h-8zM3.5 12.5h9v8h-9z" />,
+  tax: <><path d="M6 3h9l3 3v15H6z" /><path d="M9 16l6-6M9.5 10.5h.01M14.5 15.5h.01" /></>,
 };
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { href: "/", label: zh ? "行情" : "Market", icon: icons.market, active: pathname === "/" },
     { href: "/dashboard", label: zh ? "组合" : "Portfolio", icon: icons.portfolio, active: pathname === "/dashboard" },
     { href: "/portfolio", label: zh ? "交易" : "Trades", icon: icons.trades, active: pathname === "/portfolio" },
+    { href: "/tax", label: zh ? "税务" : "Tax", icon: icons.tax, active: pathname === "/tax" },
     { href: "/compare", label: zh ? "对比" : "Compare", icon: icons.compare, active: pathname === "/compare" },
     { href: "/treemap", label: zh ? "热力图" : "Heatmap", icon: icons.heatmap, active: pathname.startsWith("/treemap") },
   ];

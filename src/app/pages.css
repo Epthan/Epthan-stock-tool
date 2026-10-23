@@ -95,3 +95,26 @@ html[data-skin="night"] { --cmp-1: #7fa2ff; --cmp-2: #f39a4c; --cmp-3: #4cc597; 
   .cmp-symbol, .trade-ledger .tl-symbol, .portfolio-dashboard .pd-symbol, .rd-contrib .pd-symbol { min-height: 40px; display: inline-flex; align-items: center; }
   .pd-calculation-note summary { min-height: 40px; display: flex; align-items: center; }
 }
+
+/* ---- Tax report ---------------------------------------------------- */
+.tax-report .tl-notice-warn { border-color: var(--ui-warn); color: var(--ui-ink); }
+.tax-report .tax-labels td:first-child { white-space: nowrap; width: 1%; }
+.tax-report .tax-steps { max-width: 640px; }
+.tax-report .tax-steps .tax-total td { font-weight: 600; border-top: 1px solid var(--ui-line); }
+.tax-report .tax-flag td { background: color-mix(in srgb, var(--ui-warn) 9%, transparent); }
+.tax-report .tax-soon td { background: var(--ui-accent-soft); }
+.tax-report .tax-method ul { margin: 8px 0 12px; padding-left: 18px; display: grid; gap: 6px; color: var(--ui-ink-2); line-height: 1.55; }
+.tax-report td small { display: block; color: var(--ui-muted); font-size: 11px; }
+.pm-fee { display: block; color: var(--ui-muted); font-size: 11px; }
+
+/* ---- Sync conflict banner & history dialog -------------------------- */
+.sync-conflict { position: fixed; z-index: 60; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(640px, calc(100vw - 32px)); display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--ui-warn); border-radius: 8px; background: var(--ui-panel); color: var(--ui-ink); box-shadow: var(--ui-shadow, 0 12px 40px rgba(0,0,0,.25)); font-size: 13px; line-height: 1.5; }
+.sync-conflict button { flex: none; min-height: 32px; padding: 0 12px; border: 1px solid var(--ui-line); border-radius: 6px; background: var(--ui-panel-2); color: var(--ui-ink); cursor: pointer; }
+.sync-history-body { padding: 4px 20px 20px; display: grid; gap: 10px; }
+.sync-history-info { font-size: 12px; color: var(--ui-ink-2); }
+.sync-history-actions { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+a.tl-row-button { display: inline-flex; align-items: center; text-decoration: none; }
+html[data-skin] .trade-ledger.tax-report .tl-heading h1 { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; font-size: 22px; margin: 0 0 4px; }
+.tax-report .tax-method ul { font-size: 13px; }
+.tax-report .tax-labels td:nth-child(2), .tax-report .tax-steps td:first-child { white-space: normal; min-width: 0; }
+.tax-report .tax-labels, .tax-report .tax-steps { min-width: 0; width: 100%; }

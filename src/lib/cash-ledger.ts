@@ -5,7 +5,15 @@ import { tradeDate, type PortfolioTrade } from "@/lib/portfolio-trades";
  * `currency` defaults to the portfolio's ledger currency. An "fx" entry converts `amount` of `currency` into `toAmount` of `toCurrency`.
  */
 export type CashKind = "deposit" | "withdrawal" | "dividend" | "interest" | "fee" | "tax" | "fx";
-export type CashEntry = { id: string; kind: CashKind; date: string; amount: number; currency?: string; toAmount?: number; toCurrency?: string; symbol?: string; note?: string };
+export type CashEntry = {
+  id: string; kind: CashKind; date: string; amount: number; currency?: string; toAmount?: number; toCurrency?: string; symbol?: string; note?: string;
+  /** Fee entries: the trade this brokerage belongs to (cost base / proceeds in the tax report). */
+  tradeId?: string;
+  /** Dividends (Australian): franked part of the cash amount and the attached franking credit, in the entry currency. */
+  franked?: number; frankingCredit?: number;
+  /** Dividends: tax withheld at source (e.g. 15% US withholding). The cash amount is what was received after it. */
+  withheld?: number;
+};
 /** How trades settle: "base" = the broker converts into the ledger currency (CommSec style); "local" = each currency has its own cash (Stake / IBKR style). */
 export type CashMode = "base" | "local";
 
@@ -27,6 +35,8 @@ export function validateCashEntries(entries: CashEntry[]) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date) || entry.date > today) throw new Error("INVALID_TIME");
     if (!code(entry.currency) || !code(entry.toCurrency)) throw new Error("INVALID_CURRENCY");
     if (entry.kind === "fx" && (!entry.toCurrency || !(Number(entry.toAmount) > 0) || entry.toCurrency === entry.currency)) throw new Error("INVALID_FX");
+    const optional = (value: unknown) => value === undefined || (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1e12);
+    if (![entry.franked, entry.frankingCredit, entry.withheld].every(optional) || (entry.franked ?? 0) > entry.amount + 0.005) throw new Error("INVALID_DIVIDEND");
   }
 }
 

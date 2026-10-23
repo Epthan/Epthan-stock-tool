@@ -204,7 +204,7 @@ export function buildImport(rows: string[][], options: ImportOptions): ImportRow
         const implied = kind === "buy" ? Math.abs(amount) - price * quantity : price * quantity - Math.abs(amount);
         if (implied > 0.004 && implied < price * quantity * 0.05) brokerage = implied;
       }
-      const cash = brokerage > 0 ? [{ id: crypto.randomUUID(), kind: "fee" as const, date, amount: round2(brokerage), symbol, note: `${kind === "buy" ? "Buy" : "Sell"} ${symbol} brokerage` }] : [];
+      const cash = brokerage > 0 ? [{ id: crypto.randomUUID(), kind: "fee" as const, date, amount: round2(brokerage), symbol, tradeId: trade.id, note: `${kind === "buy" ? "Buy" : "Sell"} ${symbol} brokerage` }] : [];
       return { line, status: "trade", trade, cash };
     }
     const value = Math.abs(Number.isFinite(amount) ? amount : NaN);

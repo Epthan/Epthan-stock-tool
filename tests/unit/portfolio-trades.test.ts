@@ -5,13 +5,27 @@ import { applySplits, splitFactor } from "@/lib/corporate-actions";
 const buy = (id: string, tradedAt: string, price: number, quantity: number, symbol = "AAA"): PortfolioTrade => ({ id, symbol, side: "buy", tradedAt, price, quantity });
 const sell = (id: string, tradedAt: string, price: number, quantity: number, symbol = "AAA"): PortfolioTrade => ({ id, symbol, side: "sell", tradedAt, price, quantity });
 
-describe("average-cost position", () => {
-  it("keeps average cost on sells and books realized P&L", () => {
+describe("parcel (FIFO) position", () => {
+  it("sells the oldest parcel first; cost of what remains drives average cost", () => {
     const trades = [buy("1", "2024-01-02", 10, 100), buy("2", "2024-01-03", 20, 100), sell("3", "2024-01-04", 30, 50)];
     const position = getTradePosition(trades, "AAA");
     expect(position.quantity).toBe(150);
-    expect(position.averageCost).toBeCloseTo(15);
-    expect(position.realized).toBeCloseTo(50 * (30 - 15));
+    expect(position.averageCost).toBeCloseTo((50 * 10 + 100 * 20) / 150);
+    expect(position.realized).toBeCloseTo(50 * (30 - 10));
+  });
+
+  it("spans parcels when a sale is larger than the oldest parcel", () => {
+    const trades = [buy("1", "2024-01-02", 10, 100), buy("2", "2024-01-03", 20, 100), sell("3", "2024-01-04", 30, 150)];
+    const position = getTradePosition(trades, "AAA");
+    expect(position.quantity).toBe(50);
+    expect(position.averageCost).toBeCloseTo(20);
+    expect(position.realized).toBeCloseTo(100 * 20 + 50 * 10);
+  });
+
+  it("handles a same-day round trip regardless of entry order", () => {
+    const position = getTradePosition([sell("2", "2024-01-02", 11, 5), buy("1", "2024-01-02", 10, 5)], "AAA");
+    expect(position.quantity).toBe(0);
+    expect(position.realized).toBeCloseTo(5);
   });
 
   it("resets cost when fully closed", () => {

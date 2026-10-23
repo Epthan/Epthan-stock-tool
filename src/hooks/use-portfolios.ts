@@ -2,7 +2,7 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { DEMO_SYMBOLS, demoPortfolios } from "@/lib/portfolio-analytics";
-import { importLegacyTrades, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
+import { importLegacyTrades, tradeDate, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
 import { validateCashEntries, type CashEntry, type CashMode } from "@/lib/cash-ledger";
 import { sameSplits, type StockSplit } from "@/lib/corporate-actions";
 
@@ -116,7 +116,11 @@ export function usePortfolios() {
       if (current.portfolios.find((portfolio) => portfolio.id === id)?.trades?.some((trade) => trade.symbol === symbol)) throw new Error("This security has trade history. Remove its trade records before removing the security.");
       save({ ...current, portfolios: current.portfolios.map((portfolio) => portfolio.id === id ? { ...portfolio, symbols: portfolio.symbols.filter((item) => item !== symbol) } : portfolio) });
     },
-    saveTrade(portfolioId: string, trade: PortfolioTrade) {
+    /**
+     * Save a trade. `brokerage` (optional) is kept as a fee entry in the cash ledger linked to the trade by `tradeId`:
+     * a number > 0 creates / updates it, 0 or null removes it, undefined leaves it alone.
+     */
+    saveTrade(portfolioId: string, trade: PortfolioTrade, brokerage?: { amount: number; currency?: string; replaceId?: string } | null) {
       trade = { ...trade, price: Math.round((trade.price + Number.EPSILON) * 100) / 100 };
       const current = readState();
       const portfolio = current.portfolios.find((item) => item.id === portfolioId);
@@ -124,7 +128,17 @@ export function usePortfolios() {
       const previous = portfolio.trades ?? [];
       const trades = previous.some((item) => item.id === trade.id) ? previous.map((item) => item.id === trade.id ? trade : item) : [...previous, trade];
       validatePortfolioTrades(trades, portfolio.splits);
-      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, trades, symbols: [...new Set([...item.symbols, trade.symbol])] } : item) });
+      let cash = portfolio.cash;
+      if (brokerage !== undefined) {
+        // replaceId: an older, unlinked fee entry for this trade that the linked one supersedes.
+        const linked = (cash ?? []).find((entry) => entry.tradeId === trade.id) ?? (cash ?? []).find((entry) => entry.id === brokerage?.replaceId);
+        const others = (cash ?? []).filter((entry) => entry.tradeId !== trade.id && entry.id !== brokerage?.replaceId);
+        const amount = Math.round((brokerage?.amount ?? 0) * 100) / 100;
+        const base = portfolio.baseCurrency ?? "USD";
+        cash = amount > 0 ? [...others, { id: linked?.id ?? crypto.randomUUID(), kind: "fee", date: tradeDate(trade.tradedAt), amount, ...(brokerage?.currency && brokerage.currency !== base ? { currency: brokerage.currency } : {}), symbol: trade.symbol, tradeId: trade.id, note: `${trade.side === "buy" ? "Buy" : "Sell"} ${trade.symbol} brokerage` }] : others;
+        validateCashEntries(cash);
+      }
+      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, trades, cash, symbols: [...new Set([...item.symbols, trade.symbol])] } : item) });
     },
     /** Store auto-detected splits (no-op when unchanged, so it never triggers a sync loop). */
     setSplits(portfolioId: string, splits: StockSplit[]) {
@@ -173,7 +187,8 @@ export function usePortfolios() {
       if (!portfolio) throw new Error("PORTFOLIO_NOT_FOUND");
       const trades = (portfolio.trades ?? []).filter((trade) => trade.id !== tradeId);
       validatePortfolioTrades(trades, portfolio.splits);
-      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, trades } : item) });
+      const cash = portfolio.cash?.filter((entry) => entry.tradeId !== tradeId); // linked brokerage goes with the trade
+      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, trades, ...(cash ? { cash } : {}) } : item) });
     },
   };
 }

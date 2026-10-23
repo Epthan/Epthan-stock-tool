@@ -48,7 +48,7 @@ export function TradeLedgerView() {
   const [filter, setFilter] = useState("");
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState("");
-  const [cashForm, setCashForm] = useState<{ kind: CashKind; date: string; amount: string; currency: string; toAmount: string; toCurrency: string; symbol: string; note: string }>({ kind: "deposit", currency: "", toAmount: "", toCurrency: "", date: tradeDate(new Date().toISOString()), amount: "", symbol: "", note: "" });
+  const [cashForm, setCashForm] = useState<{ kind: CashKind; date: string; amount: string; currency: string; toAmount: string; toCurrency: string; symbol: string; note: string; frankedPct: string; frankingCredit: string; withheld: string }>({ kind: "deposit", currency: "", toAmount: "", toCurrency: "", date: tradeDate(new Date().toISOString()), amount: "", symbol: "", note: "", frankedPct: "", frankingCredit: "", withheld: "" });
   const [cashError, setCashError] = useState("");
 
   const migrationRaw = useSyncExternalStore(subscribeNever, () => { try { return window.localStorage.getItem(legacyMigrationKey); } catch { return null; } }, () => null);
@@ -145,16 +145,26 @@ export function TradeLedgerView() {
     event.preventDefault();
     const amount = Number(cashForm.amount);
     try {
+      // Dividends: franked part and franking credit (Australian shares), tax withheld (foreign shares).
+      const frankedPct = cashForm.frankedPct === "" ? null : Number(cashForm.frankedPct);
+      if (frankedPct != null && !(frankedPct >= 0 && frankedPct <= 100)) throw new Error("INVALID_DIVIDEND");
+      const round = (value: number) => Math.round(value * 100) / 100;
+      const credit = cashForm.frankingCredit !== "" ? Number(cashForm.frankingCredit) : frankedPct != null ? amount * frankedPct / 100 * 30 / 70 : null;
+      const dividendFields = cashForm.kind !== "dividend" ? {} : {
+        ...(frankedPct != null ? { franked: round(amount * frankedPct / 100) } : {}),
+        ...(credit != null ? { frankingCredit: round(credit) } : {}),
+        ...(cashForm.withheld !== "" ? { withheld: round(Number(cashForm.withheld)) } : {}),
+      };
       const currency = cashForm.currency || base;
       const toCurrency = cashForm.toCurrency || (currency === base ? foreign[0] ?? "USD" : base);
       saveCash(activePortfolio.id, { id: crypto.randomUUID(), kind: cashForm.kind, date: cashForm.date, amount: Math.round(amount * 100) / 100,
         ...(currency !== base ? { currency } : {}),
         ...(cashForm.kind === "fx" ? { currency, toCurrency, toAmount: Math.round(Number(cashForm.toAmount) * 100) / 100 } : {}),
-        ...(cashForm.symbol.trim() ? { symbol: cashForm.symbol.trim().toUpperCase() } : {}), ...(cashForm.note.trim() ? { note: cashForm.note.trim().slice(0, 500) } : {}) });
-      setCashForm({ ...cashForm, amount: "", toAmount: "", symbol: "", note: "" });
+        ...(cashForm.symbol.trim() ? { symbol: cashForm.symbol.trim().toUpperCase() } : {}), ...(cashForm.note.trim() ? { note: cashForm.note.trim().slice(0, 500) } : {}), ...dividendFields });
+      setCashForm({ ...cashForm, amount: "", toAmount: "", symbol: "", note: "", frankedPct: "", frankingCredit: "", withheld: "" });
       setCashError("");
     } catch (reason) {
-      setCashError(reason instanceof Error && reason.message === "INVALID_TIME" ? text("Date cannot be in the future.", "日期不能晚于今天。") : reason instanceof Error && reason.message === "INVALID_FX" ? text("Enter the amount received and pick a different currency.", "请填写换得的金额，并选择不同的币种。") : text("Enter an amount greater than 0.", "请输入大于 0 的金额。"));
+      setCashError(reason instanceof Error && reason.message === "INVALID_TIME" ? text("Date cannot be in the future.", "日期不能晚于今天。") : reason instanceof Error && reason.message === "INVALID_FX" ? text("Enter the amount received and pick a different currency.", "请填写换得的金额，并选择不同的币种。") : reason instanceof Error && reason.message === "INVALID_DIVIDEND" ? text("Franked % must be 0–100; credits and withholding cannot be negative.", "Franked 比例须在 0–100 之间，抵免额和预扣税不能为负。") : text("Enter an amount greater than 0.", "请输入大于 0 的金额。"));
     }
   }
 
@@ -237,9 +247,9 @@ export function TradeLedgerView() {
 
     <section className="tl-metrics" aria-label={text("Ledger summary", "账本概览")}>
       <article><span>{text("Trades", "交易笔数")}</span><strong>{trades.length}</strong><small>{symbols.length} {text("securities", "只证券")}</small></article>
-      <article><span>{text("Open positions", "持仓数")}</span><strong>{openPositions.length}</strong><small>{text("Average-cost method", "平均成本法")}</small></article>
+      <article><span>{text("Open positions", "持仓数")}</span><strong>{openPositions.length}</strong><small>{text("Parcels, FIFO", "按批次 · 先进先出")}</small></article>
       <article><span>{text("Market value", "持仓市值")}</span><strong>{quotesPending && openPositions.length ? "…" : money(totalMarket)}</strong><small>{quotesMissing ? text("Some quotes unavailable", "部分报价缺失") : hasForeign ? text(`${base} · ${foreign.join("/")} at today's rate`, `${base} · ${foreign.join("/")} 按今日汇率`) : `${base} · ${text("latest quote", "最新报价")}`}</small></article>
-      <article><span>{text("Unrealized P&L", "未实现盈亏")}</span><strong className={tone(totalUnrealized)}>{quotesPending && openPositions.length ? "…" : signed(totalUnrealized)}</strong><small>{hasForeign ? text("vs. cost, incl. FX", "相对成本，含汇率影响") : text("vs. average cost", "相对平均成本")}</small></article>
+      <article><span>{text("Unrealized P&L", "未实现盈亏")}</span><strong className={tone(totalUnrealized)}>{quotesPending && openPositions.length ? "…" : signed(totalUnrealized)}</strong><small>{hasForeign ? text("vs. cost, incl. FX", "相对成本，含汇率影响") : text("vs. cost of parcels held", "相对持有批次成本")}</small></article>
       <article><span>{text("Realized P&L", "已实现盈亏")}</span><strong className={tone(totalRealized)}>{quotesPending ? "…" : signed(totalRealized)}</strong><small>{text("Excl. fees & dividends", "不含费用与分红")}</small></article>
     </section>
 
@@ -320,6 +330,11 @@ export function TradeLedgerView() {
         <label>{cashForm.kind === "fx" ? text("Sell amount", "换出金额") : text("Amount", "金额")}<span className="cl-money"><select aria-label={text("Currency", "币种")} value={cashForm.currency || base} onChange={(event) => setCashForm({ ...cashForm, currency: event.target.value })}>{cashCurrencies.map((code) => <option key={code}>{code}</option>)}</select><input type="number" min="0.01" step="0.01" required value={cashForm.amount} onChange={(event) => setCashForm({ ...cashForm, amount: event.target.value })} /></span></label>
         {cashForm.kind === "fx" ? <label>{text("Receive", "换得金额")}<span className="cl-money"><select aria-label={text("Currency received", "换入币种")} value={cashForm.toCurrency || ((cashForm.currency || base) === base ? foreign[0] ?? "USD" : base)} onChange={(event) => setCashForm({ ...cashForm, toCurrency: event.target.value })}>{cashCurrencies.map((code) => <option key={code}>{code}</option>)}</select><input type="number" min="0.01" step="0.01" required value={cashForm.toAmount} onChange={(event) => setCashForm({ ...cashForm, toAmount: event.target.value })} /></span></label>
           : <label>{text("Symbol (optional)", "代码（可选）")}<input value={cashForm.symbol} onChange={(event) => setCashForm({ ...cashForm, symbol: event.target.value })} /></label>}
+        {cashForm.kind === "dividend" && <>
+          <label title={text("From the dividend statement. Australian shares only.", "见分红通知书，仅澳股适用。")}>{text("Franked %", "Franked 比例 %")}<input type="number" min="0" max="100" step="any" placeholder="0–100" value={cashForm.frankedPct} onChange={(event) => setCashForm({ ...cashForm, frankedPct: event.target.value })} /></label>
+          <label title={text("Leave blank to calculate at the 30% company rate.", "留空则按 30% 公司税率自动计算。")}>{text("Franking credit", "Franking 抵免额")}<input type="number" min="0" step="0.01" placeholder={cashForm.frankedPct && cashForm.amount ? (Number(cashForm.amount) * Number(cashForm.frankedPct) / 100 * 30 / 70).toFixed(2) : ""} value={cashForm.frankingCredit} onChange={(event) => setCashForm({ ...cashForm, frankingCredit: event.target.value })} /></label>
+          <label title={text("Foreign shares: tax withheld at source. Enter the cash actually received as the amount.", "外国股票：来源地预扣税。金额请填实际到账数。")}>{text("Tax withheld", "预扣税")}<input type="number" min="0" step="0.01" value={cashForm.withheld} onChange={(event) => setCashForm({ ...cashForm, withheld: event.target.value })} /></label>
+        </>}
         <label>{text("Note (optional)", "备注（可选）")}<input maxLength={500} value={cashForm.note} onChange={(event) => setCashForm({ ...cashForm, note: event.target.value })} /></label>
         <button className="tl-primary" type="submit">{text("Add", "添加")}</button>
       </form>
@@ -333,7 +348,7 @@ export function TradeLedgerView() {
           <td className={entry.kind === "fx" ? "" : cashSign[entry.kind] > 0 ? "cl-in" : "cl-out"}>{entry.kind === "fx"
             ? `${entry.currency ?? base} ${money(entry.amount)} → ${entry.toCurrency} ${money(entry.toAmount)}`
             : `${cashSign[entry.kind] > 0 ? "+" : "−"}${entry.currency && entry.currency !== base ? `${entry.currency} ` : ""}${money(entry.amount)}`}</td>
-          <td className="tl-note">{entry.note ?? ""}</td>
+          <td className="tl-note">{entry.kind === "dividend" && (entry.franked != null || entry.frankingCredit != null || entry.withheld != null) ? <span className="tl-tags">{entry.franked != null && <i>{text("franked", "franked")} {entry.amount > 0 ? Math.round(entry.franked / entry.amount * 100) : 0}%</i>}{entry.frankingCredit != null && <i>{text("credit", "抵免")} {money(entry.frankingCredit)}</i>}{entry.withheld != null && <i>{text("withheld", "预扣")} {money(entry.withheld)}</i>}</span> : null}{entry.tradeId ? <span className="tl-tags"><i>{text("brokerage", "佣金")}</i></span> : null}{entry.note ?? ""}</td>
           <td><button className="tl-row-button" onClick={() => deleteCash(activePortfolio.id, entry.id)}>{text("Delete", "删除")}</button></td>
         </tr>)}</tbody>
       </table></div> : <p className="tl-muted">{text("No cash entries yet. Record your deposits to see cash balance, net contributions and total return.", "还没有现金流水。录入入金后即可看到现金余额、净投入和总收益。")}</p>}

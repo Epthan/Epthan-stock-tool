@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { PORTFOLIO, mockMarket, resetStore, seed, watchErrors } from "./fixtures";
+import { PORTFOLIO, at, mockMarket, resetStore, seed, watchErrors } from "./fixtures";
 
 
 test.beforeEach(() => resetStore());
@@ -88,7 +88,8 @@ test("B07/G02 store API: bad JSON → 400, oversized value dropped, file intact"
   const big = await page.request.put("/api/store", { data: { data: { "stock-tool.active-portfolio.v1": "x".repeat(5_100_000) } } });
   expect((await big.json()).keys).toContain("stock-tool.portfolios.v1");
   expect((await store(page)).data["stock-tool.active-portfolio.v1"]?.length ?? 0).toBeLessThan(5_000_001);
-  JSON.parse(fs.readFileSync("data/store.json", "utf8"));
+  expect(fs.existsSync("data/store.db")).toBe(true);
+  expect((await (await page.request.get("/api/store/info")).json()).store.engine).toBe("sqlite");
 });
 
 // ---------------- C. Functional ----------------
@@ -331,4 +332,91 @@ test("H01 keyboard: tab through market page, focus visible, Enter activates", as
   }
   console.log("NO-FOCUS-RING:", noOutline.join(" | "));
   expect.soft(noOutline).toEqual([]);
+});
+
+// ---------------- J. Tax, brokerage, storage (v2) ----------------
+const audSigned = (value: number) => `${value > 0 ? "+" : "−"}${Math.abs(value).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+test("J01 tax report: FIFO CGT event in AUD, myTax labels, CSV export", async ({ page }) => {
+  const errors = watchErrors(page);
+  await open(page, "/tax");
+  await expect(page.locator("h1")).toContainText("2024–25");
+  const gain = Math.round(10 * (at("NVDA", 200) - at("NVDA", 40)) * 1.5 * 100) / 100; // USD → AUD at the mocked 1.5
+  const row = page.locator("tr", { hasText: "NVDA" }).first();
+  await expect(row).toContainText(audSigned(gain));
+  await expect(row.locator("td").last()).toContainText(gain > 0 ? "否" : "—"); // held < 12 months
+  await expect(page.locator(".tax-labels")).toContainText("18H");
+  await expect(page.locator(".tl-notice", { hasText: "没有记录佣金" })).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: /导出 CSV/ }).click();
+  const csv = fs.readFileSync((await (await download).path())!, "utf8");
+  expect(csv).toContain("Net capital gain (18A)");
+  expect(csv).toContain("NVDA");
+  expect(errors).toEqual([]);
+});
+
+test("J02 brokerage on a trade: linked fee entry, cost base / proceeds adjusted", async ({ page }) => {
+  await open(page, "/portfolio");
+  await page.getByRole("button", { name: /交易 · 2/ }).first().click();
+  const dialog = page.locator("dialog.pm-trades-dialog");
+  await dialog.locator("tr", { hasText: "卖出" }).getByRole("button", { name: "编辑" }).click();
+  await dialog.getByLabel("佣金币种").selectOption("USD");
+  await dialog.locator(".cl-money input").fill("9.50");
+  await dialog.getByRole("button", { name: "保存交易" }).click();
+  await expect(dialog.locator(".pm-fee")).toContainText("9.50");
+  await page.waitForTimeout(1500);
+  const fee = (await portfolios(page))[0].cash.find((entry: { tradeId?: string }) => entry.tradeId === "t3");
+  expect(fee).toMatchObject({ kind: "fee", amount: 9.5, symbol: "NVDA" });
+  await page.goto("/tax"); await page.waitForTimeout(1500);
+  const proceeds = Math.round((10 * at("NVDA", 200) - 9.5) * 1.5 * 100) / 100;
+  await expect(page.locator("tr", { hasText: "NVDA" }).first()).toContainText(proceeds.toLocaleString("en-AU", { minimumFractionDigits: 2 }));
+  // Deleting the trade removes its brokerage too.
+  await page.goto("/portfolio"); await page.waitForTimeout(800);
+  await page.getByRole("button", { name: /交易 · 2/ }).first().click();
+  await dialog.locator("tr", { hasText: "卖出" }).getByRole("button", { name: "删除" }).click();
+  await dialog.getByRole("button", { name: "确认删除" }).click();
+  await page.waitForTimeout(1500);
+  expect((await portfolios(page))[0].cash.some((entry: { tradeId?: string }) => entry.tradeId === "t3")).toBe(false);
+});
+
+test("J03 dividend franking / withholding fields are stored", async ({ page }) => {
+  await open(page, "/portfolio");
+  const form = page.locator("form.cl-form");
+  await form.locator("select").first().selectOption("dividend");
+  await form.locator('input[type="date"]').fill("2024-11-15");
+  await form.locator(".cl-money input").fill("85");
+  await form.getByLabel("代码（可选）").fill("AAPL");
+  await form.getByLabel("预扣税").fill("15");
+  await form.getByRole("button", { name: "添加" }).click();
+  await page.waitForTimeout(1500);
+  expect((await portfolios(page))[0].cash.find((entry: { kind: string }) => entry.kind === "dividend")).toMatchObject({ amount: 85, withheld: 15, symbol: "AAPL" });
+  await page.goto("/tax"); await page.waitForTimeout(1500);
+  await expect(page.locator(".tax-labels tr", { hasText: "20O" })).toContainText("22.50"); // 15 USD × 1.5
+});
+
+test("J04 edit from a stale device is refused, newer data loaded, refused version restorable", async ({ page }) => {
+  await open(page, "/portfolio");
+  await page.waitForTimeout(1500); // first pull + migration push done
+  // Another device saves first.
+  const server = (await (await page.request.get("/api/store")).json()) as { data: Record<string, string>; revs: Record<string, number> };
+  const key = "stock-tool.portfolios.v1";
+  const other = JSON.parse(server.data[key]); other[0].name = "Other device";
+  const saved = await page.request.put("/api/store", { data: { data: { [key]: JSON.stringify(other) }, revs: { [key]: server.revs[key] } } });
+  expect(saved.status()).toBe(200);
+  // This browser edits on top of the old revision.
+  const form = page.locator("form.cl-form");
+  await form.locator(".cl-money input").fill("123.45");
+  await form.getByRole("button", { name: "添加" }).click();
+  await expect(page.locator(".sync-conflict")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator(".tl-eyebrow")).toContainText("Other device");
+  expect((await portfolios(page))[0].name).toBe("Other device");
+  // Restore the refused edit from the history.
+  await page.getByRole("button", { name: "历史版本" }).click();
+  const row = page.locator(".sync-history tr", { hasText: "被拒绝的修改" }).first();
+  await row.getByRole("button", { name: "恢复" }).click();
+  await row.getByRole("button", { name: "确认恢复" }).click();
+  await page.waitForLoadState("load"); await page.waitForTimeout(1500);
+  expect((await portfolios(page))[0].cash.some((entry: { amount: number }) => entry.amount === 123.45)).toBe(true);
+  const history = (await (await page.request.get("/api/store/snapshots")).json()).snapshots as { reason: string }[];
+  expect(history.some((item) => item.reason === "before-restore")).toBe(true);
 });

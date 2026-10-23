@@ -1,4 +1,5 @@
 import { applySplits, type StockSplit } from "@/lib/corporate-actions";
+import { chronological, lotPosition } from "@/lib/lots";
 
 export type PortfolioTrade = { id: string; symbol: string; side: "buy" | "sell"; tradedAt: string; price: number; quantity: number; note?: string; tags?: string[] };
 
@@ -21,7 +22,7 @@ export function validatePortfolioTrades(rawTrades: PortfolioTrade[], splits?: St
   const trades = applySplits(rawTrades, splits);
   const quantities = new Map<string, number>();
   const ids = new Set<string>();
-  for (const trade of [...trades].sort((left, right) => tradeDate(left.tradedAt).localeCompare(tradeDate(right.tradedAt)))) {
+  for (const trade of chronological(trades)) {
     if (!trade.id || ids.has(trade.id) || !/^[A-Z0-9^][A-Z0-9.^=\-]{0,24}$/.test(trade.symbol) || !["buy", "sell"].includes(trade.side)) throw new Error("INVALID_TRADE");
     ids.add(trade.id);
     if (![trade.price, trade.quantity].every((value) => Number.isFinite(value) && value > 0 && value <= 1e12)) throw new Error("INVALID_AMOUNT");
@@ -32,22 +33,13 @@ export function validatePortfolioTrades(rawTrades: PortfolioTrade[], splits?: St
   }
 }
 
-/** Position on today's share basis (pre-split trades are restated). */
+/**
+ * Position on today's share basis (pre-split trades are restated), on parcel (FIFO) accounting:
+ * averageCost = cost of the parcels still held ÷ shares; realized = proceeds − cost of the parcels sold.
+ */
 export function getTradePosition(rawTrades: PortfolioTrade[], symbol: string, splits?: StockSplit[]) {
-  const trades = applySplits(rawTrades.filter((item) => item.symbol === symbol), splits);
-  let quantity = 0;
-  let cost = 0;
-  let realized = 0;
-  for (const trade of trades.filter((item) => item.symbol === symbol).sort((left, right) => tradeDate(left.tradedAt).localeCompare(tradeDate(right.tradedAt)))) {
-    if (trade.side === "buy") { quantity += trade.quantity; cost += trade.quantity * trade.price; }
-    else {
-      const basis = quantity > 0 ? cost / quantity : 0;
-      realized += trade.quantity * (trade.price - basis);
-      quantity = Math.max(0, quantity - trade.quantity);
-      cost = quantity > 1e-8 ? Math.max(0, cost - basis * trade.quantity) : 0;
-    }
-  }
-  return { quantity, averageCost: quantity > 1e-8 ? cost / quantity : null, realized };
+  const { quantity, averageCost, realized } = lotPosition(applySplits(rawTrades.filter((item) => item.symbol === symbol), splits), symbol);
+  return { quantity, averageCost, realized };
 }
 
 /**
