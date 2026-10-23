@@ -160,12 +160,8 @@ html[data-skin="gold"] .shell-rail a.shell-item:hover { color: #FFFFFF; }
   .shell-seg button { padding: 6px 8px; }
 }
 
-/* ---------- Bridge legacy component variables to tokens ---------- */
-html[data-skin] .portfolio-dashboard { --pd-surface: var(--ui-panel); --pd-line: var(--ui-line); --pd-muted: var(--ui-muted); --pd-ink: var(--ui-ink); --pd-accent: var(--ui-accent); background: transparent; color: var(--ui-ink); }
-html[data-skin] .pm-studio { --pm-bg: var(--ui-panel); --pm-side: var(--ui-panel-2); --pm-line: var(--ui-line); --pm-text: var(--ui-ink); --pm-muted: var(--ui-muted); --pm-accent: var(--ui-accent); }
+/* ---------- Component colour hooks ---------- */
 html[data-skin] .pm-dialog { background: var(--ui-panel); color: var(--ui-ink); border-color: var(--ui-line); box-shadow: var(--ui-overlay); }
-html[data-skin] .trade-ledger { --tl-surface: var(--ui-panel); --tl-line: var(--ui-line); --tl-muted: var(--ui-muted); --tl-ink: var(--ui-ink); --tl-accent: var(--ui-accent); --tl-positive: var(--ui-up); --tl-negative: var(--ui-down); }
-html[data-skin] .workplace-portfolios { --pd-surface: var(--ui-panel); --pd-line: var(--ui-line); --pd-ink: var(--ui-ink); background: var(--ui-panel); color: var(--ui-ink); border-color: var(--ui-line); }
 html[data-skin] .pd-positive { color: var(--ui-up); }
 html[data-skin] .pd-negative { color: var(--ui-down); }
 html[data-skin] .tl-primary { background: var(--ui-accent); color: var(--ui-on-accent); }
@@ -188,36 +184,7 @@ html[data-skin] .ta-insight small { color: var(--ui-muted); }
 html[data-skin] .tl-side-buy { color: var(--ui-up); background: var(--ui-up-soft); }
 html[data-skin] .tl-side-sell { color: var(--ui-down); background: var(--ui-down-soft); }
 
-/* ---------- Tailwind dark-class patch layer (Workplace, Compare, Tree Map, search) ---------- */
-html[data-skin] [class*="bg-slate-950"],
-html[data-skin] [class*="bg-[#06101d]"],
-html[data-skin] [class*="bg-[#07111f]"],
-html[data-skin] [class*="bg-[#020617]"] { background-color: var(--ui-panel) !important; }
-html[data-skin] [class*="bg-white/5"],
-html[data-skin] [class*="bg-white/6"],
-html[data-skin] [class*="bg-white/8"],
-html[data-skin] [class*="bg-white/10"] { background-color: var(--ui-panel-2) !important; }
-html[data-skin] [class*="bg-[radial-gradient"] { background: transparent !important; }
-html[data-skin] [class*="border-white"] { border-color: var(--ui-line) !important; }
-html[data-skin] [class*="text-white"] { color: var(--ui-ink) !important; }
-html[data-skin] [class*="text-slate-100"],
-html[data-skin] [class*="text-slate-200"],
-html[data-skin] [class*="text-slate-300"] { color: var(--ui-ink-2) !important; }
-html[data-skin] [class*="text-slate-400"],
-html[data-skin] [class*="text-slate-500"] { color: var(--ui-muted) !important; }
-html[data-skin] [class*="text-slate-600"] { color: var(--ui-faint) !important; }
-html[data-skin] [class*="text-teal-"],
-html[data-skin] [class*="text-sky-"] { color: var(--ui-accent) !important; }
-html[data-skin] [class*="text-emerald-"] { color: var(--ui-up) !important; }
-html[data-skin] [class*="text-rose-"] { color: var(--ui-down) !important; }
-html[data-skin] [class*="bg-teal-"],
-html[data-skin] [class*="bg-sky-"] { background-color: var(--ui-accent-soft) !important; }
-html[data-skin] [class*="bg-emerald-"] { background-color: var(--ui-up-soft) !important; }
-html[data-skin] [class*="bg-rose-"] { background-color: var(--ui-down-soft) !important; }
-html[data-skin] [class*="ring-"] { --tw-ring-color: var(--ui-line) !important; }
-html[data-skin] [class*="shadow-"] { box-shadow: none !important; }
-html[data-skin] [class*="backdrop-blur"] { backdrop-filter: none !important; }
-html[data-skin] [class*="tracking-["], html[data-skin] .uppercase { letter-spacing: 0 !important; text-transform: none !important; }
+/* ---------- Native form controls follow the skin ---------- */
 html[data-skin] input,
 html[data-skin] select,
 html[data-skin] textarea { background-color: var(--ui-input) !important; color: var(--ui-ink) !important; border-color: var(--ui-line) !important; }
@@ -232,7 +199,5 @@ html[data-skin] [data-chart-control-tab="inactive"] { background-color: transpar
 html[data-skin] [data-timeframe-tab="inactive"]:hover,
 html[data-skin] [data-chart-mode-tab="inactive"]:hover,
 html[data-skin] [data-chart-control-tab="inactive"]:hover { background-color: var(--ui-panel-2) !important; color: var(--ui-ink) !important; }
-html[data-skin] [class*="rounded-[2"], html[data-skin] .rounded-3xl { border-radius: 14px !important; }
-html[data-skin] .rounded-2xl { border-radius: 10px !important; }
 html[data-skin] .portfolio-dashboard,
 html[data-skin] .workplace-page { background: transparent !important; }

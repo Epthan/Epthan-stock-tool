@@ -715,11 +715,8 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
                           type="button"
                           data-timeframe-tab={timeframe === activeTimeframe ? "active" : "inactive"}
                           onClick={() => handleChartTimeframeChange(timeframe)}
-                          className={`rounded-full px-3 py-1.5 transition ${
-                            timeframe === activeTimeframe
-                              ? "bg-white text-slate-950"
-                              : "bg-white/5 hover:bg-white/10"
-                          }`}
+                          className={`rounded-full px-3 py-1.5 transition ${ timeframe === activeTimeframe
+ ? "bg-[var(--ui-accent)] text-[var(--ui-on-accent)]" : "bg-[var(--ui-panel-2)] hover:bg-[var(--ui-seg)]" }`}
                         >
                           {timeframe}
                         </button>
@@ -746,11 +743,8 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
                             type="button"
                             data-chart-mode-tab={selected ? "active" : "inactive"}
                             onClick={() => setChartMode(mode)}
-                            className={`rounded-full px-3 py-1.5 transition ${
-                              selected
-                                ? "bg-sky-400/20 text-sky-200 ring-1 ring-sky-300/30"
-                                : "bg-white/5 text-slate-300 hover:bg-white/10"
-                            }`}
+                            className={`rounded-full px-3 py-1.5 transition ${ selected
+ ? "bg-[var(--ui-accent-soft)] text-[var(--ui-accent)] ring-1 ring-[var(--ui-accent)]" : "bg-[var(--ui-panel-2)] text-[var(--ui-ink-2)] hover:bg-[var(--ui-seg)]" }`}
                           >
                             {label}
                           </button>
@@ -768,11 +762,8 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
                             type="button"
                             data-chart-control-tab={enabled ? "active" : "inactive"}
                             onClick={() => toggleMovingAverage(period)}
-                            className={`rounded-full px-3 py-1.5 transition ${
-                              enabled
-                                ? "bg-teal-400/20 text-teal-200 ring-1 ring-teal-300/30"
-                                : "bg-white/5 text-slate-300 hover:bg-white/10"
-                            }`}
+                            className={`rounded-full px-3 py-1.5 transition ${ enabled
+ ? "bg-[var(--ui-accent-soft)] text-[var(--ui-accent)] ring-1 ring-[var(--ui-accent)]" : "bg-[var(--ui-panel-2)] text-[var(--ui-ink-2)] hover:bg-[var(--ui-seg)]" }`}
                           >
                             {locale === "zh" ? "均线" : "MA"} {period}
                           </button>

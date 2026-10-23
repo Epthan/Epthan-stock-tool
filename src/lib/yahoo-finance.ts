@@ -221,13 +221,3 @@ export async function getYahooChart(symbol: string, timeframe: TimeframeKey) {
   }));
 }
 
-export async function getYahooSparklines(symbols: string[], timeframe: TimeframeKey) {
-  const responses = await Promise.all(
-    symbols.map(async (symbol) => {
-      const chart = await getYahooChart(symbol, timeframe);
-      return [symbol, chart] as const;
-    }),
-  );
-
-  return new Map(responses);
-}

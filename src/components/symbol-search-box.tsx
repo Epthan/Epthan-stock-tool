@@ -99,34 +99,34 @@ export function SymbolSearchBox({
           }
         }}
         placeholder={resolvedPlaceholder}
-        className="w-full rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-teal-300/40 focus:bg-slate-950/80"
+        className="w-full rounded-[10px] border border-[var(--ui-line)] bg-[var(--ui-input)] px-4 py-3 text-sm text-[var(--ui-ink)] outline-none transition placeholder:text-[var(--ui-faint)] focus:border-[var(--ui-accent)]"
       />
 
       {(searchQuery.trim() || searchResults.length > 0) && (
-        <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-2xl border border-white/10 bg-[#06101d]/95 shadow-[0_20px_60px_rgba(2,8,23,0.5)] backdrop-blur">
+        <div className="absolute z-40 mt-2 w-full overflow-hidden rounded-[10px] border border-[var(--ui-line)] bg-[var(--ui-panel)] shadow-[var(--ui-overlay)] ">
           {isSearching ? (
-            <div className="px-4 py-3 text-sm text-slate-400">{messages.search.searching}</div>
+            <div className="px-4 py-3 text-sm text-[var(--ui-muted)]">{messages.search.searching}</div>
           ) : searchResults.length > 0 ? (
             searchResults.map((result) => (
               <div
                 key={`${result.symbol}-${result.exchange}`}
-                className="flex items-center justify-between border-b border-white/6 px-4 py-3 last:border-b-0"
+                className="flex items-center justify-between border-b border-[var(--ui-line)] px-4 py-3 last:border-b-0"
               >
                 <button type="button" onClick={() => handlePick(result.symbol)} className="min-w-0 flex-1 text-left">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-white">{result.symbol}</p>
-                    <span className="rounded-full bg-white/6 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-300">
+                    <p className="text-sm font-semibold text-[var(--ui-ink)]">{result.symbol}</p>
+                    <span className="rounded-full bg-[var(--ui-panel-2)] px-2 py-0.5 text-[10px] text-[var(--ui-ink-2)]">
                       {result.marketLabel}
                     </span>
                   </div>
-                  <p className="mt-1 truncate text-xs text-slate-400">{result.name}</p>
+                  <p className="mt-1 truncate text-xs text-[var(--ui-muted)]">{result.name}</p>
                 </button>
                 <div className="ml-3 flex items-center gap-2">
                   <div className="text-right">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{result.type}</p>
-                    <p className="mt-1 text-xs text-slate-400">{result.exchange}</p>
+                    <p className="text-xs text-[var(--ui-faint)]">{result.type}</p>
+                    <p className="mt-1 text-xs text-[var(--ui-muted)]">{result.exchange}</p>
                     {result.delayedByMinutes ? (
-                      <p className="mt-1 text-[11px] text-slate-500">Delayed {result.delayedByMinutes}m</p>
+                      <p className="mt-1 text-[11px] text-[var(--ui-faint)]">Delayed {result.delayedByMinutes}m</p>
                     ) : null}
                   </div>
                   {onAction ? (
@@ -140,11 +140,7 @@ export function SymbolSearchBox({
                           handlePick(result.symbol);
                         }
                       }}
-                      className={`rounded-full px-3 py-1.5 text-xs ${
-                        (getActionLabel?.(result.symbol) ?? "Add") === "Remove"
-                          ? "bg-white/8 text-slate-200 hover:bg-white/12"
-                          : "bg-teal-400/15 text-teal-200 hover:bg-teal-400/25"
-                      }`}
+                      className={`rounded-full px-3 py-1.5 text-xs ${ (getActionLabel?.(result.symbol) ?? "Add") === "Remove" ? "bg-[var(--ui-panel-2)] text-[var(--ui-ink-2)] hover:bg-[var(--ui-seg)]" : "bg-[var(--ui-accent-soft)] text-[var(--ui-accent)] hover:bg-[var(--ui-accent-soft)]" }`}
                     >
                       {getActionLabel?.(result.symbol) ?? "Add"}
                     </button>
@@ -153,7 +149,7 @@ export function SymbolSearchBox({
               </div>
             ))
           ) : (
-            <div className="px-4 py-3 text-sm text-slate-400">{messages.search.noSymbols}</div>
+            <div className="px-4 py-3 text-sm text-[var(--ui-muted)]">{messages.search.noSymbols}</div>
           )}
         </div>
       )}

@@ -80,35 +80,6 @@ type Messages = {
     defaultWatchListName: (index: number) => string;
     feedLabel: (isLive: boolean) => string;
   };
-  compare: {
-    eyebrow: string;
-    title: string;
-    description: string;
-    currentWatchlist: string;
-    empty: string;
-    loadingQuote: string;
-    loadingMessage: string;
-    failedMessage: string;
-  };
-  treemap: {
-    eyebrow: string;
-    title: string;
-    sp100: string;
-    nasdaq100: string;
-    watchLists: string;
-    sourceIndex: string;
-    sourceWatchLists: string;
-    selectedWatchLists: string;
-    noWatchListsSelected: string;
-    titleForIndex: (index: "sp100" | "nasdaq100") => string;
-    description: (title: string, timeframe: string) => string;
-    loading: string;
-    loadingHint: string;
-    failed: string;
-    noData: string;
-    tryAnother: string;
-    loadedCompanies: (count: number) => string;
-  };
   chart: {
     lineChartLegend: string;
     candleGreen: string;
@@ -192,37 +163,6 @@ const messages: Record<Locale, Messages> = {
       confirmDeleteWatchList: (name) => `Delete watch list "${name}"?`,
       defaultWatchListName: (index) => `Watch List ${index}`,
       feedLabel: (isLive) => (isLive ? "Live Feed" : "Mock Feed"),
-    },
-    compare: {
-      eyebrow: "Multi Watch",
-      title: "Multi-Symbol View",
-      description:
-        "Choose any watch list to generate synchronized company panels with shared timeframe and moving averages.",
-      currentWatchlist: "Current watch list",
-      empty: "This watch list is empty. Add symbols from the main dashboard first.",
-      loadingQuote: "Loading quote...",
-      loadingMessage: "Loading...",
-      failedMessage: "Failed to load comparison data.",
-    },
-    treemap: {
-      eyebrow: "Treemap",
-      title: "Tree Map",
-      sp100: "S&P 100",
-      nasdaq100: "Nasdaq 100",
-      watchLists: "Watch Lists",
-      sourceIndex: "Indexes",
-      sourceWatchLists: "Watch Lists",
-      selectedWatchLists: "Selected Watch Lists",
-      noWatchListsSelected: "Select one or more watch lists to build a custom tree map.",
-      titleForIndex: (index) => (index === "sp100" ? "S&P 100 Treemap" : "Nasdaq 100 Treemap"),
-      description: (title, timeframe) =>
-        `Area reflects absolute move size and color shows direction. Viewing ${title} over ${timeframe}.`,
-      loading: "Loading tree map...",
-      loadingHint: "Fetching components and calculating moves",
-      failed: "Failed to load treemap.",
-      noData: "No tree map data available",
-      tryAnother: "Try another timeframe or refresh in a moment.",
-      loadedCompanies: (count) => `Loaded ${count} companies`,
     },
     chart: {
       lineChartLegend: "Line chart: shows closing-price trend for the selected timeframe",
@@ -308,35 +248,6 @@ const messages: Record<Locale, Messages> = {
       confirmDeleteWatchList: (name) => `确定删除 watch list “${name}” 吗？`,
       defaultWatchListName: (index) => `Watch List ${index}`,
       feedLabel: (isLive) => (isLive ? "实时数据" : "模拟数据"),
-    },
-    compare: {
-      eyebrow: "多看版",
-      title: "多标的联看",
-      description: "选择任意 watch list，自动生成对应公司的看板，并共享时间维度和均线开关。",
-      currentWatchlist: "当前 watch list",
-      empty: "这个 watch list 还是空的，先去主页面添加股票吧。",
-      loadingQuote: "正在加载报价...",
-      loadingMessage: "加载中...",
-      failedMessage: "多看版数据加载失败。",
-    },
-    treemap: {
-      eyebrow: "Treemap",
-      title: "树状图",
-      sp100: "标普 100",
-      nasdaq100: "纳斯达克 100",
-      watchLists: "自选列表",
-      sourceIndex: "指数",
-      sourceWatchLists: "自选列表",
-      selectedWatchLists: "已选自选列表",
-      noWatchListsSelected: "请先勾选一个或多个 watch list，再生成自定义树状图。",
-      titleForIndex: (index) => (index === "sp100" ? "标普 100 树状图" : "纳斯达克 100 树状图"),
-      description: (title, timeframe) => `面积代表涨跌幅绝对值大小，颜色代表涨跌方向。当前查看 ${title}，范围为 ${timeframe}。`,
-      loading: "正在加载树状图...",
-      loadingHint: "正在获取成分股并计算区间涨跌幅",
-      failed: "树状图加载失败。",
-      noData: "当前没有可展示的树状图数据",
-      tryAnother: "可以切换时间维度，或者稍后再刷新试试。",
-      loadedCompanies: (count) => `已加载 ${count} 只股票`,
     },
     chart: {
       lineChartLegend: "折线图：显示所选周期内的收盘价走势",

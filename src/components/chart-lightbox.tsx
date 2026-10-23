@@ -305,15 +305,15 @@ export function ChartLightbox({
   const editorCursor = activeTool === "draw" ? penCursor : eraserCursor;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 bg-[color-mix(in_srgb,var(--ui-bg)_90%,transparent)] ">
       <div className="flex h-full flex-col overflow-y-auto">
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 py-4 lg:px-6">
-          <div className="flex flex-col gap-4 rounded-[28px] border border-white/8 bg-[#07111f] p-5 shadow-[0_20px_80px_rgba(2,8,23,0.45)] lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-4 rounded-[14px] border border-[var(--ui-line)] bg-[var(--ui-panel)] p-5 shadow-[var(--ui-overlay)] lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.28em] text-teal-300">{symbol}</p>
-              <h2 className="mt-3 text-2xl font-semibold text-white">{text.title}</h2>
-              <p className="mt-2 text-sm text-slate-300">{text.subtitle}</p>
-              <p className="mt-2 text-xs text-slate-400">{capturedSnapshot ? text.editorHint : text.chartHint}</p>
+              <p className="text-sm text-[var(--ui-accent)]">{symbol}</p>
+              <h2 className="mt-3 text-2xl font-semibold text-[var(--ui-ink)]">{text.title}</h2>
+              <p className="mt-2 text-sm text-[var(--ui-ink-2)]">{text.subtitle}</p>
+              <p className="mt-2 text-xs text-[var(--ui-muted)]">{capturedSnapshot ? text.editorHint : text.chartHint}</p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               {capturedSnapshot ? (
@@ -321,7 +321,7 @@ export function ChartLightbox({
                   <button
                     type="button"
                     onClick={handleReturnToChart}
-                    className="rounded-full bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+                    className="rounded-full bg-[var(--ui-panel-2)] px-4 py-2 text-sm text-[var(--ui-ink-2)] transition hover:bg-[var(--ui-seg)]"
                   >
                     {text.backToChart}
                   </button>
@@ -331,29 +331,21 @@ export function ChartLightbox({
                       resetEditor();
                       setCapturedSnapshot(null);
                     }}
-                    className="rounded-full bg-teal-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-teal-200"
+                    className="rounded-full bg-[var(--ui-accent)] px-4 py-2 text-sm font-semibold text-[var(--ui-on-accent)] transition hover:bg-[var(--ui-accent-hover)]"
                   >
                     {text.newCapture}
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTool("draw")}
-                    className={`rounded-full px-4 py-2 text-sm transition ${
-                      activeTool === "draw"
-                        ? "bg-sky-400/20 text-sky-100 ring-1 ring-sky-300/30"
-                        : "bg-white/5 text-slate-200 hover:bg-white/10"
-                    }`}
+                    className={`rounded-full px-4 py-2 text-sm transition ${ activeTool === "draw" ? "bg-[var(--ui-accent-soft)] text-[var(--ui-accent)] ring-1 ring-[var(--ui-accent)]" : "bg-[var(--ui-panel-2)] text-[var(--ui-ink-2)] hover:bg-[var(--ui-seg)]" }`}
                   >
                     {text.draw}
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTool("erase")}
-                    className={`rounded-full px-4 py-2 text-sm transition ${
-                      activeTool === "erase"
-                        ? "bg-amber-400/20 text-amber-100 ring-1 ring-amber-300/30"
-                        : "bg-white/5 text-slate-200 hover:bg-white/10"
-                    }`}
+                    className={`rounded-full px-4 py-2 text-sm transition ${ activeTool === "erase" ? "bg-[var(--ui-panel-2)] text-[var(--ui-warn)] ring-1 ring-[var(--ui-warn)]" : "bg-[var(--ui-panel-2)] text-[var(--ui-ink-2)] hover:bg-[var(--ui-seg)]" }`}
                   >
                     {text.erase}
                   </button>
@@ -363,14 +355,14 @@ export function ChartLightbox({
                       setStrokes([]);
                       setDraftStroke(null);
                     }}
-                    className="rounded-full bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+                    className="rounded-full bg-[var(--ui-panel-2)] px-4 py-2 text-sm text-[var(--ui-ink-2)] transition hover:bg-[var(--ui-seg)]"
                   >
                     {text.clear}
                   </button>
                   <button
                     type="button"
                     onClick={handleSave}
-                    className="rounded-full bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+                    className="rounded-full bg-[var(--ui-panel-2)] px-4 py-2 text-sm text-[var(--ui-ink-2)] transition hover:bg-[var(--ui-seg)]"
                   >
                     {text.save}
                   </button>
@@ -379,7 +371,7 @@ export function ChartLightbox({
                 <button
                   type="button"
                   onClick={handleCapture}
-                  className="rounded-full bg-teal-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-teal-200"
+                  className="rounded-full bg-[var(--ui-accent)] px-4 py-2 text-sm font-semibold text-[var(--ui-on-accent)] transition hover:bg-[var(--ui-accent-hover)]"
                 >
                   {text.capture}
                 </button>
@@ -387,24 +379,24 @@ export function ChartLightbox({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+                className="rounded-full bg-[var(--ui-panel-2)] px-4 py-2 text-sm text-[var(--ui-ink-2)] transition hover:bg-[var(--ui-seg)]"
               >
                 {text.close}
               </button>
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-white/8 bg-[#07111f] p-4">
+          <div className="rounded-[14px] border border-[var(--ui-line)] bg-[var(--ui-panel)] p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                <p className="text-xs text-[var(--ui-faint)]">
                   {capturedSnapshot ? text.snapshotEditor : text.liveChart}
                 </p>
-                <p className="mt-2 text-sm text-slate-300">{capturedSnapshot ? text.editorHint : text.chartHint}</p>
+                <p className="mt-2 text-sm text-[var(--ui-ink-2)]">{capturedSnapshot ? text.editorHint : text.chartHint}</p>
               </div>
               {capturedSnapshot ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-[0.2em] text-slate-500">{text.colors}</span>
+                  <span className="text-xs text-[var(--ui-faint)]">{text.colors}</span>
                   {strokeColors.map((color) => (
                     <button
                       key={color}
@@ -414,9 +406,7 @@ export function ChartLightbox({
                         setStrokeColor(color);
                         setActiveTool("draw");
                       }}
-                      className={`h-8 w-8 rounded-full border transition ${
-                        strokeColor === color ? "border-white/80 scale-105" : "border-white/15"
-                      }`}
+                      className={`h-8 w-8 rounded-full border transition ${ strokeColor === color ? "border-[var(--ui-ink)] scale-105" : "border-[var(--ui-line)]" }`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
@@ -427,7 +417,7 @@ export function ChartLightbox({
             {capturedSnapshot ? (
               <div
                 ref={imageContainerRef}
-                className="relative overflow-hidden rounded-[24px] border border-white/8 bg-slate-950/45"
+                className="relative overflow-hidden rounded-[14px] border border-[var(--ui-line)] bg-[var(--ui-panel-2)]"
                 style={{ cursor: editorCursor }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
