@@ -286,11 +286,11 @@ export function TradeLedgerView() {
       <div className="tl-section-heading"><div><h2>{text("Cash ledger", "现金账本")}</h2><p>{text(`Deposits, withdrawals, dividends, interest, fees and tax, in ${base}. Buys and sells move cash automatically (foreign trades at the trade-date rate).`, `入金、出金、分红、利息、费用和税，以 ${base} 记账。买卖交易会自动计入现金变动（外币交易按成交日汇率折算）。`)}</p></div></div>
       {missingDividends.length > 0 && <div className="cl-suggest">
         <div className="cl-suggest-head"><strong>{text(`${missingDividends.length} dividend${missingDividends.length === 1 ? "" : "s"} may be missing`, `可能漏记了 ${missingDividends.length} 笔分红`)}</strong><span>{text("Estimated from Yahoo per-share dividends × shares held before the ex-date, gross of withholding tax. Check against your broker statement.", "按 Yahoo 每股分红 × 除息日前持股数估算，税前金额，请与券商结单核对。")}</span><button className="tl-button" onClick={() => addDividends(missingDividends)}>{text("Add all", "全部添加")}</button></div>
-        <div className="tl-scroll"><table><tbody>{missingDividends.slice(0, 12).map((item) => <tr key={`${item.symbol}:${item.date}`}>
+        <div className="tl-scroll"><table><tbody>{missingDividends.slice(0, 6).map((item) => <tr key={`${item.symbol}:${item.date}`}>
           <td>{item.date}</td><td className="tl-left tl-symbol">{item.symbol}</td><td>{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} × {item.currency} {item.amount}</td><td className="cl-in">+{money(item.total)}</td>
           <td><button className="tl-row-button" onClick={() => addDividends([item])}>{text("Add", "添加")}</button></td>
         </tr>)}</tbody></table></div>
-        {missingDividends.length > 12 && <p className="tl-muted">{text(`${missingDividends.length - 12} more not shown; "Add all" includes them.`, `另有 ${missingDividends.length - 12} 笔未显示，“全部添加”会一并加入。`)}</p>}
+        {missingDividends.length > 6 && <p className="tl-muted">{text(`${missingDividends.length - 6} more not shown; "Add all" includes them.`, `另有 ${missingDividends.length - 6} 笔未显示，“全部添加”会一并加入。`)}</p>}
       </div>}
       <form className="cl-form" onSubmit={addCash}>
         <label>{text("Type", "类型")}<select value={cashForm.kind} onChange={(event) => setCashForm({ ...cashForm, kind: event.target.value as CashKind })}>{CASH_KINDS.map((kind) => <option key={kind} value={kind}>{cashLabel[kind][locale === "zh" ? 1 : 0]}</option>)}</select></label>

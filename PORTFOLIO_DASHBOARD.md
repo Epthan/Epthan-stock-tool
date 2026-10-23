@@ -65,3 +65,10 @@ Not done (needs new data): trade tags and per-tag attribution; sector grouping; 
 - **Account panel** (shown once a deposit is recorded): account value = holdings + cash; time-weighted account return with external flows at the start of the day; money-weighted return via XIRR (annualised once history is at least one year). If the cash balance ever goes negative, account returns are withheld because a deposit is probably missing.
 - **CSV import** (`src/lib/csv-import.ts`): header aliases for IBKR, CommSec (`B 100 CBA @ 115.50` details, brokerage implied from the debit), Stake, SelfWealth, Chinese brokers (GBK) and this app's own export. It dedupes against existing records, replays sells against holdings, and saves all-or-nothing.
 - Data is stored server-side in `data/store.json` (`/api/store`) and mirrored to localStorage; backup and restore are on the Trade log page.
+
+## Splits, dividends and currencies
+
+- **Splits** are detected from Yahoo for every portfolio with trades and stored on the portfolio (`splits`). Pre-split trades are restated onto today's share basis (quantity × ratio, price ÷ ratio) for validation, positions and analytics; the typed records are unchanged and the trade log shows the restated figures under each row.
+- **Missing dividends**: Yahoo per-share dividends × shares held before the ex-date, gross, converted to the ledger currency at the ex-date rate. Shown as suggestions in the cash ledger; nothing is added automatically.
+- **Ledger currency** (`baseCurrency`, default USD) per portfolio. Trades are typed in the security's quote currency and converted at the trade-date rate (cash is assumed to settle in the ledger currency); values use today's rate, so unrealized P&L includes FX. Minor units (GBp, ZAc, ILA) are normalised.
+- **Analysis** converts every price series and the benchmark into the ledger currency, uses one calendar across markets (closes carried over holidays) and dates bars in each exchange's own time zone. Benchmarks: SPY, QQQ, ASX 200 (^AXJO).
