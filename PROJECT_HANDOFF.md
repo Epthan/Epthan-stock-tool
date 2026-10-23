@@ -92,6 +92,6 @@ Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "v
 - Corporate actions other than splits (DRP, rights issues, spin-offs, mergers, return of capital) are not handled — also not in the tax report.
 - Tax: FIFO only (no specific-parcel selection), no 45-day franking rule, individual investors only; FX uses Yahoo daily reference rates.
 - New folders under `src/` are not always picked up by a running `next dev` on Windows — restart the server after adding one.
-- The empty `src/lib/server/` folder on the original machine is left over from a move and can be deleted.
+- `src/lib/server/` on the original machine holds stale copies from a move (now `lib/server-*.ts`, `lib/price-archive.ts`) and can be deleted.
 - Dividend suggestions use Yahoo per-share amounts × shares held; withholding tax must be entered separately.
 - Mobile app: plan is PWA first, then a Capacitor wrapper, reusing this UI.
