@@ -69,7 +69,7 @@ export type DividendEvent = { date: string; amount: number };
 type DailyData = { rows: DailyBar[]; splits: SplitEvent[]; dividends: DividendEvent[] };
 
 /** Daily bars plus split / dividend events, cached 30 minutes. A cached wider range for the same symbol serves narrower requests. */
-const dailyCover: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> = ((globalThis as { __yahooDaily2?: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> }).__yahooDaily2 ??= new Map());
+const dailyCover: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> = ((globalThis as { __yahooDaily3?: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> }).__yahooDaily3 ??= new Map());
 async function getDaily(symbol: string, period1: string, period2: string): Promise<DailyData> {
   const now = Date.now();
   const cover = dailyCover.get(symbol);
