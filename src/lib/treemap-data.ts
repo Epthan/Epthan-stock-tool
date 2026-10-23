@@ -23,7 +23,7 @@ async function withMarketCaps(items: TreemapItem[]) {
   try {
     const quotes = await getYahooQuotes(items.map((item) => item.symbol));
     const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
-    return items.map((item) => { const quote = bySymbol.get(item.symbol); return { ...item, marketCap: quote?.marketCap ?? undefined, currency: quote?.currency ?? undefined }; });
+    return items.map((item) => { const quote = bySymbol.get(item.symbol); return { ...item, name: item.name === item.symbol ? quote?.shortName ?? quote?.longName ?? item.name : item.name, marketCap: quote?.marketCap ?? undefined, currency: quote?.currency ?? undefined }; });
   } catch {
     return items;
   }
@@ -46,12 +46,30 @@ function textOf(value: string) {
   return value.replace(/\[[^\]]+\]/g, "").replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Built-in Nasdaq-100 membership (≈ mid-2026) used when the Wikipedia table cannot be read — Wikipedia's
+ * Nasdaq-100 article no longer carries the components table. Names are filled from Yahoo quotes.
+ */
+export const NASDAQ100_FALLBACK: Constituent[] = [
+  ...("AAPL MSFT NVDA AVGO ASML CSCO AMD INTU TXN QCOM ADBE AMAT ARM PANW MU APP LRCX KLAC ADI INTC CRWD MSTR SNPS CDNS FTNT MRVL WDAY ADSK ROP NXPI DDOG ZS CTSH TEAM CDW ON GFS MDB SHOP PLTR TTD").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Technology" })),
+  ...("META GOOGL GOOG NFLX TMUS CMCSA CHTR EA TTWO WBD").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Communication Services" })),
+  ...("AMZN TSLA BKNG PDD SBUX MELI DASH ORLY MAR ABNB ROST LULU").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Consumer Discretionary" })),
+  ...("COST PEP MDLZ MNST KDP CCEP KHC").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Consumer Staples" })),
+  ...("ISRG AMGN AZN GILD VRTX REGN IDXX DXCM GEHC BIIB").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Health Care" })),
+  ...("HON ADP CTAS CSX AXON PAYX FAST PCAR CPRT VRSK ODFL").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Industrials" })),
+  ...("CEG AEP EXC XEL").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Utilities" })),
+  ...("FANG BKR").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Energy" })),
+  ...("LIN").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Materials" })),
+  ...("PYPL").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Financials" })),
+  ...("CSGP").split(" ").map((symbol) => ({ symbol, name: symbol, sector: "Real Estate" })),
+];
+
 /** Index membership changes a few times a year: keep it for a day instead of re-scraping Wikipedia every 15 minutes. */
 const constituentCache = new Map<TreemapIndexKey, { expiresAt: number; items: Promise<Constituent[]> }>();
 function fetchConstituents(index: TreemapIndexKey) {
   const hit = constituentCache.get(index);
   if (hit && hit.expiresAt > Date.now()) return hit.items;
-  const items = scrapeConstituents(index);
+  const items = scrapeConstituents(index).catch((error) => { if (index === "nasdaq100") return NASDAQ100_FALLBACK; throw error; });
   constituentCache.set(index, { expiresAt: Date.now() + 24 * 60 * 60 * 1000, items });
   items.catch(() => constituentCache.delete(index));
   return items;
@@ -165,7 +183,7 @@ async function mapInBatches(items: Constituent[], timeframe: TimeframeKey, batch
       const price = quote?.regularMarketPrice ?? 0;
       if (!price) continue;
       const changePercent = quote?.regularMarketChangePercent ?? 0;
-      results.push({ ...item, price, changePercent, magnitude: Math.max(Math.abs(changePercent), 0.05), marketCap: quote?.marketCap ?? undefined, currency: quote?.currency ?? undefined });
+      results.push({ ...item, name: item.name === item.symbol ? quote?.shortName ?? item.name : item.name, price, changePercent, magnitude: Math.max(Math.abs(changePercent), 0.05), marketCap: quote?.marketCap ?? undefined, currency: quote?.currency ?? undefined });
     }
     return results;
   }
