@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { getYahooChart, getYahooQuote, getYahooQuoteSummary } from "@/lib/yahoo-finance";
+import { getYahooChart, getYahooQuote, getYahooQuoteSummary, getYahooQuotes } from "@/lib/yahoo-finance";
 import type { TimeframeKey } from "@/lib/mock-market";
 
 export type TreemapIndexKey = "sp100" | "nasdaq100";
@@ -14,7 +14,20 @@ type TreemapItem = Constituent & {
   changePercent: number;
   magnitude: number;
   price: number;
+  marketCap?: number;
+  currency?: string;
 };
+
+/** One batched quote call adds market cap (tile size) and currency to every tile. */
+async function withMarketCaps(items: TreemapItem[]) {
+  try {
+    const quotes = await getYahooQuotes(items.map((item) => item.symbol));
+    const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
+    return items.map((item) => { const quote = bySymbol.get(item.symbol); return { ...item, marketCap: quote?.marketCap ?? undefined, currency: quote?.currency ?? undefined }; });
+  } catch {
+    return items;
+  }
+}
 
 type CacheValue = {
   expiresAt: number;
@@ -185,7 +198,7 @@ export async function getTreemapItems(index: TreemapIndexKey, timeframe: Timefra
   }
 
   const constituents = await fetchConstituents(index);
-  const items = await mapInBatches(constituents, timeframe, index === "sp100" ? 10 : 12);
+  const items = await withMarketCaps(await mapInBatches(constituents, timeframe, index === "sp100" ? 10 : 12));
 
   cache.set(cacheKey, {
     items,
@@ -211,7 +224,7 @@ export async function getTreemapItemsForSymbols(symbols: string[], timeframe: Ti
   }
 
   const constituents = await Promise.all(normalizedSymbols.map((symbol) => resolveCustomConstituent(symbol)));
-  const items = await mapInBatches(constituents, timeframe, 8);
+  const items = await withMarketCaps(await mapInBatches(constituents, timeframe, 8));
 
   cache.set(cacheKey, {
     items,

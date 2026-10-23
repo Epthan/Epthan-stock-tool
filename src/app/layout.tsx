@@ -13,6 +13,7 @@ import "./trade-ledger.css";
 import "./trader-analytics.css";
 import "./theme.css";
 import "./redesign.css";
+import "./pages.css";
 
 // IBM Plex Sans + Noto Sans SC: both SIL Open Font License (free for commercial use and web embedding).
 // Loaded as a stylesheet so they work without build-time font fetching.

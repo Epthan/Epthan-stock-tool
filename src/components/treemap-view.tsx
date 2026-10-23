@@ -3,405 +3,143 @@
 import { hierarchy, treemap as buildTreemap } from "d3-hierarchy";
 import { useEffect, useMemo, useState } from "react";
 import { useStoredWatchlists } from "@/hooks/use-stored-watchlists";
+import { usePortfolios } from "@/hooks/use-portfolios";
 import { useLanguage } from "@/components/language-provider";
-import { timeframeLabels, type TimeframeKey } from "@/lib/mock-market";
+import { useStockSelection } from "@/components/stock-selection-provider";
+import { ErrorState, StatePanel } from "@/components/state-panel";
+import { TTL, fetchCached } from "@/lib/client-cache";
+import { sectorLabel } from "@/lib/breakdowns";
+import { getTradePosition } from "@/lib/portfolio-trades";
+import type { TimeframeKey } from "@/lib/mock-market";
 
 type TreemapIndexKey = "sp100" | "nasdaq100";
-type TreemapSourceMode = "index" | "watchlists";
+type Item = { symbol: string; name: string; sector: string; changePercent: number; magnitude: number; price: number; marketCap?: number; currency?: string };
+type Leaf = Item & { value: number; holding?: number };
+type Node = { name: string; children?: Node[]; value?: number; item?: Leaf };
+type Size = "cap" | "move" | "holding" | "equal";
 
-type TreemapItem = {
-  symbol: string;
-  name: string;
-  sector: string;
-  changePercent: number;
-  magnitude: number;
-  price: number;
-};
+const TIMEFRAMES: TimeframeKey[] = ["1D", "5D", "1M", "3M", "6M", "1Y"];
+/** Colour saturates at this move: a 3% day is as strong as a 25% year. */
+const SCALE: Partial<Record<TimeframeKey, number>> = { "1D": 3, "5D": 6, "1M": 10, "3M": 15, "6M": 20, "1Y": 30 };
+const W = 1200, H = 720;
 
-type TreemapResponse = {
-  items: TreemapItem[];
-  updatedAt?: string;
-};
-
-type TreemapNode = {
-  name: string;
-  children?: TreemapNode[];
-  value?: number;
-  symbol?: string;
-  sector?: string;
-  changePercent?: number;
-  magnitude?: number;
-  price?: number;
-};
-
-function colorForChange(value: number) {
-  if (value >= 8) return "#14532d";
-  if (value >= 3) return "#166534";
-  if (value >= 0) return "#15803d";
-  if (value <= -8) return "#7f1d1d";
-  if (value <= -3) return "#991b1b";
-  return "#b91c1c";
+function fill(change: number, timeframe: TimeframeKey) {
+  const strength = Math.min(1, Math.abs(change) / (SCALE[timeframe] ?? 10));
+  const mix = Math.round(18 + strength * 70);
+  return `color-mix(in srgb, ${change >= 0 ? "var(--ui-up)" : "var(--ui-down)"} ${mix}%, var(--ui-panel-2))`;
 }
 
-type TreemapViewProps = {
-  initialIndex?: TreemapIndexKey;
-};
-
-export function TreemapView({ initialIndex = "sp100" }: TreemapViewProps) {
-  const { messages } = useLanguage();
-  const treemapMessages = messages.treemap;
+export function TreemapView({ initialIndex = "sp100" }: { initialIndex?: TreemapIndexKey }) {
+  const { locale } = useLanguage();
+  const zh = locale === "zh";
+  const text = (english: string, chinese: string) => (zh ? chinese : english);
+  const { pickSymbol } = useStockSelection();
   const { watchlists, activeWatchlistId } = useStoredWatchlists();
-  const [activeIndex, setActiveIndex] = useState<TreemapIndexKey>(initialIndex);
-  const [sourceMode, setSourceMode] = useState<TreemapSourceMode>("index");
-  const [selectedWatchlistIds, setSelectedWatchlistIds] = useState<string[]>([]);
-  const [activeTimeframe, setActiveTimeframe] = useState<TimeframeKey>("1D");
-  const [items, setItems] = useState<TreemapItem[]>([]);
-  const [message, setMessage] = useState(treemapMessages.loading);
-  const [isLoading, setIsLoading] = useState(true);
-  const resolvedSelectedWatchlistIds = useMemo(() => {
-    if (selectedWatchlistIds.length > 0) {
-      return selectedWatchlistIds;
+  const { portfolios, activePortfolio } = usePortfolios();
+  const [source, setSource] = useState<string>(`index:${initialIndex}`);
+  const [timeframe, setTimeframe] = useState<TimeframeKey>("1D");
+  const [size, setSize] = useState<Size>("cap");
+  const [hover, setHover] = useState<Leaf | null>(null);
+  const [retry, setRetry] = useState(0);
+
+  const holdings = useMemo(() => {
+    const out = new Map<string, number>();
+    const portfolio = source.startsWith("portfolio:") ? portfolios.find((item) => `portfolio:${item.id}` === source) : activePortfolio;
+    for (const symbol of new Set((portfolio?.trades ?? []).map((trade) => trade.symbol))) {
+      const quantity = getTradePosition(portfolio!.trades!, symbol, portfolio!.splits).quantity;
+      if (quantity > 1e-8) out.set(symbol, quantity);
     }
+    return out;
+  }, [source, portfolios, activePortfolio]);
 
-    if (watchlists.some((watchlist) => watchlist.id === activeWatchlistId)) {
-      return [activeWatchlistId];
-    }
-
-    return watchlists[0] ? [watchlists[0].id] : [];
-  }, [activeWatchlistId, selectedWatchlistIds, watchlists]);
-  const selectedWatchlists = useMemo(
-    () => watchlists.filter((watchlist) => resolvedSelectedWatchlistIds.includes(watchlist.id)),
-    [resolvedSelectedWatchlistIds, watchlists],
-  );
-  const customSymbols = useMemo(
-    () => Array.from(new Set(selectedWatchlists.flatMap((watchlist) => watchlist.symbols))),
-    [selectedWatchlists],
-  );
-  const customSymbolsKey = useMemo(() => customSymbols.join(","), [customSymbols]);
-  const title = useMemo(() => {
-    if (sourceMode === "watchlists") {
-      return selectedWatchlists.length > 0
-        ? selectedWatchlists.map((watchlist) => watchlist.name).join(" + ")
-        : treemapMessages.watchLists;
-    }
-
-    return treemapMessages.titleForIndex(activeIndex);
-  }, [activeIndex, selectedWatchlists, sourceMode, treemapMessages]);
-
+  const sources = [
+    { id: "index:sp100", label: "S&P 100" }, { id: "index:nasdaq100", label: "Nasdaq 100" },
+    ...watchlists.map((list) => ({ id: `watch:${list.id}`, label: `${text("Watch list", "自选")} · ${list.name}` })),
+    ...portfolios.filter((portfolio) => portfolio.trades?.length).map((portfolio) => ({ id: `portfolio:${portfolio.id}`, label: `${text("Holdings", "持仓")} · ${zh ? portfolio.nameZh ?? portfolio.name : portfolio.name}` })),
+  ];
+  const sizeMode: Size = source.startsWith("portfolio:") && size === "cap" ? "holding" : size;
+  const symbols = source.startsWith("watch:") ? (watchlists.find((list) => `watch:${list.id}` === source) ?? watchlists.find((list) => list.id === activeWatchlistId))?.symbols ?? []
+    : source.startsWith("portfolio:") ? [...holdings.keys()] : [];
+  const symbolKey = symbols.join(",");
+  const url = source.startsWith("index:") ? `/api/market/treemap?index=${source.slice(6)}&timeframe=${timeframe}` : `/api/market/treemap?symbols=${encodeURIComponent(symbolKey)}&timeframe=${timeframe}`;
+  const requestKey = `${url}:${retry}`;
+  const [state, setState] = useState<{ key: string; items: Item[]; error?: string }>({ key: "", items: [] });
   useEffect(() => {
-    let ignore = false;
+    if (!source.startsWith("index:") && !symbolKey) return;
+    let active = true;
+    fetchCached<{ items: Item[]; message?: string }>(`treemap:${url}`, url, timeframe === "1D" ? TTL.quote * 4 : TTL.daily)
+      .then((body) => { if (active) setState({ key: requestKey, items: body.items ?? [], error: body.items?.length ? undefined : body.message }); })
+      .catch((error: Error) => { if (active) setState({ key: requestKey, items: [], error: error.message }); });
+    return () => { active = false; };
+  }, [url, requestKey, source, symbolKey, timeframe]);
+  const loading = state.key !== requestKey && (source.startsWith("index:") || !!symbolKey);
 
-    async function loadTreemap() {
-      try {
-        if (!ignore) {
-          setIsLoading(true);
-        }
-        setMessage(treemapMessages.loading);
-        if (sourceMode === "watchlists" && customSymbols.length === 0) {
-          if (!ignore) {
-            setItems([]);
-            setIsLoading(false);
-            setMessage(treemapMessages.noWatchListsSelected);
-          }
-          return;
-        }
-
-        const searchParams = new URLSearchParams({
-          timeframe: activeTimeframe,
-        });
-
-        if (sourceMode === "watchlists") {
-          searchParams.set("symbols", customSymbolsKey);
-        } else {
-          searchParams.set("index", activeIndex);
-        }
-
-        const response = await fetch(
-          `/api/market/treemap?${searchParams.toString()}`,
-          { cache: "no-store" },
-        );
-        const payload = (await response.json()) as TreemapResponse;
-
-        if (!ignore) {
-          setItems(payload.items ?? []);
-          setMessage(treemapMessages.loadedCompanies(payload.items?.length ?? 0));
-          setIsLoading(false);
-        }
-      } catch {
-        if (!ignore) {
-          setItems([]);
-          setMessage(treemapMessages.failed);
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadTreemap();
-
-    return () => {
-      ignore = true;
-    };
-  }, [activeIndex, activeTimeframe, customSymbols.length, customSymbolsKey, sourceMode, treemapMessages]);
+  const leaves: Leaf[] = useMemo(() => state.items.map((item) => {
+    const holding = holdings.get(item.symbol);
+    const value = sizeMode === "holding" ? (holding ?? 0) * item.price : sizeMode === "cap" ? item.marketCap ?? 0 : sizeMode === "move" ? item.magnitude : 1;
+    return { ...item, holding, value };
+  }).filter((leaf) => leaf.value > 0), [state.items, holdings, sizeMode]);
 
   const layout = useMemo(() => {
-    const grouped = Object.values(
-      items.reduce<Record<string, { name: string; children: TreemapItem[] }>>((accumulator, item) => {
-        const key = item.sector || "Other";
-        if (!accumulator[key]) {
-          accumulator[key] = { name: key, children: [] };
-        }
-        accumulator[key].children.push(item);
-        return accumulator;
-      }, {}),
-    );
+    const sectors = new Map<string, Leaf[]>();
+    for (const leaf of leaves) sectors.set(leaf.sector || "Other", [...(sectors.get(leaf.sector || "Other") ?? []), leaf]);
+    const root = hierarchy<Node>({ name: "root", children: [...sectors].map(([name, items]) => ({ name, children: items.map((item) => ({ name: item.symbol, value: item.value, item })) })) })
+      .sum((node) => node.value ?? 0).sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+    const tree = buildTreemap<Node>().size([W, H]).paddingOuter(4).paddingTop(22).paddingInner(2).round(true)(root);
+    const total = leaves.reduce((sum, leaf) => sum + leaf.value, 0);
+    const sectorRows = (tree.children ?? []).map((node) => {
+      const items = node.leaves().map((leaf) => leaf.data.item!);
+      const weight = items.reduce((sum, item) => sum + item.value, 0);
+      return { name: node.data.name, node, share: total ? weight / total * 100 : 0, change: weight ? items.reduce((sum, item) => sum + item.changePercent * item.value, 0) / weight : 0, count: items.length };
+    });
+    return { sectors: sectorRows, tiles: tree.leaves() };
+  }, [leaves]);
+  const advancers = leaves.filter((leaf) => leaf.changePercent > 0).length;
+  const weighted = (() => { const total = leaves.reduce((sum, leaf) => sum + leaf.value, 0); return total ? leaves.reduce((sum, leaf) => sum + leaf.changePercent * leaf.value, 0) / total : null; })();
+  const pct = (value: number | null | undefined, digits = 2) => (value == null || !Number.isFinite(value) ? "—" : `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`);
+  const sizeLabels: Record<Size, string> = { cap: text("Market cap", "市值"), move: text("Move size", "涨跌幅度"), holding: text("My position value", "我的持仓市值"), equal: text("Equal", "等大") };
 
-    const root = hierarchy<TreemapNode>({
-      name: title,
-      children: grouped.map((group) => ({
-        name: group.name,
-        children: group.children.map((item) => ({
-          ...item,
-          value: item.magnitude,
-        })),
-      })),
-    })
-      .sum((item) => ("value" in item ? Number(item.value) : 0))
-      .sort((left, right) => (right.value ?? 0) - (left.value ?? 0));
-
-    const tree = buildTreemap<TreemapNode>()
-      .size([1200, 760])
-      .paddingOuter(8)
-      .paddingTop(28)
-      .paddingInner(3)(root);
-
-    return {
-      sectorNodes: tree.children ?? [],
-      companyNodes: tree.leaves(),
-    };
-  }, [items, title]);
-
-  function toggleWatchlistSelection(watchlistId: string) {
-    setSelectedWatchlistIds((current) =>
-      current.includes(watchlistId)
-        ? current.filter((item) => item !== watchlistId)
-        : [...current, watchlistId],
-    );
-  }
-
-  function activateWatchlistsMode() {
-    if (resolvedSelectedWatchlistIds.length === 0) {
-      const fallbackIds = watchlists[0] ? [watchlists[0].id] : [];
-
-      if (fallbackIds.length > 0) {
-        setSelectedWatchlistIds(fallbackIds);
-      }
-    }
-
-    setSourceMode("watchlists");
-  }
-
-  return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(20,184,166,0.14),_transparent_24%),linear-gradient(180deg,#020617_0%,#071224_42%,#020617_100%)] text-slate-100">
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-6 lg:px-6">
-        <section className="rounded-[28px] border border-white/8 bg-white/5 p-5 backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.28em] text-teal-300">Treemap</p>
-              <h1 className="mt-3 text-3xl font-semibold text-white">Tree Map</h1>
-              <p className="mt-2 text-sm text-slate-300">
-                {messages.treemap.description(title, activeTimeframe)}
-              </p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setSourceMode("index")}
-                  className={`rounded-full px-3 py-1.5 ${
-                    sourceMode === "index" ? "bg-teal-300 text-slate-950" : "bg-white/5 text-slate-200 hover:bg-white/10"
-                  }`}
-                >
-                  {treemapMessages.sourceIndex}
-                </button>
-                <button
-                  type="button"
-                  onClick={activateWatchlistsMode}
-                  className={`rounded-full px-3 py-1.5 ${
-                    sourceMode === "watchlists" ? "bg-teal-300 text-slate-950" : "bg-white/5 text-slate-200 hover:bg-white/10"
-                  }`}
-                >
-                  {treemapMessages.sourceWatchLists}
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setActiveIndex("sp100")}
-                  disabled={sourceMode !== "index"}
-                  className={`rounded-full px-3 py-1.5 ${
-                    activeIndex === "sp100" && sourceMode === "index"
-                      ? "bg-white text-slate-950"
-                      : "bg-white/5 text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-500"
-                  }`}
-                >
-                  {messages.treemap.sp100}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveIndex("nasdaq100")}
-                  disabled={sourceMode !== "index"}
-                  className={`rounded-full px-3 py-1.5 ${
-                    activeIndex === "nasdaq100" && sourceMode === "index"
-                      ? "bg-white text-slate-950"
-                      : "bg-white/5 text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-500"
-                  }`}
-                >
-                  {messages.treemap.nasdaq100}
-                </button>
-              </div>
-              {sourceMode === "watchlists" ? (
-                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{treemapMessages.selectedWatchLists}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {watchlists.map((watchlist) => {
-                      const selected = resolvedSelectedWatchlistIds.includes(watchlist.id);
-
-                      return (
-                        <label
-                          key={watchlist.id}
-                          className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
-                            selected
-                              ? "border-teal-300/40 bg-teal-400/15 text-teal-100"
-                              : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected}
-                            onChange={() => toggleWatchlistSelection(watchlist.id)}
-                            className="h-3.5 w-3.5 rounded border-white/15 bg-transparent text-teal-300"
-                          />
-                          <span>{watchlist.name}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-              <div className="flex flex-wrap gap-2 text-xs">
-                {timeframeLabels.map((timeframe) => (
-                  <button
-                    key={timeframe}
-                    type="button"
-                    onClick={() => setActiveTimeframe(timeframe)}
-                    className={`rounded-full px-3 py-1.5 ${
-                      timeframe === activeTimeframe ? "bg-white text-slate-950" : "bg-white/5 text-slate-200 hover:bg-white/10"
-                    }`}
-                  >
-                    {timeframe}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <p className="mt-4 text-xs text-slate-400">{message}</p>
-        </section>
-
-        <section className="overflow-hidden rounded-[28px] border border-white/8 bg-[#07111f] p-4">
-          <div className="relative overflow-x-auto">
-            {isLoading ? (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#07111f]/72 backdrop-blur-sm">
-                <div className="rounded-2xl border border-white/10 bg-slate-950/70 px-5 py-4 text-center shadow-[0_20px_60px_rgba(2,8,23,0.35)]">
-                  <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-teal-300" />
-                  <p className="mt-3 text-sm font-semibold text-white">{messages.treemap.loading}</p>
-                  <p className="mt-1 text-xs text-slate-400">{messages.treemap.loadingHint}</p>
-                </div>
-              </div>
-            ) : null}
-            {layout.companyNodes.length > 0 ? (
-              <svg viewBox="0 0 1200 760" className="h-auto w-full min-w-[900px]">
-                {layout.sectorNodes.map((sectorNode) => {
-                  const width = sectorNode.x1 - sectorNode.x0;
-                  const height = sectorNode.y1 - sectorNode.y0;
-                  const sectorName = sectorNode.data.name ?? "Other";
-
-                  return (
-                    <g key={`sector-${sectorName}-${sectorNode.x0}-${sectorNode.y0}`}>
-                      <rect
-                        x={sectorNode.x0}
-                        y={sectorNode.y0}
-                        width={width}
-                        height={height}
-                        rx={14}
-                        fill="rgba(255,255,255,0.02)"
-                        stroke="rgba(255,255,255,0.08)"
-                        strokeWidth={1}
-                      />
-                      <text
-                        x={sectorNode.x0 + 10}
-                        y={sectorNode.y0 + 18}
-                        fill="#94a3b8"
-                        fontSize="12"
-                        fontWeight="700"
-                      >
-                        {sectorName}
-                      </text>
-                    </g>
-                  );
-                })}
-                {layout.companyNodes.map((node) => {
-                  const item = node.data as Partial<TreemapItem> & { value?: number; name?: string };
-                  const width = node.x1 - node.x0;
-                  const height = node.y1 - node.y0;
-                  const area = width * height;
-                  const showSymbol = width > 48 && height > 24 && area > 2200;
-                  const showDetail = width > 92 && height > 60 && area > 6200;
-                  const changePercent = item.changePercent ?? 0;
-                  const symbol = item.symbol ?? item.name ?? "N/A";
-                  const sector = item.sector ?? "Other";
-
-                  return (
-                    <g key={`${symbol}-${sector}-${node.x0}-${node.y0}`}>
-                      <rect
-                        x={node.x0}
-                        y={node.y0}
-                        width={width}
-                        height={height}
-                        rx={10}
-                        fill={colorForChange(changePercent)}
-                        opacity={0.92}
-                      />
-                      {showSymbol ? (
-                        <text x={node.x0 + 8} y={node.y0 + 18} fill="#f8fafc" fontSize="12" fontWeight="700">
-                          {symbol}
-                        </text>
-                      ) : null}
-                      {showDetail ? (
-                        <>
-                          <text x={node.x0 + 8} y={node.y0 + 34} fill="#dbeafe" fontSize="11">
-                            {changePercent >= 0 ? "+" : ""}
-                            {changePercent.toFixed(2)}%
-                          </text>
-                          <text x={node.x0 + 8} y={node.y0 + 50} fill="#e2e8f0" fontSize="10">
-                            {sector}
-                          </text>
-                        </>
-                      ) : null}
-                    </g>
-                  );
-                })}
-              </svg>
-            ) : (
-              <div className="flex min-h-[760px] min-w-[900px] items-center justify-center rounded-[24px] border border-dashed border-white/10 bg-slate-950/30">
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-white">{messages.treemap.noData}</p>
-                  <p className="mt-2 text-xs text-slate-400">{messages.treemap.tryAnother}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
+  return <main className="pg-page tm-page">
+    <header className="pg-head">
+      <div><p className="pg-eyebrow">{text("Heatmap", "热力图")}</p><h1>{text("Where the market moved", "资金往哪儿走")}</h1><p className="pg-sub">{text("Tiles grouped by sector; colour is the move over the window, size is what you choose.", "按行业分组；颜色是区间涨跌，大小按你选的口径。")}</p></div>
+      <div className="pg-controls">
+        <label className="pg-field">{text("Universe", "范围")}<select value={source} onChange={(event) => { setSource(event.target.value); setHover(null); }}>{sources.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <div className="pg-seg" role="group" aria-label={text("Window", "区间")}>{TIMEFRAMES.map((item) => <button key={item} aria-pressed={timeframe === item} onClick={() => setTimeframe(item)}>{item}</button>)}</div>
+        <label className="pg-field">{text("Tile size", "方块大小")}<select value={sizeMode} onChange={(event) => setSize(event.target.value as Size)}>{(["cap", "move", "equal", ...(holdings.size ? ["holding"] : [])] as Size[]).map((key) => <option key={key} value={key}>{sizeLabels[key]}</option>)}</select></label>
       </div>
-    </main>
-  );
+    </header>
+
+    {!source.startsWith("index:") && !symbols.length ? <StatePanel kind="empty" title={text("No symbols in this list", "这个范围里没有股票")}><p>{text("Pick another universe, or add symbols / record trades first.", "换一个范围，或先添加自选、录入交易。")}</p></StatePanel>
+    : loading && !state.items.length ? <StatePanel kind="loading" title={text("Building the heatmap…", "正在生成热力图…")}><p>{text("Index heatmaps fetch ~100 quotes; the first load can take 20–40 seconds, later ones are cached.", "指数热力图需要获取约 100 只股票行情，首次加载约 20–40 秒，之后走缓存。")}</p></StatePanel>
+    : !leaves.length ? <ErrorState message={state.error ?? text("No heatmap data available", "暂无热力图数据")} zh={zh} onRetry={() => setRetry((value) => value + 1)} />
+    : <div className="tm-layout">
+      <section className="pg-panel tm-map">
+        <div className="pg-panel-head"><h2>{sources.find((item) => item.id === source)?.label} · {timeframe}</h2>
+          <span className="tm-scale"><i style={{ background: fill(-(SCALE[timeframe] ?? 10), timeframe) }} />−{SCALE[timeframe]}%<i style={{ background: fill(0, timeframe) }} />0<i style={{ background: fill(SCALE[timeframe] ?? 10, timeframe) }} />+{SCALE[timeframe]}%{loading && <span className="pd-updating">{text("Updating…", "更新中…")}</span>}</span></div>
+        <div className="tm-canvas" onPointerLeave={() => setHover(null)}>
+          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={text("Heatmap", "热力图")}>
+            {layout.sectors.map(({ name, node }) => <g key={name}><rect x={node.x0} y={node.y0} width={node.x1 - node.x0} height={node.y1 - node.y0} rx={8} className="tm-sector" />{node.x1 - node.x0 > 70 && <text x={node.x0 + 8} y={node.y0 + 15} className="tm-sector-label">{sectorLabel(name, zh)}</text>}</g>)}
+            {layout.tiles.map((tile) => {
+              const item = tile.data.item!;
+              const w = tile.x1 - tile.x0, h = tile.y1 - tile.y0;
+              const big = w > 70 && h > 46, small = w > 34 && h > 20;
+              const fontSize = Math.max(10, Math.min(22, Math.sqrt(w * h) / 6));
+              return <g key={item.symbol} className="tm-tile" tabIndex={0} role="button" aria-label={`${item.symbol} ${pct(item.changePercent)}`} onPointerEnter={() => setHover(item)} onFocus={() => setHover(item)} onClick={() => pickSymbol(item.symbol)} onKeyDown={(event) => { if (event.key === "Enter") pickSymbol(item.symbol); }}>
+                <rect x={tile.x0} y={tile.y0} width={w} height={h} rx={4} style={{ fill: fill(item.changePercent, timeframe) }} className={hover?.symbol === item.symbol ? "is-hover" : ""} />
+                {small && <text x={tile.x0 + w / 2} y={tile.y0 + h / 2 + (big ? -fontSize * 0.25 : fontSize * 0.35)} textAnchor="middle" className="tm-symbol" style={{ fontSize }}>{item.symbol}</text>}
+                {big && <text x={tile.x0 + w / 2} y={tile.y0 + h / 2 + fontSize * 0.85} textAnchor="middle" className="tm-change" style={{ fontSize: fontSize * 0.62 }}>{pct(item.changePercent)}</text>}
+              </g>;
+            })}
+          </svg>
+          {hover && <div className="tm-tip"><strong>{hover.symbol}</strong><span>{hover.name}</span><span>{sectorLabel(hover.sector, zh)}</span><span>{hover.price.toFixed(2)} {hover.currency ?? ""} · <b className={hover.changePercent >= 0 ? "is-up" : "is-down"}>{pct(hover.changePercent)}</b></span>{hover.holding != null && <span>{text("You hold", "你持有")} {hover.holding.toLocaleString(undefined, { maximumFractionDigits: 4 })} · {(hover.holding * hover.price).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>}<small>{text("Click to open in Market", "点击在行情页打开")}</small></div>}
+        </div>
+      </section>
+      <aside className="pg-panel tm-side">
+        <div className="pg-panel-head"><h2>{text("Breadth", "市场宽度")}</h2></div>
+        <dl className="tm-breadth"><div><dt>{text("Up / down", "涨 / 跌")}</dt><dd><span className="is-up">{advancers}</span> / <span className="is-down">{leaves.length - advancers}</span></dd></div><div><dt>{text(`Weighted (${sizeLabels[sizeMode]})`, `加权（${sizeLabels[sizeMode]}）`)}</dt><dd className={weighted == null ? "" : weighted >= 0 ? "is-up" : "is-down"}>{pct(weighted)}</dd></div></dl>
+        <div className="pg-panel-head"><h2>{text("Sectors", "行业")}</h2></div>
+        <ul className="tm-sectors">{[...layout.sectors].sort((a, b) => b.change - a.change).map((row) => <li key={row.name}><span>{sectorLabel(row.name, zh)}<small>{row.count} · {row.share.toFixed(0)}%</small></span><span className="tm-bar"><span style={{ width: `${Math.min(100, Math.abs(row.change) / (SCALE[timeframe] ?? 10) * 100)}%`, background: row.change >= 0 ? "var(--ui-up)" : "var(--ui-down)" }} /></span><b className={row.change >= 0 ? "is-up" : "is-down"}>{pct(row.change)}</b></li>)}</ul>
+      </aside>
+    </div>}
+  </main>;
 }
