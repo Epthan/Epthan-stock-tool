@@ -194,8 +194,6 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   });
   // No simulated prices on screen: until Yahoo answers the strip and list show placeholders.
   const [marketState, setMarketState] = useState<"loading" | "live" | "error">("loading");
-  const [showOverview, setShowOverview] = useState(false);
-  useEffect(() => { try { if (window.localStorage.getItem("stock-tool.market-overview-open.v1") === "1") startTransition(() => setShowOverview(true)); } catch {} }, []);
   const [candles, setCandles] = useState<CandlePoint[]>([]);
   const [loadedChartSymbol, setLoadedChartSymbol] = useState("");
   const chartCandles = loadedChartSymbol === resolvedSelectedSymbol ? candles : [];
@@ -213,7 +211,11 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   const [chartMode, setChartMode] = useState<ChartMode>("auto");
   const [isChartLightboxOpen, setIsChartLightboxOpen] = useState(false);
   const [mobileView, setMobileView] = useState("chart");
-  const [workplaceView, setWorkplaceView] = useState<"research" | "backtest">("research");
+  // Three tabs: market overview, single-stock research, backtest. The last one used is remembered.
+  type MarketView = "overview" | "research" | "backtest";
+  const [workplaceView, setWorkplaceViewState] = useState<MarketView>("research");
+  const setWorkplaceView = useCallback((view: MarketView) => { setWorkplaceViewState(view); try { window.localStorage.setItem("stock-tool.market-view.v1", view); } catch {} }, []);
+  useEffect(() => { try { const saved = window.localStorage.getItem("stock-tool.market-view.v1"); if (saved === "overview" || saved === "backtest") startTransition(() => setWorkplaceViewState(saved)); } catch {} }, []);
   const watchlistMenu = useRef<HTMLDetailsElement>(null);
   const [watchlistNotice, setWatchlistNotice] = useState("");
   useEffect(() => {
@@ -578,15 +580,15 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   return (
     <main className="workplace-page wpx">
       <div className="wpx-inner">
-        <header className="wpx-tools"><div><nav aria-label={locale === "zh" ? "市场工具" : "Market tools"}><button aria-pressed={workplaceView === "research"} onClick={() => setWorkplaceView("research")}>{locale === "zh" ? "行情研究" : "Research"}</button><button aria-pressed={workplaceView === "backtest"} onClick={() => { setWorkplaceView("backtest"); setIsChartLightboxOpen(false); }}>{locale === "zh" ? "策略回测" : "Backtest"}</button></nav></div><PortfolioManager onPick={handleSymbolPick} /></header>
-        {workplaceView === "backtest" ? <BacktestPanel key={resolvedSelectedSymbol} symbol={resolvedSelectedSymbol} /> : <>
-        <section className="wpx-indexes" aria-label={zh ? "主要指数" : "Major indexes"}>
+        <header className="wpx-tools"><div><nav aria-label={zh ? "行情视图" : "Market views"}>{([["overview", zh ? "市场概览" : "Markets"], ["research", zh ? "个股研究" : "Research"], ["backtest", zh ? "策略回测" : "Backtest"]] as [MarketView, string][]).map(([view, label]) => <button key={view} aria-pressed={workplaceView === view} onClick={() => { setWorkplaceView(view); setIsChartLightboxOpen(false); }}>{label}</button>)}</nav></div><PortfolioManager onPick={handleSymbolPick} /></header>
+        {workplaceView !== "overview" && <section className="wpx-indexes" aria-label={zh ? "主要指数" : "Major indexes"}>
           {!dashboard.indexes.length && CORE_INDEXES.map((item) => <div key={item.symbol} className="wpx-index is-placeholder"><span className="wpx-index-symbol">{zh ? item.zh : item.en}</span><span className="wpx-num">—</span></div>)}
-          {dashboard.indexes.map((index) => { const shown = formatOverview(index.symbol, index.price, index.change, index.changePercent); return <button type="button" key={index.symbol} className="wpx-index" onClick={() => handleSymbolPick(index.symbol)} title={index.symbol}><span className="wpx-index-symbol">{overviewName(index.symbol, zh)}</span><span className="wpx-num">{shown.value}</span><span className={`wpx-num ${index.change >= 0 ? "is-up" : "is-down"}`}>{shown.change}</span></button>; })}
-          <button type="button" className="wpx-index-more" aria-expanded={showOverview} onClick={() => setShowOverview((value) => { const next = !value; try { window.localStorage.setItem("stock-tool.market-overview-open.v1", next ? "1" : "0"); } catch {} return next; })}>{zh ? (showOverview ? "收起" : "全部指数与行业") : (showOverview ? "Hide" : "All indexes & sectors")} {showOverview ? "▴" : "▾"}</button>
+          {dashboard.indexes.map((index) => { const shown = formatOverview(index.symbol, index.price, index.change, index.changePercent); return <button type="button" key={index.symbol} className="wpx-index" onClick={() => { handleSymbolPick(index.symbol); setWorkplaceView("research"); }} title={index.symbol}><span className="wpx-index-symbol">{overviewName(index.symbol, zh)}</span><span className="wpx-num">{shown.value}</span><span className={`wpx-num ${index.change >= 0 ? "is-up" : "is-down"}`}>{shown.change}</span></button>; })}
+          <button type="button" className="wpx-index-more" onClick={() => setWorkplaceView("overview")}>{zh ? "行业与宏观" : "Sectors & macro"} ›</button>
           <span className="wpx-index-note">{marketState === "live" ? (zh ? "Yahoo 行情快照，约延迟 15 分钟" : "Yahoo snapshot, ~15 min delayed") : marketState === "loading" ? (zh ? "正在加载行情…" : "Loading market data…") : (zh ? "行情暂不可用，每 15 秒自动重试" : "Market data unavailable — retrying every 15 s")}</span>
-        </section>
-        {showOverview && <MarketOverview zh={zh} onPick={handleSymbolPick} />}
+        </section>}
+        {workplaceView === "overview" ? <MarketOverview zh={zh} onPick={(symbol) => { handleSymbolPick(symbol); setWorkplaceView("research"); }} />
+        : workplaceView === "backtest" ? <BacktestPanel key={resolvedSelectedSymbol} symbol={resolvedSelectedSymbol} /> : <>
 
         <nav className="wp-mobile-tabs" aria-label={locale === "zh" ? "工作台视图" : "Workplace views"}>{[["chart", locale === "zh" ? "图表" : "Chart"], ["watchlist", locale === "zh" ? "自选" : "Watchlist"], ["details", locale === "zh" ? "公司资料" : "Company"]].map(([value, label]) => <button key={value} aria-pressed={mobileView === value} onClick={() => setMobileView(value)}>{label}</button>)}</nav>
         <section className="wp-grid wpx-grid" data-mobile-view={mobileView}>
@@ -806,8 +808,9 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
               <p className="wpx-num">{zh ? `${heldPosition.quantity.toLocaleString()} 股，成本 ${formatPrice(heldPosition.averageCost!)}` : `${heldPosition.quantity.toLocaleString()} shares at ${formatPrice(heldPosition.averageCost!)}`}</p>
             </section>}
             <section className="wpx-card-plain">
-              <h3>{zh ? "估值与基本面" : "Valuation & fundamentals"}</h3>
-              {facts.length ? <dl className="wpx-facts">{facts.map(([label, value, signal]) => <div key={label}><dt>{label}</dt><dd className={`wpx-num ${signal == null ? "" : signal >= 0 ? "is-up" : "is-down"}`}>{value}</dd></div>)}</dl> : <p className="wpx-faint">{zh ? "暂时拿不到这只股票的基本面数据。" : "Fundamentals are not available for this symbol right now."}</p>}
+              <h3>{zh ? "估值" : "Valuation"}</h3>
+              {facts.length ? <dl className="wpx-facts">{facts.slice(0, 5).map(([label, value, signal]) => <div key={label}><dt>{label}</dt><dd className={`wpx-num ${signal == null ? "" : signal >= 0 ? "is-up" : "is-down"}`}>{value}</dd></div>)}</dl> : <p className="wpx-faint">{zh ? "暂时拿不到这只股票的基本面数据。" : "Fundamentals are not available for this symbol right now."}</p>}
+              {facts.length > 5 && <details className="wpx-more"><summary>{zh ? "成长与盈利能力" : "Growth & profitability"}<span>{facts.length - 5}</span></summary><dl className="wpx-facts">{facts.slice(5).map(([label, value, signal]) => <div key={label}><dt>{label}</dt><dd className={`wpx-num ${signal == null ? "" : signal >= 0 ? "is-up" : "is-down"}`}>{value}</dd></div>)}</dl></details>}
             </section>
             {companyDetail?.analystCount && companyDetail.targetMeanPrice ? <section className="wpx-card-plain">
               <h3>{zh ? "分析师" : "Analysts"}</h3>

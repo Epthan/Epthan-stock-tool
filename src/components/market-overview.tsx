@@ -43,7 +43,8 @@ export function MarketOverview({ zh, onPick }: { zh: boolean; onPick: (symbol: s
   if (sectors.length) reads.push(zh ? `${sectors.length} 个行业中 ${up} 个上涨；最强 ${overviewName(sectors[0].symbol, true)}，最弱 ${overviewName(sectors.at(-1)!.symbol, true)}。` : `${up} of ${sectors.length} sectors up; strongest ${overviewName(sectors[0].symbol, false)}, weakest ${overviewName(sectors.at(-1)!.symbol, false)}.`);
 
   return <section className="mo-panel" aria-label={zh ? "美股市场概览" : "US market overview"}>
-    {reads.length > 0 && <p className="mo-read">{reads.join(" ")}</p>}
+    <header className="mo-head"><div><h2>{zh ? "美股市场概览" : "US market overview"}</h2><p>{zh ? "大盘、风格、行业与宏观，一页看清今天的市场。" : "Broad market, style, sectors and macro on one page."}</p></div><span className="mo-stamp">{zh ? "约延迟 15 分钟 · 30 秒刷新" : "~15 min delayed · refreshes every 30 s"}</span></header>
+    {reads.length > 0 && <ul className="mo-read">{reads.map((line) => <li key={line}>{line}</li>)}</ul>}
     <div className="mo-grid">
       <div className="mo-group"><h3>{zh ? OVERVIEW_GROUPS[0].zh : OVERVIEW_GROUPS[0].en}</h3><div className="mo-tiles">{rows("broad").map(tile)}</div></div>
       <div className="mo-group"><h3>{zh ? OVERVIEW_GROUPS[2].zh : OVERVIEW_GROUPS[2].en}</h3><div className="mo-tiles">{rows("macro").map(tile)}</div></div>
@@ -51,6 +52,6 @@ export function MarketOverview({ zh, onPick }: { zh: boolean; onPick: (symbol: s
         <ul>{sectors.map((row) => <li key={row.symbol}><button onClick={() => onPick(row.symbol)}><span className="mo-name">{overviewName(row.symbol, zh)}<small>{row.symbol}</small></span><span className="mo-bar"><span className={row.changePercent >= 0 ? "is-up-bg" : "is-down-bg"} style={{ width: `${Math.abs(row.changePercent) / scale * 50}%`, [row.changePercent >= 0 ? "left" : "right"]: "50%" }} /></span><span className={`wpx-num ${tone(row.changePercent)}`}>{formatOverview(row.symbol, row.price, row.change, row.changePercent).change}</span></button></li>)}</ul>
       </div>
     </div>
-    <p className="mo-foot">{zh ? "Yahoo 行情，约延迟 15 分钟 · 点击任意一项在图表中打开" : "Yahoo quotes, ~15 min delayed · click any item to chart it"}</p>
+    <p className="mo-foot">{zh ? "数据来自 Yahoo · 点击任意一项，在“个股研究”中打开图表" : "Data from Yahoo · click any item to open its chart in Research"}</p>
   </section>;
 }
