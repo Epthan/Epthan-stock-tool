@@ -10,7 +10,7 @@ import { StockChart, type ChartStyle } from "@/components/stock-chart";
 import { ErrorState, StatePanel } from "@/components/state-panel";
 import { movingAverageLabels, type CandlePoint, type MovingAverageKey, type TimeframeKey, type WatchlistRow } from "@/lib/mock-market";
 import { getTradePosition } from "@/lib/portfolio-trades";
-import { createDefaultWatchlists } from "@/lib/watchlists";
+import { createDefaultWatchlists, watchlistLabel } from "@/lib/watchlists";
 
 type CandleResponse = { mode: "live" | "mock"; candles: CandlePoint[]; message: string };
 type QuoteResponse = { quote: WatchlistRow };
@@ -102,7 +102,7 @@ export function CompareView() {
 
   // Sources: every watch list, plus every portfolio's open positions.
   const sources = useMemo(() => [
-    ...(watchlists.length ? watchlists : createDefaultWatchlists()).map((list) => ({ id: `w:${list.id}`, label: `${text("Watch list", "自选")} · ${list.name}`, symbols: list.symbols })),
+    ...(watchlists.length ? watchlists : createDefaultWatchlists()).map((list) => ({ id: `w:${list.id}`, label: `${text("Watch list", "自选")} · ${watchlistLabel(list.name, zh)}`, symbols: list.symbols })),
     ...portfolios.filter((portfolio) => portfolio.trades?.length).map((portfolio) => ({ id: `p:${portfolio.id}`, label: `${text("Holdings", "持仓")} · ${zh ? portfolio.nameZh ?? portfolio.name : portfolio.name}`, symbols: [...new Set(portfolio.trades!.map((trade) => trade.symbol))].filter((symbol) => getTradePosition(portfolio.trades!, symbol, portfolio.splits).quantity > 1e-8) })),
   // eslint-disable-next-line react-hooks/exhaustive-deps -- labels follow locale
   ], [watchlists, portfolios, zh]);

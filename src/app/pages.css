@@ -84,3 +84,14 @@ html[data-skin="night"] { --cmp-1: #7fa2ff; --cmp-2: #f39a4c; --cmp-3: #4cc597; 
   .tm-canvas svg { min-width: 760px; }
   .tm-tip { position: static; margin-top: 10px; max-width: none; }
 }
+
+/* Touch devices: every control at least 40px (compare, heatmap, trades, dashboard extras) */
+@media (pointer: coarse) {
+  .pg-seg button, .pg-field select, .tl-select select, .cl-form select, .cl-form input, .ci-options select, .ci-options input, .ci-mapping select,
+  .wpx-index-more, .mo-sectors button, .ui-state-button, .bd-table .pd-symbol, .shell-lang, .tl-primary, .tl-link, button.wpx-index, .workplace-portfolios summary, .pm-trade-launch, details > summary { min-height: 40px; }
+  button.wpx-index { padding: 8px 2px; }
+  .pm-launcher, .pd-update-holdings { min-height: 40px; }
+  .pg-seg button { min-width: 40px; }
+  .cmp-symbol, .trade-ledger .tl-symbol, .portfolio-dashboard .pd-symbol, .rd-contrib .pd-symbol { min-height: 40px; display: inline-flex; align-items: center; }
+  .pd-calculation-note summary { min-height: 40px; display: flex; align-items: center; }
+}

@@ -210,7 +210,7 @@ export function TradeLedgerView() {
       <div>
         <p className="tl-eyebrow">{portfolioLabel(activePortfolio)} / {text("TRADE LOG", "交易记录")}</p>
         <h1>{text("Trade log", "交易记录")}</h1>
-        <p className="tl-muted">{text("One ledger per portfolio. The same records drive Workplace and Dashboard analytics.", "每个组合一份交易账本，Workplace 与 Dashboard 分析共用同一份记录。")}</p>
+        <p className="tl-muted">{text("One ledger per portfolio. The same records drive the Market and Portfolio pages.", "每个组合一份交易账本，行情页和组合页的分析共用同一份记录。")}</p>
       </div>
       <div className="tl-heading-actions">
         <label className="tl-select">{text("Portfolio", "组合")}
@@ -256,8 +256,8 @@ export function TradeLedgerView() {
     {!trades.length ? <section className="tl-empty">
       <h2>{text("No trades recorded in this portfolio", "此组合暂无交易记录")}</h2>
       <p>{activePortfolio.demoId
-        ? text("This is a demo portfolio: its Dashboard holdings are simulated, not purchases. Add a real trade to switch it to recorded-trade analytics.", "这是演示组合：Dashboard 上的持仓为模拟数据，不是实际买入。录入真实交易后会切换为基于交易记录的分析。")
-        : text("Record a buy to start. Dashboard analytics rebuild from these records.", "先录入一笔买入。Dashboard 分析会基于这些记录重新计算。")}</p>
+        ? text("This is a demo portfolio: its holdings are fixed sample positions priced with real market data, not your purchases. Add a real trade to switch it to your own records.", "这是演示组合：持仓是固定的示例仓位（按真实行情计价），不是你的实际买入。录入真实交易后即切换为你自己的记录。")
+        : text("Record a buy to start. Portfolio analytics rebuild from these records.", "先录入一笔买入。组合页的分析会基于这些记录重新计算。")}</p>
       <button className="tl-primary" onClick={() => setEditor({ symbol: "" })}>{text("+ Add first trade", "+ 录入第一笔交易")}</button>
     </section> : <>
       <section className="tl-section">
@@ -265,7 +265,7 @@ export function TradeLedgerView() {
         <div className="tl-scroll"><table>
           <thead><tr>{[text("Symbol", "代码"), text("Qty", "数量"), text("Avg cost", "平均成本"), text("Last", "现价"), text("Market value", "市值"), text("Unrealized", "未实现"), text("Realized", "已实现"), ...(hasForeign ? [`${text("Value", "市值")} ${base}`, `${text("Total P&L", "总盈亏")} ${base}`] : []), ""].map((label, index) => <th key={index}>{label}</th>)}</tr></thead>
           <tbody>{positions.map((position) => <tr key={position.symbol} className={position.open ? "" : "tl-closed"}>
-            <td><button className="tl-symbol" title={text("Open in Workplace", "在 Workplace 中查看")} onClick={() => pickSymbol(position.symbol)}>{position.symbol} ↗</button>{!position.open && <small>{text("Closed", "已平仓")}</small>}</td>
+            <td><button className="tl-symbol" title={text("Open on the Market page", "在行情页查看")} onClick={() => pickSymbol(position.symbol)}>{position.symbol} ↗</button>{!position.open && <small>{text("Closed", "已平仓")}</small>}</td>
             <td>{position.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}</td>
             <td>{money(position.averageCost)}</td>
             <td>{position.open ? (position.symbol in quotes ? money(position.quote?.price) : "…") : "—"}{position.quote && (hasForeign || position.currency !== "USD") ? <small>{position.currency}</small> : null}</td>

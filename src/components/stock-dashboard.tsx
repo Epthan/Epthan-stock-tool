@@ -5,6 +5,7 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import { ChartLightbox } from "@/components/chart-lightbox";
 import { PortfolioManager } from "@/components/portfolio-manager";
 import { BacktestPanel } from "@/components/backtest-panel";
+import { watchlistLabel } from "@/lib/watchlists";
 import { MarketOverview } from "@/components/market-overview";
 import { CORE_INDEXES, formatOverview, overviewName } from "@/lib/market-overview";
 import { useStoredWatchlists } from "@/hooks/use-stored-watchlists";
@@ -608,7 +609,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
               >
                 <optgroup label={locale === "zh" ? "自选列表" : "Watch lists"}>{watchlists.map((list) => (
                   <option key={list.id} value={`watchlist:${list.id}`}>
-                    {list.name}
+                    {watchlistLabel(list.name, zh)}
                   </option>
                 ))}</optgroup>
                 <optgroup label={locale === "zh" ? "投资组合" : "Portfolios"}>{portfolios.map((portfolio) => <option key={portfolio.id} value={`portfolio:${portfolio.id}`}>{locale === "zh" ? portfolio.nameZh ?? portfolio.name : portfolio.name} ({portfolio.symbols.length})</option>)}</optgroup>
@@ -679,17 +680,17 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
               </div>
               <div className="wpx-quote-actions">
                 <details ref={watchlistMenu} className="wp-add-watchlist">
-                        <summary aria-label={locale === "zh" ? "添加到自选列表" : "Add to watch list"} title={locale === "zh" ? "添加到指定 Watch List" : "Add to a specific watch list"}>+</summary>
+                        <summary aria-label={locale === "zh" ? "添加到自选列表" : "Add to watch list"} title={locale === "zh" ? "添加到指定自选列表" : "Add to a specific watch list"}>+</summary>
                         <div className="wp-watchlist-menu" role="group" aria-label={locale === "zh" ? "选择目标自选列表" : "Choose a watch list"}>
                           <p>{locale === "zh" ? "添加到自选列表" : "Add to watch list"} · {resolvedSelectedSymbol}</p>
                           {watchlists.map((list) => {
                             const included = list.symbols.includes(resolvedSelectedSymbol);
                             return <button type="button" key={list.id} disabled={included} onClick={() => {
                               setWatchlists((current) => current.map((item) => item.id === list.id && !item.symbols.includes(resolvedSelectedSymbol) ? { ...item, symbols: [...item.symbols, resolvedSelectedSymbol] } : item));
-                              setWatchlistNotice(`${resolvedSelectedSymbol} ${locale === "zh" ? "已添加到" : "added to"} ${list.name}`);
+                              setWatchlistNotice(`${resolvedSelectedSymbol} ${locale === "zh" ? "已添加到" : "added to"} ${watchlistLabel(list.name, zh)}`);
                               watchlistMenu.current?.removeAttribute("open");
                               watchlistMenu.current?.querySelector("summary")?.focus();
-                            }}><span>{list.name}</span><small>{included ? (locale === "zh" ? "已添加 ✓" : "Added ✓") : "+"}</small></button>;
+                            }}><span>{watchlistLabel(list.name, zh)}</span><small>{included ? (locale === "zh" ? "已添加 ✓" : "Added ✓") : "+"}</small></button>;
                           })}
                         </div>
                       </details>

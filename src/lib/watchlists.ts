@@ -96,3 +96,8 @@ export function loadStoredWatchlists() {
     activeWatchlistId: "default",
   };
 }
+
+/** The built-in default list is stored with an English name; show it in the UI language. */
+export function watchlistLabel(name: string, zh: boolean) {
+  return zh && name === "Main Watch List" ? "主自选列表" : name;
+}

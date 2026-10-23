@@ -10,6 +10,7 @@ import { ErrorState, StatePanel } from "@/components/state-panel";
 import { TTL, fetchCached } from "@/lib/client-cache";
 import { sectorLabel } from "@/lib/breakdowns";
 import { getTradePosition } from "@/lib/portfolio-trades";
+import { watchlistLabel } from "@/lib/watchlists";
 import type { TimeframeKey } from "@/lib/mock-market";
 
 type TreemapIndexKey = "sp100" | "nasdaq100";
@@ -54,7 +55,7 @@ export function TreemapView({ initialIndex = "sp100" }: { initialIndex?: Treemap
 
   const sources = [
     { id: "index:sp100", label: "S&P 100" }, { id: "index:nasdaq100", label: "Nasdaq 100" },
-    ...watchlists.map((list) => ({ id: `watch:${list.id}`, label: `${text("Watch list", "自选")} · ${list.name}` })),
+    ...watchlists.map((list) => ({ id: `watch:${list.id}`, label: `${text("Watch list", "自选")} · ${watchlistLabel(list.name, zh)}` })),
     ...portfolios.filter((portfolio) => portfolio.trades?.length).map((portfolio) => ({ id: `portfolio:${portfolio.id}`, label: `${text("Holdings", "持仓")} · ${zh ? portfolio.nameZh ?? portfolio.name : portfolio.name}` })),
   ];
   const sizeMode: Size = source.startsWith("portfolio:") && size === "cap" ? "holding" : size;

@@ -7,6 +7,8 @@ import { useStockSelection } from "@/components/stock-selection-provider";
 import { LivePortfolioDashboard } from "@/components/live-portfolio-dashboard";
 import { PortfolioTradesDialog } from "@/components/portfolio-trades-dialog";
 import { usePortfolios, type ManagedPortfolio } from "@/hooks/use-portfolios";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { StatePanel } from "@/components/state-panel";
 import { DEMO_SYMBOLS, demoPortfolios } from "@/lib/portfolio-analytics";
 import type { PortfolioTrade } from "@/lib/portfolio-trades";
 
@@ -33,6 +35,8 @@ export function PortfolioDashboard() {
   const [tradeEditor, setTradeEditor] = useState<{ portfolioId: string; symbol: string } | null>(null);
   const { portfolios, activePortfolio, selectPortfolio } = usePortfolios();
   const portfolioMenu = useRef<HTMLDetailsElement>(null);
+  // Until hydration finishes the store still returns the server default (a demo portfolio); analysing it would waste a heavy request.
+  const hydrated = useHydrated();
   const name = (portfolio: ManagedPortfolio) => (zh ? portfolio.nameZh ?? portfolio.name : portfolio.name);
   const demo = !activePortfolio.trades?.length && activePortfolio.demoId ? demoTrades(activePortfolio.demoId) : null;
   const analysed = useMemo<ManagedPortfolio>(() => (demo ? { ...activePortfolio, trades: demo.trades, cash: [] } : activePortfolio), [activePortfolio, demo]);
@@ -74,11 +78,11 @@ export function PortfolioDashboard() {
     </aside>
     <div className="pd-content">
       <h1 className="pd-sr-only">{name(activePortfolio)} · {navigation.find((item) => item.id === view)?.label}</h1>
-      {demo && <div className="ta-switch-banner" role="note"><span>{recordedPortfolio
+      {hydrated && demo && <div className="ta-switch-banner" role="note"><span>{recordedPortfolio
         ? <>{text("Demo portfolio: simulated holdings priced with real market data. Your recorded portfolio", "演示组合：模拟持仓 + 真实行情。你的真实记录组合")} <strong>{name(recordedPortfolio)}</strong> {text(`has ${recordedPortfolio.trades!.length} trades.`, `已有 ${recordedPortfolio.trades!.length} 笔交易。`)}</>
         : text("Demo portfolio: fixed holdings bought two years ago at the real close, analysed with real market data. Record a trade to switch this portfolio to your own records.", "演示组合：固定持仓在两年前按真实收盘价买入，用真实行情分析。录入一笔交易后，本组合即切换为你自己的记录。")}</span>
         {recordedPortfolio ? <button className="pd-workplace-link" onClick={() => choose(recordedPortfolio.id)}>{text("Switch to it", "切换过去")} →</button> : <Link className="pd-workplace-link" href="/portfolio">{text("Record a trade", "去录入交易")} →</Link>}</div>}
-      <LivePortfolioDashboard key={`${activePortfolio.id}:${demo ? "demo" : "live"}`} portfolio={analysed} demoCash={demo?.cash} view={view} onPick={pickSymbol} onUpdateHolding={(symbol) => setTradeEditor({ portfolioId: activePortfolio.id, symbol })} />
+      {!hydrated ? <StatePanel kind="loading" title={text("Loading portfolio…", "正在加载组合…")} /> : <LivePortfolioDashboard key={`${activePortfolio.id}:${demo ? "demo" : "live"}`} portfolio={analysed} demoCash={demo?.cash} view={view} onPick={pickSymbol} onUpdateHolding={(symbol) => setTradeEditor({ portfolioId: activePortfolio.id, symbol })} />}
     </div>
     {tradeEditor && <PortfolioTradesDialog key={`${tradeEditor.portfolioId}:${tradeEditor.symbol}`} portfolioId={tradeEditor.portfolioId} symbol={tradeEditor.symbol} onClose={() => setTradeEditor(null)} />}
   </main>;
