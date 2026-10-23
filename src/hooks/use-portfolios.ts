@@ -6,7 +6,7 @@ import { importLegacyTrades, validatePortfolioTrades, type PortfolioTrade } from
 import { validateCashEntries, type CashEntry } from "@/lib/cash-ledger";
 import { sameSplits, type StockSplit } from "@/lib/corporate-actions";
 
-export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[]; cash?: CashEntry[]; splits?: StockSplit[] };
+export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[]; cash?: CashEntry[]; splits?: StockSplit[]; baseCurrency?: string };
 const symbolOrder = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"];
 export const initialPortfolios: ManagedPortfolio[] = demoPortfolios.map((portfolio) => ({
   id: portfolio.id, name: portfolio.name, nameZh: portfolio.nameZh, initials: portfolio.initials, demoId: portfolio.id,
@@ -134,6 +134,11 @@ export function usePortfolios() {
       if (!portfolio || sameSplits(portfolio.splits, splits)) return false;
       save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, splits } : item) });
       return true;
+    },
+    setBaseCurrency(portfolioId: string, currency: string) {
+      if (!/^[A-Z]{3}$/.test(currency)) throw new Error("INVALID_CURRENCY");
+      const current = readState();
+      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, baseCurrency: currency } : item) });
     },
     saveCash(portfolioId: string, entry: CashEntry) {
       const current = readState();

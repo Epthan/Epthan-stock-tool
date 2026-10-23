@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { TTL, fetchCached } from "@/lib/client-cache";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { BackupControls } from "@/components/data-sync";
 import { CsvImportDialog } from "@/components/csv-import-dialog";
@@ -12,7 +12,8 @@ import { CASH_KINDS, cashLabel, cashSign, cashSummary, type CashKind } from "@/l
 import { PortfolioTradesDialog } from "@/components/portfolio-trades-dialog";
 import { useStockSelection } from "@/components/stock-selection-provider";
 import { legacyMigrationKey, usePortfolios, type LegacyMigration } from "@/hooks/use-portfolios";
-import { getTradePosition, tradeDate } from "@/lib/portfolio-trades";
+import { getTradePosition, tradeDate, type PortfolioTrade } from "@/lib/portfolio-trades";
+import { BASE_CURRENCIES, normalizeCurrency, rateOn, type RatePoint } from "@/lib/fx";
 
 type Quote = { price: number; currency: string };
 
@@ -40,7 +41,7 @@ function subscribeNever() { return () => {}; }
 export function TradeLedgerView() {
   const { locale } = useLanguage();
   const text = (english: string, chinese: string) => (locale === "zh" ? chinese : english);
-  const { portfolios, activePortfolio, selectPortfolio, saveCash, deleteCash } = usePortfolios();
+  const { portfolios, activePortfolio, selectPortfolio, saveCash, deleteCash, setBaseCurrency } = usePortfolios();
   const { pickSymbol } = useStockSelection();
   const [editor, setEditor] = useState<{ symbol: string } | null>(null);
   const [quotes, setQuotes] = useState<Record<string, Quote | null>>({});
@@ -69,28 +70,62 @@ export function TradeLedgerView() {
     return () => { cancelled = true; };
   }, [symbolKey]);
 
+  // ---- Currencies: positions are shown in each security's own currency; totals in the ledger currency ----
+  const base = activePortfolio.baseCurrency ?? "USD";
+  const unitOf = useMemo(() => Object.fromEntries(symbols.map((symbol) => [symbol, quotes[symbol] ? normalizeCurrency(quotes[symbol]!.currency) : null])), [symbols, quotes]);
+  const foreign = useMemo(() => [...new Set(Object.values(unitOf).filter((unit): unit is { currency: string; divisor: number } => !!unit).map((unit) => unit.currency))].filter((currency) => currency !== base).sort(), [unitOf, base]);
+  const firstDate = useMemo(() => trades.map((trade) => tradeDate(trade.tradedAt)).sort()[0] ?? "", [trades]);
+  const fxKey = foreign.length && firstDate ? `fx:${foreign.join(",")}:${base}:${firstDate}` : "";
+  const [fx, setFx] = useState<{ key: string; rates: Record<string, RatePoint[]> | null }>({ key: "", rates: null });
+  useEffect(() => {
+    if (!fxKey) return;
+    let active = true;
+    fetchCached<{ rates: Record<string, RatePoint[]> }>(fxKey, `/api/market/fx?pairs=${foreign.map((currency) => `${currency}:${base}`).join(",")}&from=${firstDate}`, TTL.daily)
+      .then((body) => { if (active) setFx({ key: fxKey, rates: body.rates }); })
+      .catch(() => { if (active) setFx({ key: fxKey, rates: {} }); });
+    return () => { active = false; };
+  }, [fxKey, foreign, base, firstDate]);
+  const fxReady = !fxKey || fx.key === fxKey;
+  /** Multiplier from a security's quote unit to the ledger currency on a date (null = rate unavailable). */
+  const toBase = useCallback((symbol: string, date?: string) => {
+    const unit = unitOf[symbol];
+    if (!unit) return null;
+    if (unit.currency === base) return 1 / unit.divisor;
+    const series = fx.key === fxKey ? fx.rates?.[`${unit.currency}:${base}`] : undefined;
+    const rate = date ? rateOn(series, date) : series?.at(-1)?.rate ?? null;
+    return rate == null ? null : rate / unit.divisor;
+  }, [unitOf, base, fx, fxKey]);
+  const baseTrades = useMemo(() => trades.map((trade) => { const factor = toBase(trade.symbol, tradeDate(trade.tradedAt)); return factor == null ? null : { ...trade, price: trade.price * factor }; }), [trades, toBase]);
+  const baseComplete = baseTrades.every(Boolean);
+
   const positions = useMemo(() => symbols.map((symbol) => {
     const position = getTradePosition(trades, symbol, activePortfolio.splits);
     const quote = quotes[symbol];
     const open = position.quantity > 1e-8;
     const marketValue = open && quote ? quote.price * position.quantity : open ? null : 0;
     const unrealized = open && quote && position.averageCost !== null ? (quote.price - position.averageCost) * position.quantity : open ? null : 0;
-    return { symbol, ...position, open, quote, marketValue, unrealized, tradeCount: trades.filter((trade) => trade.symbol === symbol).length };
-  }).sort((left, right) => Number(right.open) - Number(left.open) || (right.marketValue ?? 0) - (left.marketValue ?? 0)), [symbols, trades, quotes, activePortfolio.splits]);
+    // Same position in the ledger currency, cost at the trade-date rate and value at today's rate (so FX gains are included).
+    const rateNow = toBase(symbol);
+    const inBase = baseComplete ? getTradePosition(baseTrades as PortfolioTrade[], symbol, activePortfolio.splits) : null;
+    const marketBase = !open ? 0 : quote && rateNow != null ? quote.price * position.quantity * rateNow : null;
+    const unrealizedBase = !open ? 0 : marketBase != null && inBase?.averageCost != null ? marketBase - inBase.averageCost * position.quantity : null;
+    return { symbol, ...position, open, quote, marketValue, unrealized, marketBase, unrealizedBase, realizedBase: inBase?.realized ?? null, currency: unitOf[symbol]?.currency ?? quote?.currency ?? "", tradeCount: trades.filter((trade) => trade.symbol === symbol).length };
+  }).sort((left, right) => Number(right.open) - Number(left.open) || (right.marketBase ?? 0) - (left.marketBase ?? 0)), [symbols, trades, quotes, activePortfolio.splits, toBase, baseTrades, baseComplete, unitOf]);
 
   const openPositions = positions.filter((position) => position.open);
-  const currencies = new Set(openPositions.map((position) => position.quote?.currency).filter(Boolean));
-  const mixedCurrency = currencies.size > 1;
-  const quotesPending = openPositions.some((position) => !(position.symbol in quotes));
+  const hasForeign = foreign.length > 0;
+  const quotesPending = positions.some((position) => !(position.symbol in quotes)) || !fxReady;
   const quotesMissing = openPositions.some((position) => position.symbol in quotes && !quotes[position.symbol]);
-  const totalMarket = mixedCurrency || quotesMissing || quotesPending ? null : openPositions.reduce((sum, position) => sum + (position.marketValue ?? 0), 0);
-  const totalUnrealized = mixedCurrency || quotesMissing || quotesPending ? null : openPositions.reduce((sum, position) => sum + (position.unrealized ?? 0), 0);
-  const totalRealized = mixedCurrency ? null : positions.reduce((sum, position) => sum + position.realized, 0);
+  const sumOrNull = (values: (number | null)[]) => (values.some((value) => value == null) ? null : values.reduce<number>((sum, value) => sum + (value ?? 0), 0));
+  const totalMarket = quotesPending ? null : sumOrNull(openPositions.map((position) => position.marketBase));
+  const totalUnrealized = quotesPending ? null : sumOrNull(openPositions.map((position) => position.unrealizedBase));
+  const totalRealized = quotesPending ? null : sumOrNull(positions.map((position) => position.realizedBase));
 
   const cashEntries = useMemo(() => activePortfolio.cash ?? [], [activePortfolio]);
-  const cash = useMemo(() => cashSummary(cashEntries, trades), [cashEntries, trades]);
+  // Trades settle in the ledger currency at the trade-date rate; cash entries are recorded in the ledger currency.
+  const cash = useMemo(() => cashSummary(cashEntries, baseComplete ? (baseTrades as PortfolioTrade[]) : trades), [cashEntries, trades, baseTrades, baseComplete]);
   const hasCash = cashEntries.length > 0;
-  const accountValue = totalMarket !== null && !mixedCurrency ? totalMarket + cash.balance : null;
+  const accountValue = totalMarket !== null && baseComplete ? totalMarket + cash.balance : null;
   const totalReturn = accountValue !== null && cash.deposits > 0 ? accountValue - cash.netContributions : null;
   const cashRows = useMemo(() => [...cashEntries].sort((left, right) => right.date.localeCompare(left.date)), [cashEntries]);
 
@@ -120,12 +155,14 @@ export function TradeLedgerView() {
       const from = new Date(`${dividend.date}T00:00:00Z`); from.setUTCDate(from.getUTCDate() - 7);
       const to = new Date(`${dividend.date}T00:00:00Z`); to.setUTCDate(to.getUTCDate() + 75);
       const recorded = cashEntries.some((entry) => entry.kind === "dividend" && entry.symbol === dividend.symbol && entry.date >= from.toISOString().slice(0, 10) && entry.date <= to.toISOString().slice(0, 10));
-      return recorded ? [] : [{ ...dividend, shares: held, total: Math.round(held * dividend.amount * 100) / 100 }];
+      const factor = toBase(dividend.symbol, dividend.date);
+      if (factor == null) return [];
+      return recorded ? [] : [{ ...dividend, shares: held, currency: unitOf[dividend.symbol]?.currency ?? base, total: Math.round(held * dividend.amount * factor * 100) / 100 }];
     }).filter((item) => item.total >= 0.01).sort((left, right) => right.date.localeCompare(left.date));
-  }, [actions, trades, cashEntries, activePortfolio.splits]);
+  }, [actions, trades, cashEntries, activePortfolio.splits, toBase, unitOf, base]);
   function addDividends(items: typeof missingDividends) {
     try {
-      for (const item of items) saveCash(activePortfolio.id, { id: crypto.randomUUID(), kind: "dividend", date: item.date, amount: item.total, symbol: item.symbol, note: `${item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} × ${item.amount} (ex-date, gross)` });
+      for (const item of items) saveCash(activePortfolio.id, { id: crypto.randomUUID(), kind: "dividend", date: item.date, amount: item.total, symbol: item.symbol, note: `${item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} × ${item.currency} ${item.amount} (ex-date, gross${item.currency !== base ? `, in ${base}` : ""})` });
     } catch { setCashError(text("Could not add dividends.", "无法添加分红。")); }
   }
 
@@ -164,6 +201,9 @@ export function TradeLedgerView() {
             {portfolios.map((portfolio) => <option key={portfolio.id} value={portfolio.id}>{portfolioLabel(portfolio)}{portfolio.trades?.length ? ` · ${portfolio.trades.length}` : ""}</option>)}
           </select>
         </label>
+        <label className="tl-select tl-select-small">{text("Ledger currency", "账本币种")}
+          <select value={base} onChange={(event) => setBaseCurrency(activePortfolio.id, event.target.value)}>{BASE_CURRENCIES.map((currency) => <option key={currency}>{currency}</option>)}</select>
+        </label>
         <button className="tl-primary" onClick={() => setEditor({ symbol: "" })}>{text("+ Add trade", "+ 新增交易")}</button>
         <button className="tl-button" onClick={() => setImporting(true)}>{text("Import CSV", "导入 CSV")}</button>
         <BackupControls zh={locale === "zh"} />
@@ -181,9 +221,9 @@ export function TradeLedgerView() {
     <section className="tl-metrics" aria-label={text("Ledger summary", "账本概览")}>
       <article><span>{text("Trades", "交易笔数")}</span><strong>{trades.length}</strong><small>{symbols.length} {text("securities", "只证券")}</small></article>
       <article><span>{text("Open positions", "持仓数")}</span><strong>{openPositions.length}</strong><small>{text("Average-cost method", "平均成本法")}</small></article>
-      <article><span>{text("Market value", "持仓市值")}</span><strong>{quotesPending && openPositions.length ? "…" : money(totalMarket)}</strong><small>{mixedCurrency ? text("Mixed currencies — no FX", "多币种，未做汇率换算") : quotesMissing ? text("Some quotes unavailable", "部分报价缺失") : text("Latest quote", "最新报价")}</small></article>
-      <article><span>{text("Unrealized P&L", "未实现盈亏")}</span><strong className={tone(totalUnrealized)}>{quotesPending && openPositions.length ? "…" : signed(totalUnrealized)}</strong><small>{text("vs. average cost", "相对平均成本")}</small></article>
-      <article><span>{text("Realized P&L", "已实现盈亏")}</span><strong className={tone(totalRealized)}>{signed(totalRealized)}</strong><small>{text("Excl. fees & dividends", "不含费用与分红")}</small></article>
+      <article><span>{text("Market value", "持仓市值")}</span><strong>{quotesPending && openPositions.length ? "…" : money(totalMarket)}</strong><small>{quotesMissing ? text("Some quotes unavailable", "部分报价缺失") : hasForeign ? text(`${base} · ${foreign.join("/")} at today's rate`, `${base} · ${foreign.join("/")} 按今日汇率`) : `${base} · ${text("latest quote", "最新报价")}`}</small></article>
+      <article><span>{text("Unrealized P&L", "未实现盈亏")}</span><strong className={tone(totalUnrealized)}>{quotesPending && openPositions.length ? "…" : signed(totalUnrealized)}</strong><small>{hasForeign ? text("vs. cost, incl. FX", "相对成本，含汇率影响") : text("vs. average cost", "相对平均成本")}</small></article>
+      <article><span>{text("Realized P&L", "已实现盈亏")}</span><strong className={tone(totalRealized)}>{quotesPending ? "…" : signed(totalRealized)}</strong><small>{text("Excl. fees & dividends", "不含费用与分红")}</small></article>
     </section>
 
     {hasCash && <section className="tl-metrics tl-metrics-cash" aria-label={text("Cash summary", "现金概览")}>
@@ -204,15 +244,17 @@ export function TradeLedgerView() {
       <section className="tl-section">
         <div className="tl-section-heading"><div><h2>{text("Positions", "持仓")}</h2><p>{text("Rebuilt from the ledger. Prices in each security's quote currency.", "由交易记录重建，价格为各证券报价币种。")}</p></div></div>
         <div className="tl-scroll"><table>
-          <thead><tr>{[text("Symbol", "代码"), text("Qty", "数量"), text("Avg cost", "平均成本"), text("Last", "现价"), text("Market value", "市值"), text("Unrealized", "未实现"), text("Realized", "已实现"), ""].map((label, index) => <th key={index}>{label}</th>)}</tr></thead>
+          <thead><tr>{[text("Symbol", "代码"), text("Qty", "数量"), text("Avg cost", "平均成本"), text("Last", "现价"), text("Market value", "市值"), text("Unrealized", "未实现"), text("Realized", "已实现"), ...(hasForeign ? [`${text("Value", "市值")} ${base}`, `${text("Total P&L", "总盈亏")} ${base}`] : []), ""].map((label, index) => <th key={index}>{label}</th>)}</tr></thead>
           <tbody>{positions.map((position) => <tr key={position.symbol} className={position.open ? "" : "tl-closed"}>
             <td><button className="tl-symbol" title={text("Open in Workplace", "在 Workplace 中查看")} onClick={() => pickSymbol(position.symbol)}>{position.symbol} ↗</button>{!position.open && <small>{text("Closed", "已平仓")}</small>}</td>
             <td>{position.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}</td>
             <td>{money(position.averageCost)}</td>
-            <td>{position.open ? (position.symbol in quotes ? money(position.quote?.price) : "…") : "—"}{position.quote && position.quote.currency !== "USD" ? <small>{position.quote.currency}</small> : null}</td>
+            <td>{position.open ? (position.symbol in quotes ? money(position.quote?.price) : "…") : "—"}{position.quote && (hasForeign || position.currency !== "USD") ? <small>{position.currency}</small> : null}</td>
             <td>{position.open ? money(position.marketValue) : "—"}</td>
             <td className={tone(position.unrealized)}>{position.open ? signed(position.unrealized) : "—"}</td>
             <td className={tone(position.realized)}>{signed(position.realized)}</td>
+            {hasForeign && <td>{position.open ? (position.marketBase == null ? "…" : money(position.marketBase)) : "—"}</td>}
+            {hasForeign && (() => { const total = position.unrealizedBase != null && position.realizedBase != null ? position.unrealizedBase + position.realizedBase : null; return <td className={tone(total)}>{total == null ? "…" : signed(total)}</td>; })()}
             <td><button className="tl-row-button" onClick={() => setEditor({ symbol: position.symbol })}>{text("Trades", "交易")} · {position.tradeCount}</button></td>
           </tr>)}</tbody>
         </table></div>
@@ -241,11 +283,11 @@ export function TradeLedgerView() {
     </>}
 
     <section className="tl-section">
-      <div className="tl-section-heading"><div><h2>{text("Cash ledger", "现金账本")}</h2><p>{text("Deposits, withdrawals, dividends, interest, fees and tax. Buys and sells move cash automatically.", "入金、出金、分红、利息、费用和税。买卖交易会自动计入现金变动。")}</p></div></div>
+      <div className="tl-section-heading"><div><h2>{text("Cash ledger", "现金账本")}</h2><p>{text(`Deposits, withdrawals, dividends, interest, fees and tax, in ${base}. Buys and sells move cash automatically (foreign trades at the trade-date rate).`, `入金、出金、分红、利息、费用和税，以 ${base} 记账。买卖交易会自动计入现金变动（外币交易按成交日汇率折算）。`)}</p></div></div>
       {missingDividends.length > 0 && <div className="cl-suggest">
         <div className="cl-suggest-head"><strong>{text(`${missingDividends.length} dividend${missingDividends.length === 1 ? "" : "s"} may be missing`, `可能漏记了 ${missingDividends.length} 笔分红`)}</strong><span>{text("Estimated from Yahoo per-share dividends × shares held before the ex-date, gross of withholding tax. Check against your broker statement.", "按 Yahoo 每股分红 × 除息日前持股数估算，税前金额，请与券商结单核对。")}</span><button className="tl-button" onClick={() => addDividends(missingDividends)}>{text("Add all", "全部添加")}</button></div>
         <div className="tl-scroll"><table><tbody>{missingDividends.slice(0, 12).map((item) => <tr key={`${item.symbol}:${item.date}`}>
-          <td>{item.date}</td><td className="tl-left tl-symbol">{item.symbol}</td><td>{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} × {item.amount}</td><td className="cl-in">+{money(item.total)}</td>
+          <td>{item.date}</td><td className="tl-left tl-symbol">{item.symbol}</td><td>{item.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} × {item.currency} {item.amount}</td><td className="cl-in">+{money(item.total)}</td>
           <td><button className="tl-row-button" onClick={() => addDividends([item])}>{text("Add", "添加")}</button></td>
         </tr>)}</tbody></table></div>
         {missingDividends.length > 12 && <p className="tl-muted">{text(`${missingDividends.length - 12} more not shown; "Add all" includes them.`, `另有 ${missingDividends.length - 12} 笔未显示，“全部添加”会一并加入。`)}</p>}
@@ -253,7 +295,7 @@ export function TradeLedgerView() {
       <form className="cl-form" onSubmit={addCash}>
         <label>{text("Type", "类型")}<select value={cashForm.kind} onChange={(event) => setCashForm({ ...cashForm, kind: event.target.value as CashKind })}>{CASH_KINDS.map((kind) => <option key={kind} value={kind}>{cashLabel[kind][locale === "zh" ? 1 : 0]}</option>)}</select></label>
         <label>{text("Date", "日期")}<input type="date" required value={cashForm.date} onChange={(event) => setCashForm({ ...cashForm, date: event.target.value })} /></label>
-        <label>{text("Amount", "金额")}<input type="number" min="0.01" step="0.01" required value={cashForm.amount} onChange={(event) => setCashForm({ ...cashForm, amount: event.target.value })} /></label>
+        <label>{text("Amount", "金额")} ({base})<input type="number" min="0.01" step="0.01" required value={cashForm.amount} onChange={(event) => setCashForm({ ...cashForm, amount: event.target.value })} /></label>
         <label>{text("Symbol (optional)", "代码（可选）")}<input value={cashForm.symbol} onChange={(event) => setCashForm({ ...cashForm, symbol: event.target.value })} /></label>
         <label>{text("Note (optional)", "备注（可选）")}<input maxLength={500} value={cashForm.note} onChange={(event) => setCashForm({ ...cashForm, note: event.target.value })} /></label>
         <button className="tl-primary" type="submit">{text("Add", "添加")}</button>

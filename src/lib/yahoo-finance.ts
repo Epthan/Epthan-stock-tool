@@ -63,11 +63,10 @@ export async function getYahooQuoteSummary(symbol: string) {
  * Daily bars via chart(). yahoo-finance2's historical() is deprecated and throws when Yahoo returns
  * rows with some null fields (e.g. an unfinished current-day bar); chart() returns them and we drop them.
  */
-type DailyBar = { date: Date; open: number | null; high: number | null; low: number | null; close: number; volume: number | null };
+type DailyBar = { day: string; date: Date; open: number | null; high: number | null; low: number | null; close: number; volume: number | null };
 export type SplitEvent = { date: string; ratio: number };
 export type DividendEvent = { date: string; amount: number };
 type DailyData = { rows: DailyBar[]; splits: SplitEvent[]; dividends: DividendEvent[] };
-const day = (date: Date) => date.toISOString().slice(0, 10);
 
 /** Daily bars plus split / dividend events, cached 30 minutes. A cached wider range for the same symbol serves narrower requests. */
 const dailyCover: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> = ((globalThis as { __yahooDaily2?: Map<string, { from: string; to: string; expires: number; data: Promise<DailyData> }> }).__yahooDaily2 ??= new Map());
@@ -77,16 +76,23 @@ async function getDaily(symbol: string, period1: string, period2: string): Promi
   const within = (date: string) => date >= period1 && date < period2;
   if (cover && cover.expires > now && cover.from <= period1 && cover.to >= period2) {
     const data = await cover.data;
-    return { rows: data.rows.filter((row) => within(day(row.date))), splits: data.splits.filter((item) => within(item.date)), dividends: data.dividends.filter((item) => within(item.date)) };
+    return { rows: data.rows.filter((row) => within(row.day)), splits: data.splits.filter((item) => within(item.date)), dividends: data.dividends.filter((item) => within(item.date)) };
   }
   const data = cached(`daily:${symbol}:${period1}:${period2}`, 30 * MINUTE, async (): Promise<DailyData> => {
     const chart = await yahooFinance.chart(symbol, { period1, period2, interval: "1d", includePrePost: false, events: "div|split" });
+    // Bar timestamps are the session open in UTC; for Asia-Pacific exchanges that falls on the previous UTC day,
+    // so dates are taken in the exchange's own time zone.
+    const offset = (chart.meta.gmtoffset ?? 0) * 1000;
+    const localDay = (date: Date) => new Date(date.getTime() + offset).toISOString().slice(0, 10);
+    const sessionEnd = chart.meta.currentTradingPeriod?.regular?.end;
+    const todayLocal = localDay(new Date());
+    const unfinished = (date: Date) => localDay(date) === todayLocal && !(sessionEnd && Date.now() > new Date(sessionEnd).getTime());
     return {
       rows: chart.quotes
-        .filter((row) => row.close != null && Number.isFinite(row.close) && row.close > 0)
-        .map((row): DailyBar => ({ date: row.date, open: row.open ?? null, high: row.high ?? null, low: row.low ?? null, close: row.close as number, volume: row.volume ?? null })),
-      splits: (chart.events?.splits ?? []).filter((item) => item.numerator > 0 && item.denominator > 0).map((item) => ({ date: day(item.date), ratio: item.numerator / item.denominator })).sort((a, b) => a.date.localeCompare(b.date)),
-      dividends: (chart.events?.dividends ?? []).filter((item) => item.amount > 0).map((item) => ({ date: day(item.date), amount: item.amount })).sort((a, b) => a.date.localeCompare(b.date)),
+        .filter((row) => row.close != null && Number.isFinite(row.close) && row.close > 0 && !unfinished(row.date))
+        .map((row): DailyBar => ({ day: localDay(row.date), date: row.date, open: row.open ?? null, high: row.high ?? null, low: row.low ?? null, close: row.close as number, volume: row.volume ?? null })),
+      splits: (chart.events?.splits ?? []).filter((item) => item.numerator > 0 && item.denominator > 0).map((item) => ({ date: localDay(item.date), ratio: item.numerator / item.denominator })).sort((a, b) => a.date.localeCompare(b.date)),
+      dividends: (chart.events?.dividends ?? []).filter((item) => item.amount > 0).map((item) => ({ date: localDay(item.date), amount: item.amount })).sort((a, b) => a.date.localeCompare(b.date)),
     };
   });
   const widest = !cover || cover.expires <= now || (period1 <= cover.from && period2 >= cover.to);

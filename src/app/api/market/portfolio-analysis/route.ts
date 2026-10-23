@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getYahooCorporateActions, getYahooHistorical, getYahooQuotes } from "@/lib/yahoo-finance";
 import { applySplits, type StockSplit } from "@/lib/corporate-actions";
+import { fxSymbol, normalizeCurrency, rateOn, type RatePoint } from "@/lib/fx";
 import { analyzePortfolio, type SecurityHistory } from "@/lib/live-portfolio";
 import { validatePortfolioTrades, tradeDate, type PortfolioTrade } from "@/lib/portfolio-trades";
 import type { PortfolioRange } from "@/lib/portfolio-analytics";
@@ -13,7 +14,8 @@ export async function POST(request: NextRequest) {
     const recorded: PortfolioTrade[] = body.trades.map((trade: PortfolioTrade) => ({ ...trade, tradedAt: tradeDate(trade.tradedAt) }));
     const cash: CashEntry[] = Array.isArray(body.cash) ? body.cash.slice(0, 5000) : [];
     validateCashEntries(cash);
-    const benchmark = body.benchmark === "QQQ" ? "QQQ" : "SPY";
+    const benchmark = ["QQQ", "^AXJO"].includes(body.benchmark) ? body.benchmark as string : "SPY";
+    const base = typeof body.baseCurrency === "string" && /^[A-Z]{3}$/.test(body.baseCurrency) ? body.baseCurrency : "USD";
     const range: PortfolioRange = ["1M", "3M", "6M", "YTD", "1Y", "ALL"].includes(body.range) ? body.range : "YTD";
     const symbols = [...new Set([...recorded.map((trade) => trade.symbol), benchmark])];
     if (symbols.length > 30) throw new Error("This version supports up to 29 securities per portfolio.");
@@ -23,39 +25,59 @@ export async function POST(request: NextRequest) {
     const firstCash = cash.reduce((min, entry) => (entry.date < min ? entry.date : min), first);
     const begin = new Date(Math.min(Date.parse(first) - 7 * 86400000, Date.parse(firstCash) - 7 * 86400000, betaStart.getTime())).toISOString().slice(0, 10);
     const tomorrow = new Date(end.getTime() + 86400000).toISOString().slice(0, 10);
-    const today = end.toISOString().slice(0, 10);
     const [quotes, histories] = await Promise.all([
       getYahooQuotes(symbols),
       Promise.all(symbols.map(async (symbol) => ({ symbol, data: await getYahooHistorical(symbol, begin, tomorrow) }))),
     ]);
     // Prices are split-adjusted, so restate pre-split trades onto today's share basis before anything else.
     const splits: StockSplit[] = (await Promise.all(symbols.filter((symbol) => symbol !== benchmark || recorded.some((trade) => trade.symbol === symbol)).map(async (symbol) => (await getYahooCorporateActions(symbol, begin, tomorrow)).splits.map((split) => ({ symbol, ...split }))))).flat();
-    const trades = applySplits(recorded, splits);
-    validatePortfolioTrades(trades);
-    const securities: SecurityHistory[] = histories.map(({ symbol, data }) => {
+    const adjusted = applySplits(recorded, splits);
+    validatePortfolioTrades(adjusted);
+
+    // Local-currency histories (minor units such as GBp normalised to GBP).
+    const local = histories.map(({ symbol, data }) => {
       const quote = quotes.find((item) => item.symbol === symbol);
-      if (!quote?.currency) throw new Error(`Currency unavailable for ${symbol}.`);
-      return { symbol, name: quote.longName ?? quote.shortName ?? symbol, currency: quote.currency, prices: data.filter((row) => row.close != null && row.close > 0 && row.date.toISOString().slice(0, 10) < today).map((row) => ({ date: row.date.toISOString().slice(0, 10), close: row.close! })).sort((left, right) => left.date.localeCompare(right.date)) };
+      if (!quote?.currency && !symbol.startsWith("^")) throw new Error(`Currency unavailable for ${symbol}.`);
+      const { currency, divisor } = normalizeCurrency(quote?.currency ?? (symbol === "^AXJO" ? "AUD" : "USD"));
+      return { symbol, name: quote?.longName ?? quote?.shortName ?? symbol, currency, divisor, prices: data.map((row) => ({ date: row.day, close: row.close / divisor })).sort((left, right) => left.date.localeCompare(right.date)) };
     });
-    // Yahoo publishes closes at slightly different times per symbol. Stop at the last date every security has,
-    // and carry a close forward over isolated gaps so one missing row does not block the whole analysis.
-    const commonEnd = securities.reduce((min, security) => { const last = security.prices.at(-1)?.date ?? ""; return last < min ? last : min; }, "9999-12-31");
-    const benchDates = securities.find((security) => security.symbol === benchmark)!.prices.map((price) => price.date).filter((date) => date <= commonEnd);
-    for (const security of securities) {
-      const map = new Map(security.prices.map((price) => [price.date, price.close]));
-      const first = security.prices[0]?.date;
+    // FX into the base currency, one daily series per foreign currency.
+    const foreign = [...new Set(local.map((item) => item.currency).filter((currency) => currency !== base))];
+    const fx = new Map<string, RatePoint[]>(await Promise.all(foreign.map(async (currency) => {
+      const series = (await getYahooHistorical(fxSymbol(currency, base), begin, tomorrow)).map((bar) => ({ date: bar.day, rate: bar.close }));
+      if (!series.length) throw new Error(`No FX rates for ${currency}/${base}.`);
+      return [currency, series] as [string, RatePoint[]];
+    })));
+    const toBase = (currency: string, date: string) => (currency === base ? 1 : rateOn(fx.get(currency), date) ?? NaN);
+
+    // One calendar for every market (an ASX holding trades on US holidays and vice versa). Stop at the last
+    // date every series has, and carry closes forward over days a market was shut.
+    const commonEnd = local.reduce((min, item) => { const last = item.prices.at(-1)?.date ?? ""; return last < min ? last : min; }, "9999-12-31");
+    const calendar = [...new Set(local.flatMap((item) => item.prices.map((price) => price.date)))].filter((date) => date <= commonEnd).sort();
+    const securities: SecurityHistory[] = local.map((item) => {
+      const map = new Map(item.prices.map((price) => [price.date, price.close]));
+      const firstDate = item.prices[0]?.date;
       let previous: number | undefined;
-      const filled: { date: string; close: number }[] = [];
-      for (const date of benchDates) {
-        const close = map.get(date) ?? (first && date > first ? previous : undefined);
-        if (close != null) { filled.push({ date, close }); previous = close; }
+      const prices: { date: string; close: number }[] = [];
+      for (const date of calendar) {
+        const close = map.get(date) ?? (firstDate && date > firstDate ? previous : undefined);
+        if (close == null) continue;
+        previous = close;
+        const converted = close * toBase(item.currency, date);
+        if (Number.isFinite(converted)) prices.push({ date, close: converted });
       }
-      security.prices = filled;
-    }
+      return { symbol: item.symbol, name: item.name, currency: item.currency, prices };
+    });
+    // Trades are typed in the security's quote unit; convert at that day's rate (settled in the base currency).
+    const unit = new Map(local.map((item) => [item.symbol, item]));
+    const trades = adjusted.map((trade) => {
+      const info = unit.get(trade.symbol)!;
+      return { ...trade, price: trade.price / info.divisor * toBase(info.currency, trade.tradedAt) };
+    });
     const bench = securities.find((security) => security.symbol === benchmark)!;
-    if (securities.some((security) => security.currency !== bench.currency)) throw new Error("Mixed currencies require FX conversion. This version supports a single USD portfolio with SPY/QQQ benchmarks.");
-    const result = analyzePortfolio(trades, securities.filter((security) => trades.some((trade) => trade.symbol === security.symbol)), bench, range, cash);
-    return NextResponse.json({ result, benchmark, splits, source: "Yahoo Finance daily close", retrievedAt: new Date().toISOString() });
+    const result = { ...analyzePortfolio(trades, securities.filter((security) => trades.some((trade) => trade.symbol === security.symbol)), { ...bench, currency: base }, range, cash), currency: base };
+    const currencies = Object.fromEntries(local.map((item) => [item.symbol, item.currency]));
+    return NextResponse.json({ result, benchmark, splits, baseCurrency: base, currencies, fxConverted: foreign, source: "Yahoo Finance daily close", retrievedAt: new Date().toISOString() });
   } catch (error) {
     return NextResponse.json({ message: error instanceof Error ? error.message : "Market data unavailable. Please retry." }, { status: 400 });
   }

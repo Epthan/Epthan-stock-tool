@@ -109,3 +109,4 @@ html[data-theme="day"] .tl-primary { color: #fff; }
 .cl-suggest-head strong { font-size: 13px; }
 .cl-suggest-head span { flex: 1; min-width: 220px; font-size: 11px; color: var(--tl-muted); }
 .cl-suggest td { padding: 6px 10px; }
+.tl-select-small select { min-width: 92px; }

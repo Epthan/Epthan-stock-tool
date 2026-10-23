@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json({ message: "Historical market data unavailable. Please try again; no simulated data was substituted." }, { status: 502 });
     }
-    const bars = history.filter((bar) => bar.open != null && bar.close != null).map((bar) => ({ date: bar.date.toISOString().slice(0, 10), open: bar.open!, close: bar.close! }));
+    const bars = history.filter((bar) => bar.open != null && bar.close != null).map((bar) => ({ date: bar.day, open: bar.open!, close: bar.close! }));
     const result = runBacktest(bars, settings);
     return NextResponse.json({ symbol, currency: quote.currency ?? "", settings, result, source: "Yahoo Finance daily OHLC", retrievedAt: new Date().toISOString() });
   } catch (error) {
