@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChartLightbox } from "@/components/chart-lightbox";
 import { PortfolioManager } from "@/components/portfolio-manager";
 import { BacktestPanel } from "@/components/backtest-panel";
+import { MarketOverview } from "@/components/market-overview";
+import { CORE_INDEXES, formatOverview, overviewName } from "@/lib/market-overview";
 import { useStoredWatchlists } from "@/hooks/use-stored-watchlists";
 import { usePortfolios } from "@/hooks/use-portfolios";
 import { getTradePosition } from "@/lib/portfolio-trades";
@@ -192,6 +194,8 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   });
   // No simulated prices on screen: until Yahoo answers the strip and list show placeholders.
   const [marketState, setMarketState] = useState<"loading" | "live" | "error">("loading");
+  const [showOverview, setShowOverview] = useState(false);
+  useEffect(() => { try { if (window.localStorage.getItem("stock-tool.market-overview-open.v1") === "1") startTransition(() => setShowOverview(true)); } catch {} }, []);
   const [candles, setCandles] = useState<CandlePoint[]>([]);
   const [loadedChartSymbol, setLoadedChartSymbol] = useState("");
   const chartCandles = loadedChartSymbol === resolvedSelectedSymbol ? candles : [];
@@ -577,10 +581,12 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
         <header className="wpx-tools"><div><nav aria-label={locale === "zh" ? "市场工具" : "Market tools"}><button aria-pressed={workplaceView === "research"} onClick={() => setWorkplaceView("research")}>{locale === "zh" ? "行情研究" : "Research"}</button><button aria-pressed={workplaceView === "backtest"} onClick={() => { setWorkplaceView("backtest"); setIsChartLightboxOpen(false); }}>{locale === "zh" ? "策略回测" : "Backtest"}</button></nav></div><PortfolioManager onPick={handleSymbolPick} /></header>
         {workplaceView === "backtest" ? <BacktestPanel key={resolvedSelectedSymbol} symbol={resolvedSelectedSymbol} /> : <>
         <section className="wpx-indexes" aria-label={zh ? "主要指数" : "Major indexes"}>
-          {!dashboard.indexes.length && ["SPY", "QQQ", "DIA", "IWM"].map((symbol) => <div key={symbol} className="wpx-index is-placeholder"><span className="wpx-index-symbol">{symbol}</span><span className="wpx-num">—</span></div>)}
-          {dashboard.indexes.map((index) => <div key={index.symbol} className="wpx-index"><span className="wpx-index-symbol">{index.symbol}</span><span className="wpx-num">{formatPrice(index.price)}</span><span className={`wpx-num ${index.trend === "up" ? "is-up" : "is-down"}`}>{formatPercent(index.changePercent)}</span></div>)}
+          {!dashboard.indexes.length && CORE_INDEXES.map((item) => <div key={item.symbol} className="wpx-index is-placeholder"><span className="wpx-index-symbol">{zh ? item.zh : item.en}</span><span className="wpx-num">—</span></div>)}
+          {dashboard.indexes.map((index) => { const shown = formatOverview(index.symbol, index.price, index.change, index.changePercent); return <button type="button" key={index.symbol} className="wpx-index" onClick={() => handleSymbolPick(index.symbol)} title={index.symbol}><span className="wpx-index-symbol">{overviewName(index.symbol, zh)}</span><span className="wpx-num">{shown.value}</span><span className={`wpx-num ${index.change >= 0 ? "is-up" : "is-down"}`}>{shown.change}</span></button>; })}
+          <button type="button" className="wpx-index-more" aria-expanded={showOverview} onClick={() => setShowOverview((value) => { const next = !value; try { window.localStorage.setItem("stock-tool.market-overview-open.v1", next ? "1" : "0"); } catch {} return next; })}>{zh ? (showOverview ? "收起" : "全部指数与行业") : (showOverview ? "Hide" : "All indexes & sectors")} {showOverview ? "▴" : "▾"}</button>
           <span className="wpx-index-note">{marketState === "live" ? (zh ? "Yahoo 行情快照，约延迟 15 分钟" : "Yahoo snapshot, ~15 min delayed") : marketState === "loading" ? (zh ? "正在加载行情…" : "Loading market data…") : (zh ? "行情暂不可用，每 15 秒自动重试" : "Market data unavailable — retrying every 15 s")}</span>
         </section>
+        {showOverview && <MarketOverview zh={zh} onPick={handleSymbolPick} />}
 
         <nav className="wp-mobile-tabs" aria-label={locale === "zh" ? "工作台视图" : "Workplace views"}>{[["chart", locale === "zh" ? "图表" : "Chart"], ["watchlist", locale === "zh" ? "自选" : "Watchlist"], ["details", locale === "zh" ? "公司资料" : "Company"]].map(([value, label]) => <button key={value} aria-pressed={mobileView === value} onClick={() => setMobileView(value)}>{label}</button>)}</nav>
         <section className="wp-grid wpx-grid" data-mobile-view={mobileView}>

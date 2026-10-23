@@ -57,7 +57,7 @@ export type TimeframeKey =
 export type MovingAverageKey = 5 | 10 | 20 | 50 | 200;
 
 export const marketSymbols = {
-  indexes: ["SPY", "QQQ", "DIA", "IWM"] as const,
+  indexes: ["^GSPC", "^DJI", "^IXIC", "^RUT", "^VIX", "^TNX"] as const,
   watchlist: ["AAPL", "MSFT", "NVDA", "AMZN", "META", "TSLA"] as const,
 };
 

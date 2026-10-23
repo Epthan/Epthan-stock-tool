@@ -377,3 +377,33 @@ html[data-skin] .bt-benchmark { color: var(--ui-chart-bench); }
 @media (prefers-reduced-motion: reduce) { .ui-spinner { animation-duration: 2.4s; } }
 .ui-crash { padding: 24px; max-width: 760px; }
 .wpx-index.is-placeholder .wpx-num, .wpx-watch-row.is-placeholder .wpx-num { color: var(--ui-faint); }
+
+/* Market page: index strip as buttons + overview panel */
+button.wpx-index { padding: 2px 0; border-radius: 6px; color: inherit; text-align: left; }
+button.wpx-index:hover .wpx-index-symbol { color: var(--ui-accent); }
+.wpx-index-more { font-size: 12.5px; color: var(--ui-accent); padding: 4px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ui-accent) 35%, transparent); }
+.wpx-index-more:hover { background: var(--ui-accent-soft); }
+.mo-panel { margin: 4px 0 18px; padding: 18px 20px; border: 1px solid var(--ui-line); border-radius: 14px; background: var(--ui-panel); }
+.mo-read { margin: 0 0 14px; font-size: 13px; line-height: 1.6; color: var(--ui-ink-2); }
+.mo-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 18px 24px; }
+.mo-group h3 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--ui-muted); letter-spacing: .02em; }
+.mo-group h3 small { font-weight: 400; color: var(--ui-faint); }
+.mo-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.mo-tile { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name name" "value change"; gap: 2px 8px; padding: 8px 10px; border-radius: 9px; background: var(--ui-panel-2); text-align: left; color: var(--ui-ink); }
+.mo-tile:hover { outline: 1px solid var(--ui-accent); }
+.mo-tile .mo-name { grid-area: name; font-size: 11.5px; color: var(--ui-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mo-tile .mo-value { grid-area: value; font-size: 14px; font-weight: 500; }
+.mo-tile .mo-change { grid-area: change; font-size: 12.5px; align-self: end; }
+.mo-sectors ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.mo-sectors button { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 90px 62px; gap: 10px; align-items: center; padding: 5px 6px; border-radius: 7px; font-size: 12.5px; color: var(--ui-ink); text-align: left; }
+.mo-sectors button:hover { background: var(--ui-panel-2); }
+.mo-sectors .mo-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mo-sectors .mo-name small { margin-left: 6px; font-size: 10.5px; color: var(--ui-faint); }
+.mo-sectors .wpx-num { text-align: right; }
+.mo-bar { position: relative; height: 6px; border-radius: 3px; background: var(--ui-panel-2); }
+.mo-bar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--ui-line); }
+.mo-bar > span { position: absolute; top: 0; height: 100%; border-radius: 3px; min-width: 2px; }
+.is-up-bg { background: var(--ui-up); }
+.is-down-bg { background: var(--ui-down); }
+.mo-foot { margin: 12px 0 0; font-size: 11px; color: var(--ui-faint); }
+@media (max-width: 1100px) { .mo-grid { grid-template-columns: 1fr; } .mo-panel { padding: 14px; } }
