@@ -8,8 +8,9 @@ Everything runs on one machine; the browser talks only to this app's `/api/*` ro
 ```
 Browser (React)                          Next.js server (route handlers)                Yahoo Finance
 ──────────────────────────────           ─────────────────────────────────              ─────────────
-localStorage  ⇄  DataSync  ⇄  /api/store  →  data/store.json
+localStorage  ⇄  DataSync  ⇄  /api/store(/snapshots)  →  lib/server-store.ts  →  data/store.db (SQLite; JSON fallback)
 fetchCached (client cache, SWR, retry) → /api/market/*  →  lib/yahoo-finance.ts  (cache, retry, stale-if-error) → quote / chart / quoteSummary
+                                                            daily bars ⇄ lib/price-archive.ts → data/prices.db (tail updates, offline fallback)
                                          /api/market/portfolio-analysis → lib/live-portfolio.ts (+ trader-analytics, breakdowns, cash-ledger, fx, corporate-actions)
 ```
 
@@ -18,13 +19,15 @@ fetchCached (client cache, SWR, retry) → /api/market/*  →  lib/yahoo-finance
 | Type | Where | Notes |
 |---|---|---|
 | `ManagedPortfolio` | `use-portfolios.ts` | `trades`, `cash`, `splits`, `baseCurrency`, `cashMode`, `demoId` |
-| `PortfolioTrade` | `lib/portfolio-trades.ts` | price in the security's quote unit; optional `note`, `tags` |
-| `CashEntry` | `lib/cash-ledger.ts` | deposit / withdrawal / dividend / interest / fee / tax / fx; optional `currency` |
+| `PortfolioTrade` | `lib/portfolio-trades.ts` | price in the security's quote unit; optional `note`, `tags`. Positions via `lib/lots.ts` (FIFO parcels) |
+| `CashEntry` | `lib/cash-ledger.ts` | deposit / withdrawal / dividend / interest / fee / tax / fx; optional `currency`; fee `tradeId` (brokerage of that trade); dividend `franked`, `frankingCredit`, `withheld` |
 | `StockSplit` | `lib/corporate-actions.ts` | auto-detected by `CorporateActionSync`; trades restated with `applySplits` |
 | Watch lists | `lib/watchlists.ts` | `stock-tool.watchlists.v2` |
 
 Storage keys synced to the server are listed in `lib/synced-keys.ts`. `DataSync` (mounted in `AppShell`) uploads on first run,
-then the server wins on load / focus / every 30 s; local writes are pushed (debounced). Restore replaces the store.
+then the server wins on load / focus / every 30 s; local writes are pushed (debounced) with the revision they are based on
+(`stock-tool.sync-revs.v1`, shared by tabs). A write on a stale revision gets 409 + current state; the client loads it and shows a
+banner, the refused version is saved as a `conflict` snapshot. Snapshots: `auto` (≤ 1 per 10 min), `restore`, `before-restore`, `conflict`.
 
 Demo portfolios (`lib/portfolio-analytics.ts`) have no trades; the dashboard buys their fixed share counts two years ago and the
 analysis route fills in the real close (`demo: true`), so demo and recorded portfolios use the same code and layout.
@@ -47,13 +50,15 @@ Formulas and conventions: `PORTFOLIO_DASHBOARD.md`.
 | Market page | `components/stock-dashboard.tsx`, `stock-chart.tsx`, `chart-lightbox.tsx`, `symbol-search-box.tsx`, `portfolio-manager.tsx` |
 | Backtest | `components/backtest-panel.tsx`, `lib/backtest.ts`, `lib/real-vs-backtest.ts`, `api/market/backtest` |
 | Portfolio dashboard | `components/portfolio-dashboard.tsx` (shell + demo), `live-portfolio-dashboard.tsx`, `trade-analysis.tsx`, `trader-charts.tsx`, `performance-insights.tsx`, `breakdown-table.tsx` |
-| Trades page | `components/trade-ledger-view.tsx`, `portfolio-trades-dialog.tsx`, `csv-import-dialog.tsx`, `data-sync.tsx` |
+| Trades page | `components/trade-ledger-view.tsx`, `portfolio-trades-dialog.tsx`, `csv-import-dialog.tsx`, `data-sync.tsx` (sync, backup, history dialog) |
+| Tax | `components/tax-report-view.tsx`, `lib/au-tax.ts` (CGT events, loss ordering, discount, dividends, CSV), `lib/lots.ts` |
+| Server storage | `lib/server-sqlite.ts` (node:sqlite wrapper), `lib/server-store.ts`, `lib/price-archive.ts`, `api/store`, `api/store/snapshots`, `api/store/info` |
 | Compare / Heatmap | `components/compare-view.tsx`, `treemap-view.tsx`, `lib/treemap-data.ts` |
 | States | `components/state-panel.tsx` (`StatePanel`, `ErrorState` with auto-retry), `lib/friendly-error.ts`, `app/error.tsx` |
 | Calculations | `lib/live-portfolio.ts`, `trader-analytics.ts`, `trader-insights.ts`, `breakdowns.ts`, `cash-ledger.ts`, `fx.ts`, `corporate-actions.ts`, `csv-import.ts`, `portfolio-trades.ts` |
 | Data access | `lib/yahoo-finance.ts` (server cache), `lib/client-cache.ts` (browser cache) |
 
-API routes (`src/app/api`): `store`, `market/{dashboard,quote,candles,company,search,treemap,portfolio-analysis,corporate-actions,fx,backtest}`.
+API routes (`src/app/api`): `store`, `store/snapshots`, `store/info`, `market/{dashboard,quote,candles,company,search,treemap,portfolio-analysis,corporate-actions,fx,backtest}`.
 
 ## 5. Styles
 
@@ -84,6 +89,9 @@ Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "v
 
 ## 8. Known limits / next
 
-- Corporate actions other than splits (spin-offs, mergers) are not handled.
+- Corporate actions other than splits (DRP, rights issues, spin-offs, mergers, return of capital) are not handled — also not in the tax report.
+- Tax: FIFO only (no specific-parcel selection), no 45-day franking rule, individual investors only; FX uses Yahoo daily reference rates.
+- New folders under `src/` are not always picked up by a running `next dev` on Windows — restart the server after adding one.
+- The empty `src/lib/server/` folder on the original machine is left over from a move and can be deleted.
 - Dividend suggestions use Yahoo per-share amounts × shares held; withholding tax must be entered separately.
 - Mobile app: plan is PWA first, then a Capacitor wrapper, reusing this UI.
