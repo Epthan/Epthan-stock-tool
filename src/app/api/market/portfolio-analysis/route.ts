@@ -33,6 +33,21 @@ export async function POST(request: NextRequest) {
       if (!quote?.currency) throw new Error(`Currency unavailable for ${symbol}.`);
       return { symbol, name: quote.longName ?? quote.shortName ?? symbol, currency: quote.currency, prices: data.filter((row) => row.close != null && row.close > 0 && row.date.toISOString().slice(0, 10) < today).map((row) => ({ date: row.date.toISOString().slice(0, 10), close: row.close! })).sort((left, right) => left.date.localeCompare(right.date)) };
     });
+    // Yahoo publishes closes at slightly different times per symbol. Stop at the last date every security has,
+    // and carry a close forward over isolated gaps so one missing row does not block the whole analysis.
+    const commonEnd = securities.reduce((min, security) => { const last = security.prices.at(-1)?.date ?? ""; return last < min ? last : min; }, "9999-12-31");
+    const benchDates = securities.find((security) => security.symbol === benchmark)!.prices.map((price) => price.date).filter((date) => date <= commonEnd);
+    for (const security of securities) {
+      const map = new Map(security.prices.map((price) => [price.date, price.close]));
+      const first = security.prices[0]?.date;
+      let previous: number | undefined;
+      const filled: { date: string; close: number }[] = [];
+      for (const date of benchDates) {
+        const close = map.get(date) ?? (first && date > first ? previous : undefined);
+        if (close != null) { filled.push({ date, close }); previous = close; }
+      }
+      security.prices = filled;
+    }
     const bench = securities.find((security) => security.symbol === benchmark)!;
     if (securities.some((security) => security.currency !== bench.currency)) throw new Error("Mixed currencies require FX conversion. This version supports a single USD portfolio with SPY/QQQ benchmarks.");
     const result = analyzePortfolio(trades, securities.filter((security) => trades.some((trade) => trade.symbol === security.symbol)), bench, range, cash);
