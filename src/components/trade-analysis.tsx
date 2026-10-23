@@ -4,6 +4,7 @@ import { useLanguage } from "@/components/language-provider";
 import { ActivityChart, DotStrip, Histogram } from "@/components/trader-charts";
 import { holdingLabel, type AnalysisResult as LivePortfolioAnalysis } from "@/lib/breakdowns";
 import { BreakdownTable } from "@/components/breakdown-table";
+import { StatePanel } from "@/components/state-panel";
 import { SUGGESTED_TAGS } from "@/lib/portfolio-trades";
 import { returnHistogram } from "@/lib/trader-analytics";
 import type { Insight } from "@/lib/trader-insights";
@@ -24,7 +25,7 @@ export function TradeAnalysis({ data, insights, benchmark, money, onPick }: { da
   const text = (english: string, chinese: string) => locale === "zh" ? chinese : english;
   const { stats, closed, entries } = data.trading;
   const behaviour = insights.filter((insight) => insight.topic.en === "Edge" || insight.topic.en === "Behaviour");
-  if (!closed.length && !entries.length) return <section className="pd-pending"><h2>{text("No trades in this period", "所选区间内没有交易")}</h2><p>{text("Trade analytics use sells (closed trades) and buys inside the selected range. Choose a longer range, or record a sell to see win rate, payoff and holding behaviour.", "交易分析基于所选区间内的卖出（已平仓）和买入。请选择更长的区间，或记录卖出交易以查看胜率、盈亏比和持有行为。")}</p></section>;
+  if (!closed.length && !entries.length) return <StatePanel kind="empty" title={text("No trades in this period", "所选区间内没有交易")}><p>{text("Trade analytics use sells (closed trades) and buys inside the selected range. Choose a longer range, or record a sell to see win rate, payoff and holding behaviour.", "交易分析基于所选区间内的卖出（已平仓）和买入。请选择更长的区间，或记录卖出交易以查看胜率、盈亏比和持有行为。")}</p></StatePanel>;
   const cards: [string, string, string, string?][] = [
     [text("Closed trades", "已平仓交易"), String(stats.closedCount), `${stats.winCount} ${text("wins", "盈")} · ${stats.lossCount} ${text("losses", "亏")}`],
     [text("Win rate", "胜率"), stats.winRate == null ? "—" : `${stats.winRate.toFixed(1)}%`, text("Sells with positive P&L", "盈利卖出占比")],

@@ -301,6 +301,8 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
         if (!ignore) {
           setCandles([]);
           setChartMeta({ mode: "mock", message: noDataMessage });
+          // One automatic retry for transient failures (rate limit / network); the Retry button stays for later.
+          if (chartRetry === 0) autoRetry = window.setTimeout(() => { setIsLoadingChart(true); setChartRetry(1); }, 5000);
         }
       } finally {
         if (!ignore) {
@@ -309,10 +311,12 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
       }
     }
 
+    let autoRetry: number | undefined;
     loadCandles();
 
     return () => {
       ignore = true;
+      window.clearTimeout(autoRetry);
     };
   }, [activeTimeframe, chartRetry, noDataMessage, resolvedSelectedSymbol]);
 

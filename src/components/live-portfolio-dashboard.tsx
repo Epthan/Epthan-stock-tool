@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ErrorState, StatePanel } from "@/components/state-panel";
 import { InsightChart, PerformanceInsights } from "@/components/performance-insights";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { InsightList, TradeAnalysis } from "@/components/trade-analysis";
 import { ContributionScatter, CorrelationHeatmap, MonthlyCalendar, ReturnDrawdownChart, WeightRiskBars } from "@/components/trader-charts";
 import { buildTraderInsights } from "@/lib/trader-insights";
@@ -26,6 +27,7 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
   const cashMode = portfolio.cashMode ?? "base";
   const [state, setState] = useState<{ key: string; data?: LivePortfolioAnalysis; error?: string }>({ key: "" });
   const [retry, setRetry] = useState(0);
+  const retryAnalysis = useCallback(() => setRetry((value) => value + 1), []);
   const tradesJson = JSON.stringify({ trades: portfolio.trades ?? [], cash: portfolio.cash ?? [] });
   const requestKey = `${portfolio.id}:${tradesJson}:${range}:${benchmarkSymbol}:${baseCurrency}:${cashMode}:${portfolio.splits?.length ?? 0}:${retry}`;
   const hasTrades = !!portfolio.trades?.length;
@@ -82,7 +84,12 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
     <div className="pd-toolbar"><div className="pd-segments">{(["1M", "3M", "6M", "YTD", "1Y", "ALL"] as const).map((option) => <button key={option} className={range === option ? "is-active" : ""} aria-pressed={range === option} onClick={() => setRange(option)}>{option}</button>)}</div><label className="pd-benchmark">{text("Benchmark", "基准")}<select value={benchmarkSymbol} onChange={(event) => setBenchmark(event.target.value as LiveBenchmark)}><option value="SPY">SPY</option><option value="QQQ">QQQ</option><option value="^AXJO">ASX 200</option></select></label><span className="pd-data-stamp">{loading && data ? <span className="pd-updating" role="status">{text("Updating…", "更新中…")}</span> : <>{text("RECORDED TRADES + MARKET DATA", "已录入交易 + 真实行情")}{data && ` · ${data.end}`}</>}</span></div>
     <details className="pd-calculation-note"><summary>{text("Daily close · holdings return", "日收盘估值 · 持仓收益")} ⓘ</summary><p>{text("Holdings return includes dividends, interest, fees and tax from the cash ledger; idle cash and FX are excluded (the Account panel includes cash). Returns are estimated from date-only transactions and include first-day trading P&L. The zero baseline is the prior trading close; both series use the same start.", "持仓收益已计入现金账本里的分红、利息、费用和税；不含闲置现金和汇率影响（含现金的结果见“账户”面板）。收益按仅日期的交易近似计算，包含首日交易盈亏；零点为前一交易日收盘，组合与基准使用相同起点。")}</p></details>
     {view === "holdings" && <div className="pd-section-heading"><h2>{text("Recorded positions", "实际录入持仓")}</h2><div className="pd-table-tools">{data && <span className="pd-badge">{data.currency}</span>}<button type="button" className="pd-button" aria-label={text("Add stock transaction", "添加股票交易")} title={text("Add stock transaction", "添加股票交易")} onClick={() => onUpdateHolding("")}>＋</button></div></div>}
-    {!hasTrades ? <section className="pd-pending"><h2>{text("No recorded positions yet", "尚未录入可分析持仓")}</h2><p>{text("Your stocks are saved, but quantities and purchase prices are needed to calculate market value and returns. Record a buy in the Trade log or Workplace to unlock analytics.", "股票清单已保存，但计算市值和收益需要买入日期、价格及数量。请先在交易记录页或 Workplace 记录买入交易。")}</p><p>{portfolio.symbols.join(" · ")}</p><Link href="/portfolio" className="pd-workplace-link">{text("Open Trade log", "前往交易记录")} ↗</Link></section> : !data || !st ? <section className="pd-pending" role="status"><h2>{error ? text("Analysis unavailable", "分析暂不可用") : text("Calculating your portfolio…", "正在计算你的组合分析…")}</h2><p>{error ?? text("Loading historical prices and reconstructing recorded positions.", "正在获取历史行情，按已录入交易重建持仓。")}</p>{error && <button className="pd-button" onClick={() => setRetry((value) => value + 1)}>{text("Retry", "重试")}</button>}</section> : <>
+    {!hasTrades ? <StatePanel kind="empty" title={text("No recorded positions yet", "尚未录入可分析持仓")} action={<Link href="/portfolio" className="ui-state-button">{text("Open Trade log", "前往交易记录")} ↗</Link>}>
+        <p>{text("Your stocks are saved, but quantities and purchase prices are needed to calculate market value and returns. Record a buy in the Trade log or Workplace to unlock analytics.", "股票清单已保存，但计算市值和收益需要买入日期、价格及数量。请先在交易记录页或 Workplace 记录买入交易。")}</p>{portfolio.symbols.length > 0 && <p>{portfolio.symbols.join(" · ")}</p>}
+      </StatePanel>
+      : !data || !st ? (error ? <ErrorState message={error} zh={locale === "zh"} onRetry={retryAnalysis} />
+        : <StatePanel kind="loading" title={text("Calculating your portfolio…", "正在计算你的组合分析…")}><p>{text("Loading historical prices and reconstructing recorded positions.", "正在获取历史行情，按已录入交易重建持仓。")}</p></StatePanel>)
+      : <>
       {unrecorded.length > 0 && <p className="pd-muted">{text("Excluded: no trades recorded", "未录入交易，未计入分析")}: {unrecorded.join(", ")}</p>}
 
       {view === "overview" && (() => {

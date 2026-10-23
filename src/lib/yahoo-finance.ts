@@ -9,13 +9,32 @@ const yahooFinance = new YahooFinance();
 /* - identical requests in flight share one upstream call               */
 /* - kept on globalThis so dev-server hot reloads don't drop it         */
 /* ------------------------------------------------------------------ */
-type CacheEntry = { expires: number; value?: unknown; promise?: Promise<unknown> };
+type CacheEntry = { expires: number; value?: unknown; promise?: Promise<unknown>; stale?: unknown };
 const store: Map<string, CacheEntry> = ((globalThis as { __yahooCache?: Map<string, CacheEntry> }).__yahooCache ??= new Map());
 const MAX_ENTRIES = 3000;
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 
+/** Rate limits (429), Yahoo 5xx and network drops are worth retrying; bad symbols and validation errors are not. */
+export function isTransient(error: unknown) {
+  const text = error instanceof Error ? `${error.name} ${error.message} ${(error as { code?: string }).code ?? ""}` : String(error);
+  return /429|too many|rate.?limit|5\d\d|bad gateway|unavailable|timeout|timed out|ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|socket|fetch failed|network/i.test(text);
+}
+export async function withRetry<T>(load: () => Promise<T>, attempts = 3): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try { return await load(); }
+    catch (error) {
+      if (attempt >= attempts || !isTransient(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 400 * 2 ** (attempt - 1) + Math.random() * 250)); // 0.4s, 0.8s (+ jitter)
+    }
+  }
+}
+
+/**
+ * Every Yahoo call goes through here: TTL per data type, shared in-flight requests, retries with backoff,
+ * and stale-if-error — when Yahoo fails after retries, the last good value is served instead of an error.
+ */
 function cached<T>(key: string, ttl: number, load: () => Promise<T>): Promise<T> {
   const now = Date.now();
   const hit = store.get(key);
@@ -23,11 +42,16 @@ function cached<T>(key: string, ttl: number, load: () => Promise<T>): Promise<T>
     if (hit.promise) return hit.promise as Promise<T>;
     return Promise.resolve(hit.value as T);
   }
-  const promise = load().then(
+  const previous = hit?.value ?? hit?.stale;
+  const promise = withRetry(load).then(
     (value) => { store.set(key, { expires: Date.now() + ttl, value }); return value; },
-    (error) => { store.delete(key); throw error; },
+    (error) => {
+      if (previous !== undefined) { store.set(key, { expires: Date.now() + Math.min(ttl, MINUTE), value: previous }); return previous as T; }
+      store.delete(key);
+      throw error;
+    },
   );
-  store.set(key, { expires: now + ttl, promise });
+  store.set(key, { expires: now + ttl, promise, stale: previous });
   if (store.size > MAX_ENTRIES) store.delete(store.keys().next().value as string);
   return promise;
 }

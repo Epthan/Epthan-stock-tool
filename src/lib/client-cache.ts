@@ -12,10 +12,26 @@ const MAX_ENTRIES = 400;
 
 export const TTL = { quote: 15_000, intraday: 60_000, daily: 10 * 60_000, company: 6 * 60 * 60_000, analysis: 10 * 60_000, search: 5 * 60_000 };
 
+/** Network drops, rate limits and 5xx get two more tries (0.8s, 2s); other errors fail straight away. */
+async function fetchWithRetry(url: string, init?: RequestInit) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const response = await fetch(url, { ...init, cache: "no-store" });
+      if ((response.status === 429 || response.status >= 500) && attempt < 3) throw Object.assign(new Error(`HTTP ${response.status}`), { retry: true });
+      return response;
+    } catch (error) {
+      const retry = (error as { retry?: boolean }).retry || error instanceof TypeError; // TypeError = network failure
+      if (!retry || attempt >= 3 || init?.signal?.aborted) throw error;
+      await new Promise((resolve) => setTimeout(resolve, attempt === 1 ? 800 : 2000));
+    }
+  }
+}
+
 async function load<T>(key: string, url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, cache: "no-store" });
-  const data = (await response.json()) as T;
-  if (!response.ok) throw Object.assign(new Error((data as { message?: string })?.message ?? `Request failed (${response.status})`), { data });
+  const response = await fetchWithRetry(url, init);
+  let data: T;
+  try { data = (await response.json()) as T; } catch { throw new Error(`Request failed (${response.status})`); }
+  if (!response.ok) throw Object.assign(new Error((data as { message?: string })?.message ?? `Request failed (${response.status})`), { data, status: response.status });
   entries.set(key, { at: Date.now(), data });
   if (entries.size > MAX_ENTRIES) entries.delete(entries.keys().next().value as string);
   return data;

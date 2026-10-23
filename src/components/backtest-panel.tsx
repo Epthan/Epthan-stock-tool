@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/components/language-provider";
 import type { BacktestResult, BacktestSettings } from "@/lib/backtest";
 import { usePortfolios } from "@/hooks/use-portfolios";
+import { ErrorState } from "@/components/state-panel";
 import { applySplits } from "@/lib/corporate-actions";
 import { tradeDate } from "@/lib/portfolio-trades";
 import { realTradeCurve } from "@/lib/real-vs-backtest";
@@ -94,7 +95,7 @@ export function BacktestPanel({ symbol }: { symbol: string }) {
       {([ ["short", text("Short SMA · days", "短均线 · 日")], ["long", text("Long SMA · days", "长均线 · 日")], ["capital", text("Initial capital", "初始资金")], ["commission", text("Fee per side · %", "单边手续费 · %")], ["slippage", text("Slippage per side · %", "单边滑点 · %")] ] as const).map(([key, label]) => <label key={key}>{label}<input type="number" required value={settings[key]} min={key === "capital" ? 1 : key === "short" || key === "long" ? 1 : 0} max={key === "capital" ? 1e9 : key === "short" || key === "long" ? 250 : 5} step={key === "short" || key === "long" ? 1 : 0.01} onChange={(event) => setSettings({ ...settings, [key]: Number(event.target.value) })} /></label>)}
       <button className="bt-run" type="submit" disabled={loading}>{loading ? text("Running…", "回测中…") : text("Run backtest", "运行回测")}</button>
     </form>
-    {error && <p role="alert" className="bt-error">{error}</p>}
+    {error && <ErrorState compact message={error} zh={locale === "zh"} onRetry={() => { void run(); }} />}
     {changed && <p className="bt-notice">{text("Parameters changed. Results below belong to the previous run; run again to update.", "参数已修改。下方仍为上一次运行结果，请重新运行更新。")}</p>}
     {!response && <div className="bt-empty"><h3>{text("Test the rules, inspect the results", "先验证规则，再评估表现")}</h3><p>{text("Select your dates and parameters, then run the strategy against daily historical prices.", "设置区间和参数后运行，使用日线历史行情，与同股买入持有策略比较。")}</p></div>}
     {response && result && <>

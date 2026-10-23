@@ -359,3 +359,20 @@ html[data-skin] .bt-benchmark { color: var(--ui-chart-bench); }
 .bt-real-key { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 3px; border-radius: 4px; font-size: 10px; color: var(--ui-up); background: var(--ui-up-soft); }
 .bt-real-key.is-sell { color: var(--ui-down); background: var(--ui-down-soft); }
 .bt-marker-legend b + b { margin-left: 2px; }
+
+/* Unified loading / empty / error states */
+.ui-state { display: flex; gap: 16px; align-items: flex-start; margin: 16px 0; padding: 28px; border: 1px solid var(--ui-line-soft); border-radius: 14px; background: var(--ui-panel); color: var(--ui-ink); }
+.ui-state.is-compact { padding: 14px 16px; margin: 10px 0; border-radius: 10px; }
+.ui-state h2 { margin: 2px 0 6px; font-size: 16px; font-weight: 600; }
+.ui-state.is-compact h2 { font-size: 13px; margin-bottom: 2px; }
+.ui-state-body p { margin: 0 0 6px; font-size: 13px; color: var(--ui-muted); max-width: 640px; }
+.ui-state-detail { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px !important; color: var(--ui-faint) !important; word-break: break-word; }
+.ui-state-icon { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; font-weight: 700; color: var(--ui-muted); background: var(--ui-panel-2); }
+.ui-state-error .ui-state-icon { color: var(--ui-down); background: var(--ui-down-soft); }
+.ui-state-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+.ui-state-button { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--ui-on-accent); background: var(--ui-accent); }
+.ui-state-button:hover { background: var(--ui-accent-hover); }
+.ui-spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ui-line); border-top-color: var(--ui-accent); animation: ui-spin .8s linear infinite; }
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ui-spinner { animation-duration: 2.4s; } }
+.ui-crash { padding: 24px; max-width: 760px; }
