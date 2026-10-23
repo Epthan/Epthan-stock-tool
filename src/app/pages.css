@@ -5,7 +5,7 @@
 :root { --cmp-1: #4f7df3; --cmp-2: #e0802b; --cmp-3: #2fa37a; --cmp-4: #c94f7c; --cmp-5: #8c6bd6; --cmp-6: #2f9fbf; --cmp-7: #b59a2a; --cmp-8: #7a8696; }
 html[data-skin="night"] { --cmp-1: #7fa2ff; --cmp-2: #f39a4c; --cmp-3: #4cc597; --cmp-4: #ec7aa3; --cmp-5: #ae93f2; --cmp-6: #5cc3df; --cmp-7: #d8bd4f; --cmp-8: #9aa6b4; }
 
-.pg-page { max-width: 1440px; margin: 0 auto; padding: 24px 32px 56px; display: flex; flex-direction: column; gap: 20px; color: var(--ui-ink); }
+.pg-page { width: 100%; max-width: 1440px; margin: 0 auto; padding: 24px 32px 56px; display: flex; flex-direction: column; gap: 20px; color: var(--ui-ink); }
 .pg-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px 32px; }
 .pg-eyebrow { margin: 0; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ui-accent); font-weight: 600; }
 .pg-head h1 { margin: 6px 0 4px; font-size: 28px; font-weight: 500; letter-spacing: -0.01em; }
