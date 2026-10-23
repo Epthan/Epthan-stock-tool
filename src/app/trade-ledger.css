@@ -116,3 +116,5 @@ html[data-theme="day"] .tl-primary { color: #fff; }
 .cl-form { grid-template-columns: 120px 140px 190px 190px minmax(0, 1fr) auto; }
 .tl-section-heading .tl-select-small { align-self: flex-end; }
 @media (max-width: 900px) { .cl-form { grid-template-columns: 1fr 1fr; } .cl-form .tl-primary { grid-column: span 2; } }
+.tl-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-right: 6px; vertical-align: middle; }
+.tl-tags i { font-style: normal; font-size: 10.5px; padding: 1px 7px; border-radius: 999px; color: var(--tl-accent); background: color-mix(in srgb, var(--tl-accent) 12%, transparent); }

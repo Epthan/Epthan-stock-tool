@@ -1,4 +1,4 @@
-import { tradeDate, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
+import { normalizeTags, tradeDate, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
 import { validateCashEntries, type CashEntry, type CashKind } from "@/lib/cash-ledger";
 import type { StockSplit } from "@/lib/corporate-actions";
 
@@ -7,8 +7,8 @@ import type { StockSplit } from "@/lib/corporate-actions";
  * (English / Chinese aliases, IBKR / CommSec / Stake / SelfWealth style), then the user can fix the mapping.
  * CommSec "Details" text such as "B 100 CBA @ 95.50" is also understood.
  */
-export type Field = "date" | "symbol" | "action" | "quantity" | "price" | "amount" | "fee" | "note" | "details" | "debit" | "credit";
-export const FIELDS: Field[] = ["date", "symbol", "action", "quantity", "price", "amount", "fee", "note", "details", "debit", "credit"];
+export type Field = "date" | "symbol" | "action" | "quantity" | "price" | "amount" | "fee" | "note" | "tags" | "details" | "debit" | "credit";
+export const FIELDS: Field[] = ["date", "symbol", "action", "quantity", "price", "amount", "fee", "note", "tags", "details", "debit", "credit"];
 export type DateOrder = "auto" | "ymd" | "dmy" | "mdy";
 export type Mapping = Partial<Record<Field, number>>;
 
@@ -21,6 +21,7 @@ const aliases: Record<Field, string[]> = {
   amount: ["amount", "proceeds", "value", "net amount", "total", "consideration", "成交金额", "发生金额", "金额"],
   fee: ["fee", "fees", "commission", "ibcommission", "brokerage", "佣金", "手续费", "费用"],
   note: ["note", "notes", "memo", "comment", "备注"],
+  tags: ["tags", "tag", "strategy", "setup", "标签", "策略"],
   details: ["details", "description", "narrative", "摘要", "说明"],
   debit: ["debit", "debit($)", "withdrawals", "借方"],
   credit: ["credit", "credit($)", "deposits", "贷方"],
@@ -194,7 +195,8 @@ export function buildImport(rows: string[][], options: ImportOptions): ImportRow
       quantity = Math.abs(quantity);
       if (!Number.isFinite(price) || price <= 0) price = Number.isFinite(amount) && quantity ? Math.abs(amount) / quantity : NaN;
       if (!symbol || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price <= 0) return { line, status: "skipped", reason: "fields" };
-      const trade: PortfolioTrade = { id: crypto.randomUUID(), symbol, side: kind, tradedAt: date, price: round2(price), quantity, ...(note ? { note } : {}) };
+      const tags = normalizeTags(get(row, "tags"));
+      const trade: PortfolioTrade = { id: crypto.randomUUID(), symbol, side: kind, tradedAt: date, price: round2(price), quantity, ...(note ? { note } : {}), ...(tags ? { tags } : {}) };
       const key = tradeKey(trade);
       if (takeSeen(seenTrades, key)) return { line, status: "duplicate" };
       let brokerage = Number.isFinite(fee) && fee > 0 ? fee : 0;

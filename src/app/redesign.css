@@ -332,3 +332,22 @@ html[data-skin] .trade-ledger { width: 100%; box-sizing: border-box; }
 .rd-contrib-other strong { font-weight: 500; font-variant-numeric: tabular-nums; }
 @media (max-width: 1100px) { .rd-account-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .rd-account-grid > div:nth-child(4) { border-left: 0; padding-left: 0; } }
 @media (max-width: 600px) { .rd-account-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rd-account-grid > div { border-left: 0; padding-left: 0; } }
+
+/* Breakdown tables (sector / holding period / tag) */
+.bd-table td.bd-key { text-align: left; font-weight: 500; white-space: nowrap; }
+.bd-table th:first-child { text-align: left; }
+.bd-bar-head { min-width: 220px; }
+.bd-bar-cell { display: grid; grid-template-columns: minmax(120px, 1fr) 96px; gap: 10px; align-items: center; }
+.bd-bar { position: relative; display: block; height: 8px; border-radius: 4px; background: var(--ui-panel-2); }
+.bd-bar::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--ui-line); }
+.bd-bar > span { position: absolute; top: 0; height: 100%; border-radius: 4px; min-width: 2px; }
+.bd-bar > .is-up { background: var(--ui-up); }
+.bd-bar > .is-down { background: var(--ui-down); }
+.bd-bar-cell strong { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pm-trade-tags { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--ui-muted); }
+.pm-trade-tags > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.pm-trade-tags button { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--ui-line); font-size: 12px; color: var(--ui-ink); background: transparent; }
+.pm-trade-tags button.is-on { border-color: var(--ui-accent); color: var(--ui-accent); background: color-mix(in srgb, var(--ui-accent) 12%, transparent); }
+.pm-trade-tags input { width: 110px; padding: 4px 10px; border-radius: 999px; border: 1px dashed var(--ui-line); background: transparent; color: var(--ui-ink); font-size: 12px; }
+.pm-trade-note .tl-tags i { font-style: normal; font-size: 10.5px; padding: 1px 7px; border-radius: 999px; color: var(--ui-accent); background: color-mix(in srgb, var(--ui-accent) 12%, transparent); }
+.pm-trade-note .tl-tags { display: inline-flex; gap: 4px; margin-right: 6px; }

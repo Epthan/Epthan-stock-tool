@@ -7,7 +7,7 @@ import { FIELDS, buildImport, detectMapping, parseCsv, reasonLabel, type DateOrd
 
 const fieldLabel: Record<Field, [string, string]> = {
   date: ["Date", "日期"], symbol: ["Symbol", "代码"], action: ["Type / side", "类型/方向"], quantity: ["Quantity", "数量"], price: ["Price", "价格"],
-  amount: ["Amount", "金额"], fee: ["Fee / brokerage", "佣金/费用"], note: ["Note", "备注"], details: ["Details", "摘要"], debit: ["Debit", "借方"], credit: ["Credit", "贷方"],
+  amount: ["Amount", "金额"], fee: ["Fee / brokerage", "佣金/费用"], note: ["Note", "备注"], tags: ["Tags", "标签"], details: ["Details", "摘要"], debit: ["Debit", "借方"], credit: ["Credit", "贷方"],
 };
 
 export function CsvImportDialog({ portfolioId, zh, onClose }: { portfolioId: string; zh: boolean; onClose: (message?: string) => void }) {

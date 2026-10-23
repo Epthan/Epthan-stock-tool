@@ -10,7 +10,8 @@ import { RISK_FREE_RATE } from "@/lib/trader-analytics";
 import { TTL, fetchCached, forgetCached, prefetchCached } from "@/lib/client-cache";
 import { useLanguage } from "@/components/language-provider";
 import type { ManagedPortfolio } from "@/hooks/use-portfolios";
-import type { LivePortfolioAnalysis } from "@/lib/live-portfolio";
+import { sectorLabel, type AnalysisResult as LivePortfolioAnalysis } from "@/lib/breakdowns";
+import { BreakdownTable } from "@/components/breakdown-table";
 import type { PortfolioRange } from "@/lib/portfolio-analytics";
 
 type LiveBenchmark = "SPY" | "QQQ" | "^AXJO";
@@ -194,6 +195,10 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
       </>}
 
       {view === "allocation" && <>
+        {data.groups && data.groups.bySector.length > 0 && <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("By sector", "按行业")}</h2><p>{text("Selected-period P&L (incl. closed positions) and current weight · sector from Yahoo company profile", "所选区间盈亏（含已平仓）与当前仓位 · 行业来自 Yahoo 公司资料")}</p></div></div>
+          <BreakdownTable rows={data.groups.bySector} columns={["weight", "count", "unrealized", "realized"]} money={decimal} label={(key) => sectorLabel(key, locale === "zh")}
+            labels={{ group: text("Sector", "行业"), pnl: text("Period P&L", "区间盈亏"), weight: text("Weight", "仓位"), count: text("Positions", "持仓数"), unrealized: text("Unrealized", "未实现"), realized: text("Realized (all time)", "已实现（全部）"), winRate: "", averageReturn: "", averageDays: "" }} />
+        </section>}
         <section className="pd-metrics" aria-label={text("Concentration", "集中度")}>{[
           [text("Open positions", "持仓数"), String(conc?.positions ?? 0), text("Securities with remaining quantity", "仍有持仓的证券")],
           [text("Top 3 weight", "前三大占比"), `${(conc?.top3 ?? 0).toFixed(1)}%`, text("Cash excluded", "不含现金")],

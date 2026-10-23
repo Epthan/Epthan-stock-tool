@@ -1,6 +1,14 @@
 import { applySplits, type StockSplit } from "@/lib/corporate-actions";
 
-export type PortfolioTrade = { id: string; symbol: string; side: "buy" | "sell"; tradedAt: string; price: number; quantity: number; note?: string };
+export type PortfolioTrade = { id: string; symbol: string; side: "buy" | "sell"; tradedAt: string; price: number; quantity: number; note?: string; tags?: string[] };
+
+/** Suggested strategy tags; any short free-text tag is allowed. */
+export const SUGGESTED_TAGS: [string, string][] = [["breakout", "突破"], ["dip", "抄底"], ["long-term", "长持"], ["earnings", "财报"], ["momentum", "动量"], ["swing", "波段"], ["value", "价值"], ["hedge", "对冲"]];
+export function normalizeTags(input: unknown): string[] | undefined {
+  const list = Array.isArray(input) ? input : typeof input === "string" ? input.split(/[,，;；#\s]+/) : [];
+  const tags = [...new Set(list.map((tag) => String(tag).trim().slice(0, 24)).filter(Boolean))].slice(0, 6);
+  return tags.length ? tags : undefined;
+}
 
 export function tradeDate(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;

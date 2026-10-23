@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getYahooCorporateActions, getYahooHistorical, getYahooQuotes } from "@/lib/yahoo-finance";
+import { getYahooCorporateActions, getYahooHistorical, getYahooQuoteSummary, getYahooQuotes } from "@/lib/yahoo-finance";
+import { buildBreakdowns, type SectorInfo } from "@/lib/breakdowns";
 import { applySplits, type StockSplit } from "@/lib/corporate-actions";
 import { fxSymbol, normalizeCurrency, rateOn, type RatePoint } from "@/lib/fx";
 import { analyzePortfolio, type SecurityHistory } from "@/lib/live-portfolio";
@@ -79,8 +80,19 @@ export async function POST(request: NextRequest) {
     const context: CashContext = { base, mode: body.cashMode === "local" ? "local" : "base", rate: (currency, date) => (currency === base ? 1 : date ? rateOn(fx.get(currency), date) : fx.get(currency)?.at(-1)?.rate ?? null), unit: (symbol) => { const info = unit.get(symbol); return info ? { currency: info.currency, divisor: info.divisor } : null; } };
     const revaluation = cashRevaluation(cash, adjusted, context, calendar);
     const result = { ...analyzePortfolio(trades, securities.filter((security) => trades.some((trade) => trade.symbol === security.symbol)), { ...bench, currency: base }, range, entriesInBase(cash, context), revaluation), currency: base };
+    // Sector from Yahoo's company profile (cached 6h); funds are grouped as ETF / fund.
+    const sectorEntries = await Promise.all([...new Set(recorded.map((trade) => trade.symbol))].map(async (symbol): Promise<[string, SectorInfo]> => {
+      try {
+        const summary = await getYahooQuoteSummary(symbol);
+        const type = summary.price?.quoteType;
+        if (type === "ETF" || type === "MUTUALFUND") return [symbol, { sector: "ETF / Fund" }];
+        return [symbol, { sector: summary.assetProfile?.sector || "Unknown", industry: summary.assetProfile?.industry }];
+      } catch { return [symbol, { sector: "Unknown" }]; }
+    }));
+    const sectors = Object.fromEntries(sectorEntries);
+    const groups = buildBreakdowns(result, sectors);
     const currencies = Object.fromEntries(local.map((item) => [item.symbol, item.currency]));
-    return NextResponse.json({ result, benchmark, splits, baseCurrency: base, currencies, fxConverted: foreign, source: "Yahoo Finance daily close", retrievedAt: new Date().toISOString() });
+    return NextResponse.json({ result: { ...result, groups, sectors }, benchmark, splits, baseCurrency: base, currencies, fxConverted: foreign, source: "Yahoo Finance daily close", retrievedAt: new Date().toISOString() });
   } catch (error) {
     return NextResponse.json({ message: error instanceof Error ? error.message : "Market data unavailable. Please retry." }, { status: 400 });
   }

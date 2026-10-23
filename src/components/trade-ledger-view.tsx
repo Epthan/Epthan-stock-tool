@@ -186,13 +186,13 @@ export function TradeLedgerView() {
   const ledger = useMemo(() => {
     const query = filter.trim().toUpperCase();
     return [...trades]
-      .filter((trade) => !query || trade.symbol.includes(query) || (trade.note ?? "").toUpperCase().includes(query))
+      .filter((trade) => !query || trade.symbol.includes(query) || (trade.note ?? "").toUpperCase().includes(query) || (trade.tags ?? []).some((tag) => tag.toUpperCase().includes(query)))
       .sort((left, right) => tradeDate(right.tradedAt).localeCompare(tradeDate(left.tradedAt)) || left.symbol.localeCompare(right.symbol));
   }, [trades, filter]);
 
   function exportCsv() {
-    const header = ["date", "symbol", "side", "quantity", "price", "amount", "note"];
-    const rows = [...trades].sort((left, right) => tradeDate(left.tradedAt).localeCompare(tradeDate(right.tradedAt))).map((trade) => [tradeDate(trade.tradedAt), trade.symbol, trade.side, trade.quantity, trade.price.toFixed(2), (trade.price * trade.quantity).toFixed(2), trade.note ?? ""]);
+    const header = ["date", "symbol", "side", "quantity", "price", "amount", "note", "tags"];
+    const rows = [...trades].sort((left, right) => tradeDate(left.tradedAt).localeCompare(tradeDate(right.tradedAt))).map((trade) => [tradeDate(trade.tradedAt), trade.symbol, trade.side, trade.quantity, trade.price.toFixed(2), (trade.price * trade.quantity).toFixed(2), trade.note ?? "", (trade.tags ?? []).join(";")]);
     const blob = new Blob([[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -282,7 +282,7 @@ export function TradeLedgerView() {
       <section className="tl-section">
         <div className="tl-section-heading">
           <div><h2>{text("All trades", "全部交易")}</h2><p>{text("Newest first. Edit or delete in the trade editor.", "按日期倒序；在交易编辑器中修改或删除。")}</p></div>
-          <div className="tl-tools"><input type="search" placeholder={text("Filter symbol or note…", "筛选代码或备注…")} value={filter} onChange={(event) => setFilter(event.target.value)} /><button className="tl-button" onClick={exportCsv}>{text("Export CSV", "导出 CSV")}</button></div>
+          <div className="tl-tools"><input type="search" placeholder={text("Filter symbol, note or tag…", "筛选代码、备注或标签…")} value={filter} onChange={(event) => setFilter(event.target.value)} /><button className="tl-button" onClick={exportCsv}>{text("Export CSV", "导出 CSV")}</button></div>
         </div>
         <div className="tl-scroll"><table>
           <thead><tr>{[text("Date", "日期"), text("Symbol", "代码"), text("Side", "方向"), text("Qty", "数量"), text("Price", "价格"), text("Amount", "金额"), text("Note", "备注"), ""].map((label, index) => <th key={index} className={index === 1 || index === 6 ? "tl-left" : undefined}>{label}</th>)}</tr></thead>
@@ -293,7 +293,7 @@ export function TradeLedgerView() {
             <td>{trade.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}{(() => { const factor = splitFactor(activePortfolio.splits, trade.symbol, trade.tradedAt); return factor !== 1 ? <small title={text("After share split", "拆股调整后")}>{text("now", "现")} {(trade.quantity * factor).toLocaleString(undefined, { maximumFractionDigits: 4 })}</small> : null; })()}</td>
             <td>{money(trade.price)}{(() => { const factor = splitFactor(activePortfolio.splits, trade.symbol, trade.tradedAt); return factor !== 1 ? <small>{text("now", "现")} {money(trade.price / factor)}</small> : null; })()}</td>
             <td>{money(trade.price * trade.quantity)}</td>
-            <td className="tl-note">{trade.note ?? ""}</td>
+            <td className="tl-note">{trade.tags?.length ? <span className="tl-tags">{trade.tags.map((tag) => <i key={tag}>{tag}</i>)}</span> : null}{trade.note ?? ""}</td>
             <td><button className="tl-row-button" onClick={() => setEditor({ symbol: trade.symbol })}>{text("Edit", "编辑")}</button></td>
           </tr>)}</tbody>
         </table></div>

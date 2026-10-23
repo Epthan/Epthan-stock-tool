@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { SymbolSearchBox } from "@/components/symbol-search-box";
 import { useLanguage } from "@/components/language-provider";
 import { usePortfolios } from "@/hooks/use-portfolios";
-import { getTradePosition, tradeDate, type PortfolioTrade } from "@/lib/portfolio-trades";
+import { SUGGESTED_TAGS, getTradePosition, normalizeTags, tradeDate, type PortfolioTrade } from "@/lib/portfolio-trades";
 
 function localDate() {
   return tradeDate(new Date().toISOString());
@@ -18,13 +18,13 @@ export function PortfolioTradesDialog({ portfolioId, symbol: initialSymbol, onCl
   const portfolio = portfolios.find((item) => item.id === portfolioId);
   const records = (portfolio?.trades ?? []).filter((trade) => trade.symbol === symbol).sort((left, right) => tradeDate(right.tradedAt).localeCompare(tradeDate(left.tradedAt)));
   const position = getTradePosition(portfolio?.trades ?? [], symbol, portfolio?.splits);
-  const [form, setForm] = useState({ id: "", side: "buy" as "buy" | "sell", tradedAt: localDate(), price: "", quantity: "", note: "" });
+  const [form, setForm] = useState({ id: "", side: "buy" as "buy" | "sell", tradedAt: localDate(), price: "", quantity: "", note: "", tags: [] as string[] });
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { dialog.current?.showModal(); if (!initialSymbol) dialog.current?.querySelector<HTMLInputElement>(".pm-stock-search input")?.focus(); }, [initialSymbol]);
-  function reset() { setForm({ id: "", side: "buy", tradedAt: localDate(), price: "", quantity: "", note: "" }); setError(""); }
+  function reset() { setForm({ id: "", side: "buy", tradedAt: localDate(), price: "", quantity: "", note: "", tags: [] }); setError(""); }
   function errorMessage(reason: unknown) {
     const code = reason instanceof Error ? reason.message : "";
     return ({
@@ -34,7 +34,7 @@ export function PortfolioTradesDialog({ portfolioId, symbol: initialSymbol, onCl
     } as Record<string, string>)[code] ?? text("Unable to save this trade. Check your entries.", "无法保存交易，请检查输入内容。");
   }
   function edit(trade: PortfolioTrade) {
-    setForm({ id: trade.id, side: trade.side, tradedAt: tradeDate(trade.tradedAt), price: trade.price.toFixed(2), quantity: String(trade.quantity), note: trade.note ?? "" });
+    setForm({ id: trade.id, side: trade.side, tradedAt: tradeDate(trade.tradedAt), price: trade.price.toFixed(2), quantity: String(trade.quantity), note: trade.note ?? "", tags: trade.tags ?? [] });
     setError(""); setConfirmDelete(null);
     dialog.current?.querySelector<HTMLInputElement>("input")?.focus();
   }
@@ -46,16 +46,16 @@ export function PortfolioTradesDialog({ portfolioId, symbol: initialSymbol, onCl
       <form className="pm-trade-form" onSubmit={(event) => {
         event.preventDefault();
         try {
-          saveTrade(portfolioId, { id: form.id || crypto.randomUUID(), symbol, side: form.side, tradedAt: form.tradedAt, price: Number(form.price), quantity: Number(form.quantity), ...(form.note.trim() ? { note: form.note.trim().slice(0, 500) } : {}) });
+          saveTrade(portfolioId, { id: form.id || crypto.randomUUID(), symbol, side: form.side, tradedAt: form.tradedAt, price: Number(form.price), quantity: Number(form.quantity), ...(form.note.trim() ? { note: form.note.trim().slice(0, 500) } : {}), ...(normalizeTags(form.tags) ? { tags: normalizeTags(form.tags) } : {}) });
           setStatus(form.id ? text("Trade updated.", "交易已更新。") : text("Trade saved.", "交易已保存。")); reset();
         } catch (reason) { setError(errorMessage(reason)); }
       }}>
         <h3>{form.id ? text("Edit trade", "编辑交易") : text("Add trade", "新增交易")}</h3>
-        <div className="pm-trade-fields"><label>{text("Side", "买卖方向")}<select value={form.side} onChange={(event) => setForm({ ...form, side: event.target.value as "buy" | "sell" })}><option value="buy">{text("Buy", "买入")}</option><option value="sell">{text("Sell", "卖出")}</option></select></label><label>{text("Trade date", "交易日期")}<input type="date" required value={form.tradedAt} onChange={(event) => setForm({ ...form, tradedAt: event.target.value })} /></label><label>{text("Price per share", "每股成交价")}<input type="number" min="0.01" step="0.01" required value={form.price} onBlur={() => { if (form.price && Number.isFinite(Number(form.price))) setForm((current) => ({ ...current, price: (Math.round((Number(current.price) + Number.EPSILON) * 100) / 100).toFixed(2) })); }} onChange={(event) => setForm({ ...form, price: event.target.value })} /></label><label>{text("Quantity", "数量")}<input type="number" min="0.00000001" step="any" required value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} /></label><label className="pm-trade-note-field">{text("Note (optional)", "备注（可选）")}<input type="text" maxLength={500} value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} /></label></div>
+        <div className="pm-trade-fields"><label>{text("Side", "买卖方向")}<select value={form.side} onChange={(event) => setForm({ ...form, side: event.target.value as "buy" | "sell" })}><option value="buy">{text("Buy", "买入")}</option><option value="sell">{text("Sell", "卖出")}</option></select></label><label>{text("Trade date", "交易日期")}<input type="date" required value={form.tradedAt} onChange={(event) => setForm({ ...form, tradedAt: event.target.value })} /></label><label>{text("Price per share", "每股成交价")}<input type="number" min="0.01" step="0.01" required value={form.price} onBlur={() => { if (form.price && Number.isFinite(Number(form.price))) setForm((current) => ({ ...current, price: (Math.round((Number(current.price) + Number.EPSILON) * 100) / 100).toFixed(2) })); }} onChange={(event) => setForm({ ...form, price: event.target.value })} /></label><label>{text("Quantity", "数量")}<input type="number" min="0.00000001" step="any" required value={form.quantity} onChange={(event) => setForm({ ...form, quantity: event.target.value })} /></label><label className="pm-trade-note-field">{text("Note (optional)", "备注（可选）")}<input type="text" maxLength={500} value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} /></label><div className="pm-trade-tags"><span>{text("Tags — why this trade", "标签 · 这笔交易的理由")}</span><div>{[...new Set([...SUGGESTED_TAGS.map(([en]) => en), ...form.tags, ...(portfolio?.trades ?? []).flatMap((trade) => trade.tags ?? [])])].slice(0, 16).map((tag) => { const on = form.tags.includes(tag); const zh = SUGGESTED_TAGS.find(([en]) => en === tag)?.[1]; return <button type="button" key={tag} aria-pressed={on} className={on ? "is-on" : ""} onClick={() => setForm({ ...form, tags: on ? form.tags.filter((item) => item !== tag) : [...form.tags, tag].slice(0, 6) })}>{locale === "zh" && zh ? zh : tag}</button>; })}<input aria-label={text("Custom tag", "自定义标签")} placeholder={text("+ custom", "+ 自定义")} maxLength={24} onKeyDown={(event) => { if (event.key === "Enter" || event.key === ",") { event.preventDefault(); const value = event.currentTarget.value.trim(); if (value) { setForm({ ...form, tags: normalizeTags([...form.tags, value]) ?? [] }); event.currentTarget.value = ""; } } }} /></div></div></div>
         <div className="pm-edit-actions">{form.id && <button type="button" onClick={reset}>{text("Cancel editing", "取消编辑")}</button>}<button className="pm-primary" type="submit">{text("Save trade", "保存交易")}</button></div>
       </form>
       {error && <p className="pm-error" role="alert">{error}</p>}<p className="pm-trade-status" role="status">{status}</p>
-      <div className="pm-trade-table"><table><thead><tr>{[text("Date", "日期"), text("Side", "方向"), text("Price", "价格"), text("Qty", "数量"), text("Note", "备注"), text("Actions", "操作")].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{records.map((trade) => <tr key={trade.id}><td>{tradeDate(trade.tradedAt)}</td><td>{trade.side === "buy" ? text("Buy", "买入") : text("Sell", "卖出")}</td><td>{trade.price.toFixed(2)}</td><td>{trade.quantity}</td><td className="pm-trade-note">{trade.note ?? ""}</td><td>{confirmDelete === trade.id ? <><button className="pm-danger" onClick={() => { try { deleteTrade(portfolioId, trade.id); setConfirmDelete(null); if (form.id === trade.id) reset(); setError(""); setStatus(text("Trade deleted.", "交易已删除。")); } catch (reason) { setError(errorMessage(reason)); } }}>{text("Confirm delete", "确认删除")}</button><button onClick={() => setConfirmDelete(null)}>{text("Cancel", "取消")}</button></> : <><button onClick={() => edit(trade)}>{text("Edit", "编辑")}</button><button className="pm-danger" onClick={() => setConfirmDelete(trade.id)}>{text("Delete", "删除")}</button></>}</td></tr>)}</tbody></table></div>
+      <div className="pm-trade-table"><table><thead><tr>{[text("Date", "日期"), text("Side", "方向"), text("Price", "价格"), text("Qty", "数量"), text("Note", "备注"), text("Actions", "操作")].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{records.map((trade) => <tr key={trade.id}><td>{tradeDate(trade.tradedAt)}</td><td>{trade.side === "buy" ? text("Buy", "买入") : text("Sell", "卖出")}</td><td>{trade.price.toFixed(2)}</td><td>{trade.quantity}</td><td className="pm-trade-note">{trade.tags?.length ? <span className="tl-tags">{trade.tags.map((tag) => <i key={tag}>{tag}</i>)}</span> : null}{trade.note ?? ""}</td><td>{confirmDelete === trade.id ? <><button className="pm-danger" onClick={() => { try { deleteTrade(portfolioId, trade.id); setConfirmDelete(null); if (form.id === trade.id) reset(); setError(""); setStatus(text("Trade deleted.", "交易已删除。")); } catch (reason) { setError(errorMessage(reason)); } }}>{text("Confirm delete", "确认删除")}</button><button onClick={() => setConfirmDelete(null)}>{text("Cancel", "取消")}</button></> : <><button onClick={() => edit(trade)}>{text("Edit", "编辑")}</button><button className="pm-danger" onClick={() => setConfirmDelete(trade.id)}>{text("Delete", "删除")}</button></>}</td></tr>)}</tbody></table></div>
       {!records.length && <p className="pm-trades-account">{text("No recorded trades. Start with a buy transaction.", "暂无交易记录，请先记录一笔买入。")}</p>}
       </>}
       {symbol && <p className="pm-trades-note">{text("Prices use the security’s quote currency; no currency conversion, fees or corporate-action adjustments. Average cost uses recorded trades only. Demo positions are not treated as actual buys. Records are saved per portfolio and used to recalculate dashboard analytics.", "价格按证券报价币种录入，暂不计汇率、费用或拆股调整；平均成本仅根据已记录交易计算，演示持仓不视为实际买入。记录按组合独立保存，并用于重新计算 Dashboard 分析。")}</p>}

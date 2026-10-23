@@ -120,6 +120,8 @@ export function monthlyReturns(returns: DailyReturn[]) {
 export type ClosedTrade = {
   id: string; symbol: string; exitDate: string; quantity: number; exitPrice: number; averageCost: number;
   pnl: number; returnPercent: number; holdingDays: number; afterExit20: number | null; note?: string;
+  /** Entry tags of the lots this sale closed (FIFO), with the share of the sale each covers. */
+  tagShares: { tag: string; share: number }[];
 };
 export type EntryTrade = { id: string; symbol: string; date: string; price: number; after5: number | null; after20: number | null; excess5: number | null; excess20: number | null };
 
@@ -134,14 +136,14 @@ export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], b
   const ordered = [...trades].sort((left, right) => left.tradedAt.localeCompare(right.tradedAt));
   const closed: ClosedTrade[] = [];
   const entries: EntryTrade[] = [];
-  const state = new Map<string, { quantity: number; cost: number; lots: { date: string; quantity: number }[] }>();
+  const state = new Map<string, { quantity: number; cost: number; lots: { date: string; quantity: number; tags: string[] }[] }>();
   for (const trade of ordered) {
     const position = state.get(trade.symbol) ?? { quantity: 0, cost: 0, lots: [] };
     const prices = priceBySymbol.get(trade.symbol) ?? [];
     if (trade.side === "buy") {
       position.quantity += trade.quantity;
       position.cost += trade.quantity * trade.price;
-      position.lots.push({ date: trade.tradedAt, quantity: trade.quantity });
+      position.lots.push({ date: trade.tradedAt, quantity: trade.quantity, tags: trade.tags ?? [] });
       if (trade.tradedAt >= cutoff) {
         const after5 = forwardChange(prices, trade.tradedAt, trade.price, 5);
         const after20 = forwardChange(prices, trade.tradedAt, trade.price, 20);
@@ -155,10 +157,13 @@ export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], b
       // FIFO lot matching only for holding-period measurement; P&L stays on average cost.
       let remaining = trade.quantity;
       let weightedDays = 0;
+      const tagged = new Map<string, number>();
       while (remaining > 1e-9 && position.lots.length) {
         const lot = position.lots[0];
         const used = Math.min(lot.quantity, remaining);
         weightedDays += used * days(lot.date, trade.tradedAt);
+        // Tags on the sale itself also count (e.g. "stop-loss"); entry tags come from the lots.
+        for (const tag of lot.tags.length ? lot.tags : ["__untagged"]) tagged.set(tag, (tagged.get(tag) ?? 0) + used / Math.max(1, lot.tags.length));
         lot.quantity -= used;
         remaining -= used;
         if (lot.quantity <= 1e-9) position.lots.shift();
@@ -171,6 +176,7 @@ export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], b
           id: trade.id, symbol: trade.symbol, exitDate: trade.tradedAt, quantity: trade.quantity, exitPrice: trade.price, averageCost,
           pnl: trade.quantity * (trade.price - averageCost), returnPercent: (trade.price / averageCost - 1) * 100,
           holdingDays: weightedDays / trade.quantity, afterExit20: forwardChange(prices, trade.tradedAt, trade.price, 20), note: trade.note,
+          tagShares: [...tagged].map(([tag, quantity]) => ({ tag, share: quantity / trade.quantity })),
         });
       }
     }
@@ -188,9 +194,11 @@ export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], b
   const entry5 = entries.map((entry) => entry.excess5).filter((value): value is number => value != null);
   const avg = (values: number[]) => values.length ? mean(values) : null;
 
+  const openLots = [...state].flatMap(([symbol, position]) => position.lots.filter((lot) => lot.quantity > 1e-9).map((lot) => ({ symbol, ...lot })));
   return {
     closed,
     entries,
+    openLots,
     stats: {
       closedCount: closed.length,
       winCount: wins.length,

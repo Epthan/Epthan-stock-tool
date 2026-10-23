@@ -2,7 +2,9 @@
 
 import { useLanguage } from "@/components/language-provider";
 import { ActivityChart, DotStrip, Histogram } from "@/components/trader-charts";
-import type { LivePortfolioAnalysis } from "@/lib/live-portfolio";
+import { holdingLabel, type AnalysisResult as LivePortfolioAnalysis } from "@/lib/breakdowns";
+import { BreakdownTable } from "@/components/breakdown-table";
+import { SUGGESTED_TAGS } from "@/lib/portfolio-trades";
 import { returnHistogram } from "@/lib/trader-analytics";
 import type { Insight } from "@/lib/trader-insights";
 
@@ -33,6 +35,7 @@ export function TradeAnalysis({ data, insights, benchmark, money, onPick }: { da
     [text("20 days after selling", "卖出后 20 日"), pct(stats.afterExitAverage), `${stats.afterExitRoseShare == null ? "—" : stats.afterExitRoseShare.toFixed(0)}% ${text("kept rising", "继续上涨")} · n=${stats.afterExitSamples}`, tone(stats.afterExitAverage == null ? null : -stats.afterExitAverage)],
     [text("Entry excess, 20 days", "买入后 20 日超额"), stats.entryExcess20 == null ? "—" : `${stats.entryExcess20 > 0 ? "+" : ""}${stats.entryExcess20.toFixed(1)} pp`, `vs ${benchmark} · ${stats.entryBeatShare == null ? "—" : stats.entryBeatShare.toFixed(0)}% ${text("beat", "跑赢")} · n=${stats.entrySamples}`, tone(stats.entryExcess20)],
   ];
+  const tagLabel = (key: string) => key === "__untagged" ? text("Untagged", "未标记") : locale === "zh" ? SUGGESTED_TAGS.find(([en]) => en === key)?.[1] ?? key : key;
   const maxDays = Math.max(1, stats.winHoldingDays ?? 0, stats.lossHoldingDays ?? 0);
   const activity = data.activity;
   return <>
@@ -63,6 +66,18 @@ export function TradeAnalysis({ data, insights, benchmark, money, onPick }: { da
         <p className="pd-table-note">{text("5-day average excess", "5 日平均超额")} <strong>{stats.entryExcess5 == null ? "—" : `${stats.entryExcess5 > 0 ? "+" : ""}${stats.entryExcess5.toFixed(1)} pp`}</strong></p>
       </section>
     </div>
+    {data.groups && <div className="pd-two-columns">
+      <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Which playbook makes money", "哪种打法赚钱")}</h2><p>{text("By entry tag · realized (closed lots, FIFO) + unrealized (open lots)", "按买入标签 · 已实现（已平仓批次，FIFO）+ 未实现（仍持有批次）")}</p></div></div>
+        {data.groups.tagged ? <BreakdownTable rows={data.groups.byTag} columns={["count", "winRate", "averageReturn", "averageDays"]} money={(value) => money(value)} label={tagLabel}
+          labels={{ group: text("Tag", "标签"), pnl: text("Total P&L", "总盈亏"), count: text("Closed", "已平仓"), winRate: text("Win rate", "胜率"), averageReturn: text("Avg return", "平均收益"), averageDays: text("Avg days", "平均天数"), weight: "", realized: "", unrealized: "" }} />
+          : <p className="pd-muted">{text("No tagged trades yet. Add tags such as breakout, dip or long-term in the trade editor (or a “tags” column when importing CSV) to see which approach actually pays.", "还没有带标签的交易。在交易编辑器里给买入打上“突破”“抄底”“长持”等标签（CSV 导入也支持 tags 列），这里就会显示哪种打法真正赚钱。")}</p>}
+      </section>
+      <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("By holding period", "按持有周期")}</h2><p>{text("Closed trades in the period, by how long the sold shares were held", "区间内已平仓交易，按卖出股份的持有时长分组")}</p></div></div>
+        {data.groups.byHolding.length ? <BreakdownTable rows={data.groups.byHolding} columns={["count", "winRate", "averageReturn"]} money={(value) => money(value)} label={(key) => holdingLabel(key, locale === "zh")}
+          labels={{ group: text("Held", "持有"), pnl: text("Realized", "已实现"), count: text("Trades", "笔数"), winRate: text("Win rate", "胜率"), averageReturn: text("Avg return", "平均收益"), averageDays: "", weight: "", realized: "", unrealized: "" }} />
+          : <p className="pd-muted">{text("No closed trades in this period.", "本区间没有已平仓交易。")}</p>}
+      </section>
+    </div>}
     {closed.length > 0 && <section className="pd-section"><div className="pd-section-heading"><div><h2>{text("Closed trades", "已平仓交易明细")}</h2><p>{text("Each sell, matched to average cost", "每笔卖出，按平均成本计算盈亏")}</p></div></div><div className="pd-table-scroll"><table><thead><tr>{[text("Exit date", "卖出日期"), text("Symbol", "代码"), text("Qty", "数量"), text("Avg cost", "平均成本"), text("Exit price", "卖出价"), text("P&L", "盈亏"), text("Return", "收益率"), text("Held (days)", "持有天数"), text("+20d after exit", "卖出后 20 日"), text("Note", "备注")].map((label) => <th key={label}>{label}</th>)}</tr></thead><tbody>{[...closed].sort((left, right) => right.exitDate.localeCompare(left.exitDate)).map((trade) => <tr key={trade.id}><td>{trade.exitDate}</td><td><button className="pd-symbol" onClick={() => onPick(trade.symbol)}>{trade.symbol} ↗</button></td><td>{trade.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}</td><td>{trade.averageCost.toFixed(2)}</td><td>{trade.exitPrice.toFixed(2)}</td><td className={tone(trade.pnl)}>{trade.pnl > 0 ? "+" : ""}{trade.pnl.toFixed(2)}</td><td className={tone(trade.returnPercent)}>{pct(trade.returnPercent)}</td><td>{Math.round(trade.holdingDays)}</td><td className={tone(trade.afterExit20 == null ? null : -trade.afterExit20)}>{pct(trade.afterExit20)}</td><td className="ta-note">{trade.note ?? ""}</td></tr>)}</tbody></table></div></section>}
   </>;
 }
