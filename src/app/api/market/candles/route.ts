@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeSymbol } from "@/lib/market-symbols";
 import { getYahooChart } from "@/lib/yahoo-finance";
-import { mockCandles } from "@/lib/mock-market";
 import { normalizeTimeframe } from "@/lib/timeframes";
 
 function toUnixTime(date: Date) {
@@ -37,14 +36,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown Yahoo Finance error";
 
-    return NextResponse.json({
-      provider: "mock",
-      mode: "mock",
-      symbol,
-      timeframe,
-      candles: mockCandles,
-      isLive: false,
-      message,
-    });
+    // No simulated candles: an unknown symbol or a Yahoo outage is reported as such.
+    const notFound = /not found|no data|delisted|invalid/i.test(message);
+    return NextResponse.json({ provider: "yahoo", mode: "unavailable", symbol, timeframe, candles: [], isLive: false, message }, { status: notFound ? 404 : 502 });
   }
 }

@@ -15,3 +15,10 @@ describe("error handling", () => {
     expect(isTransient(new Error("Quote not found for symbol: ZZZZ"))).toBe(false);
   });
 });
+
+describe("symbol errors", () => {
+  it("explains unknown or delisted symbols", () => {
+    expect(classifyError("No data found, symbol may be delisted")).toBe("symbol");
+    expect(classifyError("No quote data for ZZZZ")).toBe("symbol");
+  });
+});

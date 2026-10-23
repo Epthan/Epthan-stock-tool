@@ -1,11 +1,12 @@
 /** Turn raw API / network errors into a short explanation plus what to do. */
-export type ErrorKind = "rate" | "network" | "price" | "input" | "other";
+export type ErrorKind = "rate" | "network" | "price" | "symbol" | "input" | "other";
 
 export function classifyError(message: string | undefined): ErrorKind {
   const text = message ?? "";
   if (/429|too many|rate.?limit|crumb|unauthori[sz]ed/i.test(text)) return "rate";
   if (/failed to fetch|network|timeout|timed out|ECONN|EAI_AGAIN|ENOTFOUND|HTTP 5\d\d|502|503|504|unavailable/i.test(text)) return "network";
   if (/no daily price|completed daily price|historical prices incomplete|no historical|no fx rates/i.test(text)) return "price";
+  if (/not found|no quote data|no data found|delisted|no price history/i.test(text)) return "symbol";
   if (/invalid|record at least|choose|enter|require|supports up to|insufficient/i.test(text)) return "input";
   return "other";
 }
@@ -16,6 +17,7 @@ export function friendlyError(message: string | undefined, zh: boolean) {
     rate: ["Yahoo is rate-limiting requests", "Yahoo 暂时限制了请求频率", "This usually clears within a minute. The page retries automatically.", "通常一分钟内恢复，页面会自动重试。"],
     network: ["Can't reach market data", "暂时连不上行情数据", "Check the internet connection on the computer running the app; the page retries automatically.", "请检查运行本工具的电脑网络是否正常，页面会自动重试。"],
     price: ["Price data not complete yet", "行情数据还不完整", "Usually a trade dated today or on a holiday. Check the trade date, or try again after the market closes.", "通常是交易日期为今天或节假日。请核对交易日期，或收盘后再试。"],
+    symbol: ["Symbol not found", "找不到这个代码", "Yahoo has no data for it — check the spelling and exchange suffix (e.g. BHP.AX, 0700.HK), or it may be delisted.", "Yahoo 没有这个代码的数据。请检查拼写和交易所后缀（如 BHP.AX、0700.HK），也可能已退市。"],
     input: ["Check the inputs", "请检查输入", "", ""],
     other: ["Something went wrong", "出了点问题", "Try again; if it keeps happening, restart the app with start-localhost.bat.", "请重试；如果反复出现，用 start-localhost.bat 重启本工具。"],
   };

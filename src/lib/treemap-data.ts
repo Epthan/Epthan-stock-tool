@@ -46,7 +46,18 @@ function textOf(value: string) {
   return value.replace(/\[[^\]]+\]/g, "").replace(/\s+/g, " ").trim();
 }
 
-async function fetchConstituents(index: TreemapIndexKey) {
+/** Index membership changes a few times a year: keep it for a day instead of re-scraping Wikipedia every 15 minutes. */
+const constituentCache = new Map<TreemapIndexKey, { expiresAt: number; items: Promise<Constituent[]> }>();
+function fetchConstituents(index: TreemapIndexKey) {
+  const hit = constituentCache.get(index);
+  if (hit && hit.expiresAt > Date.now()) return hit.items;
+  const items = scrapeConstituents(index);
+  constituentCache.set(index, { expiresAt: Date.now() + 24 * 60 * 60 * 1000, items });
+  items.catch(() => constituentCache.delete(index));
+  return items;
+}
+
+async function scrapeConstituents(index: TreemapIndexKey) {
   const response = await fetch(sources[index], { cache: "no-store" });
 
   if (!response.ok) {
@@ -179,6 +190,19 @@ async function resolveCustomConstituent(symbol: string) {
 
 async function mapInBatches(items: Constituent[], timeframe: TimeframeKey, batchSize: number) {
   const results: TreemapItem[] = [];
+  // One-day moves come straight from a single batched quote call (was one request per symbol).
+  if (timeframe === "1D") {
+    const quotes = await getYahooQuotes(items.map((item) => item.symbol));
+    const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
+    for (const item of items) {
+      const quote = bySymbol.get(item.symbol);
+      const price = quote?.regularMarketPrice ?? 0;
+      if (!price) continue;
+      const changePercent = quote?.regularMarketChangePercent ?? 0;
+      results.push({ ...item, price, changePercent, magnitude: Math.max(Math.abs(changePercent), 0.05), marketCap: quote?.marketCap ?? undefined, currency: quote?.currency ?? undefined });
+    }
+    return results;
+  }
 
   for (let index = 0; index < items.length; index += batchSize) {
     const batch = items.slice(index, index + batchSize);
@@ -198,7 +222,7 @@ export async function getTreemapItems(index: TreemapIndexKey, timeframe: Timefra
   }
 
   const constituents = await fetchConstituents(index);
-  const items = await withMarketCaps(await mapInBatches(constituents, timeframe, index === "sp100" ? 10 : 12));
+  const items = await withMarketCaps(await mapInBatches(constituents, timeframe, 25));
 
   cache.set(cacheKey, {
     items,
