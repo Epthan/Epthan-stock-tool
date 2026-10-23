@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     if (!Array.isArray(body.trades) || !body.trades.length || body.trades.length > 2000) throw new Error("Record at least one buy transaction to calculate portfolio analytics.");
     const recorded: PortfolioTrade[] = body.trades.map((trade: PortfolioTrade) => ({ ...trade, tradedAt: tradeDate(trade.tradedAt) }));
-    const cash: CashEntry[] = Array.isArray(body.cash) ? body.cash.slice(0, 5000) : [];
+    let cash: CashEntry[] = Array.isArray(body.cash) ? body.cash.slice(0, 5000) : [];
     validateCashEntries(cash);
     const benchmark = ["QQQ", "^AXJO"].includes(body.benchmark) ? body.benchmark as string : "SPY";
     const base = typeof body.baseCurrency === "string" && /^[A-Z]{3}$/.test(body.baseCurrency) ? body.baseCurrency : "USD";
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     ]);
     // Prices are split-adjusted, so restate pre-split trades onto today's share basis before anything else.
     const splits: StockSplit[] = (await Promise.all(symbols.filter((symbol) => symbol !== benchmark || recorded.some((trade) => trade.symbol === symbol)).map(async (symbol) => (await getYahooCorporateActions(symbol, begin, tomorrow)).splits.map((split) => ({ symbol, ...split }))))).flat();
-    const adjusted = applySplits(recorded, splits);
+    let adjusted = applySplits(recorded, splits);
     validatePortfolioTrades(adjusted);
 
     // Local-currency histories (minor units such as GBp normalised to GBP).
@@ -42,6 +42,15 @@ export async function POST(request: NextRequest) {
       const { currency, divisor } = normalizeCurrency(quote?.currency ?? (symbol === "^AXJO" ? "AUD" : "USD"));
       return { symbol, name: quote?.longName ?? quote?.shortName ?? symbol, currency, divisor, prices: data.map((row) => ({ date: row.day, close: row.close / divisor })).sort((left, right) => left.date.localeCompare(right.date)) };
     });
+    // Demo portfolios: buy at the first real close on/after the requested date, funded by one deposit (+ demo cash).
+    if (body.demo === true) {
+      adjusted = adjusted.map((trade) => {
+        const info = local.find((item) => item.symbol === trade.symbol);
+        const bar = info?.prices.find((price) => price.date >= trade.tradedAt);
+        if (!info || !bar) throw new Error(`No price history for ${trade.symbol}.`);
+        return { ...trade, tradedAt: bar.date, price: Math.round(bar.close * info.divisor * 100) / 100 };
+      });
+    }
     // FX into the base currency, one daily series per foreign currency.
     const foreign = [...new Set([...local.map((item) => item.currency), ...cash.flatMap((entry) => [entry.currency, entry.toCurrency]).filter((code): code is string => !!code)].filter((currency) => currency !== base))];
     const fx = new Map<string, RatePoint[]>(await Promise.all(foreign.map(async (currency) => {
@@ -76,6 +85,11 @@ export async function POST(request: NextRequest) {
       return { ...trade, price: trade.price / info.divisor * toBase(info.currency, trade.tradedAt) };
     });
     const bench = securities.find((security) => security.symbol === benchmark)!;
+    if (body.demo === true && adjusted.length) {
+      const first = adjusted.reduce((min, trade) => (trade.tradedAt < min ? trade.tradedAt : min), adjusted[0].tradedAt);
+      const cost = trades.reduce((sum, trade) => sum + trade.price * trade.quantity, 0);
+      cash = [{ id: "demo-deposit", kind: "deposit", date: first, amount: Math.round((cost + (Number(body.demoCash) || 0)) * 100) / 100 }];
+    }
     // Cash: entries restated in the base currency; foreign cash (multi-currency accounts) revalued daily.
     const context: CashContext = { base, mode: body.cashMode === "local" ? "local" : "base", rate: (currency, date) => (currency === base ? 1 : date ? rateOn(fx.get(currency), date) : fx.get(currency)?.at(-1)?.rate ?? null), unit: (symbol) => { const info = unit.get(symbol); return info ? { currency: info.currency, divisor: info.divisor } : null; } };
     const revaluation = cashRevaluation(cash, adjusted, context, calendar);

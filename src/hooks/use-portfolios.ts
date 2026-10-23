@@ -1,16 +1,15 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { demoPortfolios } from "@/lib/portfolio-analytics";
+import { DEMO_SYMBOLS, demoPortfolios } from "@/lib/portfolio-analytics";
 import { importLegacyTrades, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
 import { validateCashEntries, type CashEntry, type CashMode } from "@/lib/cash-ledger";
 import { sameSplits, type StockSplit } from "@/lib/corporate-actions";
 
 export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[]; cash?: CashEntry[]; splits?: StockSplit[]; baseCurrency?: string; cashMode?: CashMode };
-const symbolOrder = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"];
 export const initialPortfolios: ManagedPortfolio[] = demoPortfolios.map((portfolio) => ({
   id: portfolio.id, name: portfolio.name, nameZh: portfolio.nameZh, initials: portfolio.initials, demoId: portfolio.id,
-  symbols: symbolOrder.filter((_, index) => portfolio.quantities[index] > 0),
+  symbols: DEMO_SYMBOLS.filter((_, index) => portfolio.quantities[index] > 0),
 }));
 const portfoliosKey = "stock-tool.portfolios.v1";
 const activeKey = "stock-tool.active-portfolio.v1";

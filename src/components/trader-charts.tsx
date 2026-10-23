@@ -51,7 +51,7 @@ export function Histogram({ bins, label, unit = "%" }: { bins: { from: number; t
   const max = Math.max(1, ...bins.map((bin) => bin.count));
   const width = 810 / bins.length;
   return <div className="pd-chart"><svg viewBox="0 0 900 220" role="img" aria-label={label}>
-    {[0, 0.5, 1].map((level) => <g key={level}><line x1="60" x2="870" y1={180 - level * 150} y2={180 - level * 150} className="pd-grid-line" /><text x="52" y={184 - level * 150} textAnchor="end" className="pd-chart-label">{Math.round(max * level)}</text></g>)}
+    {[...new Set([0, Math.round(max / 2), max])].map((tick) => <g key={tick}><line x1="60" x2="870" y1={180 - tick / max * 150} y2={180 - tick / max * 150} className="pd-grid-line" /><text x="52" y={184 - tick / max * 150} textAnchor="end" className="pd-chart-label">{tick}</text></g>)}
     {bins.map((bin, index) => { const height = bin.count / max * 150; const mid = (bin.from + bin.to) / 2; return <g key={index}><rect x={60 + index * width + 2} y={180 - height} width={width - 4} height={height} rx="2" style={{ fill: mid < 0 ? DOWN : UP }} opacity={bin.count ? 0.85 : 0}><title>{`${bin.from}${unit} … ${bin.to}${unit}: ${bin.count}`}</title></rect>{bin.count > 0 && <text x={60 + index * width + width / 2} y={174 - height} textAnchor="middle" className="pd-chart-label">{bin.count}</text>}</g>; })}
     {bins.map((bin, index) => index % 2 === 0 ? <text key={`l${index}`} x={60 + index * width} y="200" textAnchor="middle" className="pd-chart-label">{index === 0 ? `≤${bin.to}` : bin.from}{unit}</text> : null)}
     <text x="870" y="200" textAnchor="end" className="pd-chart-label">≥{bins.at(-1)!.from}{unit}</text>
@@ -97,21 +97,33 @@ export function ContributionScatter({ points, total, label, axis }: { points: { 
     <line x1="70" x2="860" y1={y(0)} y2={y(0)} className="pd-grid-line" />
     <line x1="70" x2="70" y1="20" y2="240" className="pd-grid-line" />
     <line x1={x(0)} y1={y(0)} x2={x(maxX)} y2={y(total * maxX / 100)} stroke="currentColor" opacity=".35" strokeDasharray="5 5" />
-    {points.map((point) => { const fair = total * point.weight / 100; const better = point.contribution >= fair; return <g key={point.symbol}><circle cx={x(point.weight)} cy={y(point.contribution)} r="7" style={{ fill: better ? UP : DOWN }} opacity=".85"><title>{`${point.symbol}: ${point.weight.toFixed(1)}% · ${point.contribution.toFixed(2)}`}</title></circle><text x={x(point.weight) + 10} y={y(point.contribution) + 4} className="pd-chart-label ta-scatter-label">{point.symbol}</text></g>; })}
+    {(() => {
+      // Stack labels that would collide (points close together) instead of printing them on top of each other.
+      const placed: { x: number; y: number }[] = [];
+      return [...points].sort((left, right) => y(left.contribution) - y(right.contribution)).map((point) => {
+        const fair = total * point.weight / 100; const better = point.contribution >= fair;
+        const cx = x(point.weight), cy = y(point.contribution);
+        let ly = cy + 4;
+        while (placed.some((item) => Math.abs(item.x - cx) < 60 && Math.abs(item.y - ly) < 15)) ly += 15;
+        placed.push({ x: cx, y: ly });
+        return <g key={point.symbol}><circle cx={cx} cy={cy} r="7" style={{ fill: better ? UP : DOWN }} opacity=".85"><title>{`${point.symbol}: ${point.weight.toFixed(1)}% · ${point.contribution.toFixed(2)}`}</title></circle>{ly !== cy + 4 && <line x1={cx + 6} y1={cy} x2={cx + 12} y2={ly - 4} className="pd-grid-line" />}<text x={cx + 12} y={ly} className="pd-chart-label ta-scatter-label">{point.symbol}</text></g>;
+      });
+    })()}
+    {[0, 0.5, 1].map((level) => <text key={level} x={x(maxX / 1.1 * level)} y="256" textAnchor="middle" className="pd-chart-label">{(maxX / 1.1 * level).toFixed(0)}%</text>)}
     <text x="860" y="268" textAnchor="end" className="pd-chart-label">{axis.x} →</text>
     <text x="74" y="16" className="pd-chart-label">↑ {axis.y}</text>
     <text x="64" y={y(0) + 4} textAnchor="end" className="pd-chart-label">0</text>
   </svg></div>;
 }
 
-function heat(value: number, scale: number) {
+/** Diverging cell colour from the skin's tokens (positive side first). */
+function heat(value: number, scale: number, positive = UP, negative = DOWN) {
   const intensity = Math.min(1, Math.abs(value) / scale);
-  const base = value >= 0 ? "20,184,166" : "251,113,133";
-  return `rgba(${base},${(0.08 + intensity * 0.62).toFixed(2)})`;
+  return `color-mix(in srgb, ${value >= 0 ? positive : negative} ${Math.round(8 + intensity * 55)}%, transparent)`;
 }
 
 export function CorrelationHeatmap({ symbols, matrix }: { symbols: string[]; matrix: number[][] }) {
-  return <div className="pd-table-scroll"><table className="ta-heatmap"><thead><tr><th />{symbols.map((symbol) => <th key={symbol}>{symbol}</th>)}</tr></thead><tbody>{matrix.map((row, i) => <tr key={symbols[i]}><th>{symbols[i]}</th>{row.map((value, j) => <td key={j} style={{ background: i === j ? "transparent" : value >= 0 ? `rgba(251,113,133,${(Math.min(1, value) * 0.7 + 0.05).toFixed(2)})` : `rgba(96,165,250,${(Math.min(1, -value) * 0.7 + 0.05).toFixed(2)})` }}>{i === j ? "—" : value.toFixed(2)}</td>)}</tr>)}</tbody></table></div>;
+  return <div className="pd-table-scroll"><table className="ta-heatmap"><thead><tr><th />{symbols.map((symbol) => <th key={symbol}>{symbol}</th>)}</tr></thead><tbody>{matrix.map((row, i) => <tr key={symbols[i]}><th>{symbols[i]}</th>{row.map((value, j) => <td key={j} style={{ background: i === j ? "transparent" : heat(value, 1, DOWN, "var(--ui-chart-bench)") }}>{i === j ? "—" : value.toFixed(2)}</td>)}</tr>)}</tbody></table></div>;
 }
 
 export function MonthlyCalendar({ months, labels }: { months: { month: string; portfolio: number; benchmark: number }[]; labels: { year: string; total: string; excess: string } }) {
