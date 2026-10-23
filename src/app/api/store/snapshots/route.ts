@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listSnapshots, readSnapshot, restoreSnapshot } from "@/lib/server/store";
+import { listSnapshots, readSnapshot, restoreSnapshot } from "@/lib/server-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -7,8 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const chart = vi.fn();
 vi.mock("yahoo-finance2", () => ({ default: class { chart = chart; quote = vi.fn(); quoteSummary = vi.fn(); search = vi.fn(); } }));
 
-const { readStore, writeStore, listSnapshots, restoreSnapshot } = await import("@/lib/server/store");
-const { archiveCoverage, archiveRead } = await import("@/lib/server/price-archive");
+const { readStore, writeStore, listSnapshots, restoreSnapshot } = await import("@/lib/server-store");
+const { archiveCoverage, archiveRead } = await import("@/lib/price-archive");
 const { loadDaily } = await import("@/lib/yahoo-finance");
 
 const KEY = "stock-tool.portfolios.v1";

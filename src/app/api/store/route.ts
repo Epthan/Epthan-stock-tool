@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanChanges, readStore, writeStore } from "@/lib/server/store";
+import { cleanChanges, readStore, writeStore } from "@/lib/server-store";
 
 /**
  * Shared data store for every device that opens this server (PC, phone on the same Wi-Fi).

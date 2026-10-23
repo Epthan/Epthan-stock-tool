@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { SYNCED_KEYS } from "@/lib/synced-keys";
-import { dataDir, openDatabase, transaction, type Database } from "@/lib/server/sqlite";
+import { dataDir, openDatabase, transaction, type Database } from "@/lib/server-sqlite";
 
 /**
  * Server-side store for the synced app data (portfolios, trades, cash, watch lists).

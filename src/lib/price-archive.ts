@@ -1,4 +1,4 @@
-import { openDatabase, transaction, type Database } from "@/lib/server/sqlite";
+import { openDatabase, transaction, type Database } from "@/lib/server-sqlite";
 
 /**
  * Local archive of daily bars and split / dividend events (data/prices.db).

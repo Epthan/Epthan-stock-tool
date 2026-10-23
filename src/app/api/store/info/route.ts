@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { storeInfo } from "@/lib/server/store";
-import { archiveStats } from "@/lib/server/price-archive";
+import { storeInfo } from "@/lib/server-store";
+import { archiveStats } from "@/lib/price-archive";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

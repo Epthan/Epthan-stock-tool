@@ -1,6 +1,6 @@
 import YahooFinance from "yahoo-finance2";
 import type { TimeframeKey } from "@/lib/mock-market";
-import { archiveCoverage, archiveForget, archiveRead, archiveSplits, archiveWrite } from "@/lib/server/price-archive";
+import { archiveCoverage, archiveForget, archiveRead, archiveSplits, archiveWrite } from "@/lib/price-archive";
 
 const yahooFinance = new YahooFinance();
 
