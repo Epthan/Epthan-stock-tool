@@ -5,7 +5,7 @@ import { fxSymbol, normalizeCurrency, rateOn, type RatePoint } from "@/lib/fx";
 import { analyzePortfolio, type SecurityHistory } from "@/lib/live-portfolio";
 import { validatePortfolioTrades, tradeDate, type PortfolioTrade } from "@/lib/portfolio-trades";
 import type { PortfolioRange } from "@/lib/portfolio-analytics";
-import { validateCashEntries, type CashEntry } from "@/lib/cash-ledger";
+import { cashRevaluation, entriesInBase, validateCashEntries, type CashContext, type CashEntry } from "@/lib/cash-ledger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       return { symbol, name: quote?.longName ?? quote?.shortName ?? symbol, currency, divisor, prices: data.map((row) => ({ date: row.day, close: row.close / divisor })).sort((left, right) => left.date.localeCompare(right.date)) };
     });
     // FX into the base currency, one daily series per foreign currency.
-    const foreign = [...new Set(local.map((item) => item.currency).filter((currency) => currency !== base))];
+    const foreign = [...new Set([...local.map((item) => item.currency), ...cash.flatMap((entry) => [entry.currency, entry.toCurrency]).filter((code): code is string => !!code)].filter((currency) => currency !== base))];
     const fx = new Map<string, RatePoint[]>(await Promise.all(foreign.map(async (currency) => {
       const series = (await getYahooHistorical(fxSymbol(currency, base), begin, tomorrow)).map((bar) => ({ date: bar.day, rate: bar.close }));
       if (!series.length) throw new Error(`No FX rates for ${currency}/${base}.`);
@@ -75,7 +75,10 @@ export async function POST(request: NextRequest) {
       return { ...trade, price: trade.price / info.divisor * toBase(info.currency, trade.tradedAt) };
     });
     const bench = securities.find((security) => security.symbol === benchmark)!;
-    const result = { ...analyzePortfolio(trades, securities.filter((security) => trades.some((trade) => trade.symbol === security.symbol)), { ...bench, currency: base }, range, cash), currency: base };
+    // Cash: entries restated in the base currency; foreign cash (multi-currency accounts) revalued daily.
+    const context: CashContext = { base, mode: body.cashMode === "local" ? "local" : "base", rate: (currency, date) => (currency === base ? 1 : date ? rateOn(fx.get(currency), date) : fx.get(currency)?.at(-1)?.rate ?? null), unit: (symbol) => { const info = unit.get(symbol); return info ? { currency: info.currency, divisor: info.divisor } : null; } };
+    const revaluation = cashRevaluation(cash, adjusted, context, calendar);
+    const result = { ...analyzePortfolio(trades, securities.filter((security) => trades.some((trade) => trade.symbol === security.symbol)), { ...bench, currency: base }, range, entriesInBase(cash, context), revaluation), currency: base };
     const currencies = Object.fromEntries(local.map((item) => [item.symbol, item.currency]));
     return NextResponse.json({ result, benchmark, splits, baseCurrency: base, currencies, fxConverted: foreign, source: "Yahoo Finance daily close", retrievedAt: new Date().toISOString() });
   } catch (error) {

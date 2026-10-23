@@ -3,10 +3,10 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { demoPortfolios } from "@/lib/portfolio-analytics";
 import { importLegacyTrades, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
-import { validateCashEntries, type CashEntry } from "@/lib/cash-ledger";
+import { validateCashEntries, type CashEntry, type CashMode } from "@/lib/cash-ledger";
 import { sameSplits, type StockSplit } from "@/lib/corporate-actions";
 
-export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[]; cash?: CashEntry[]; splits?: StockSplit[]; baseCurrency?: string };
+export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[]; cash?: CashEntry[]; splits?: StockSplit[]; baseCurrency?: string; cashMode?: CashMode };
 const symbolOrder = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"];
 export const initialPortfolios: ManagedPortfolio[] = demoPortfolios.map((portfolio) => ({
   id: portfolio.id, name: portfolio.name, nameZh: portfolio.nameZh, initials: portfolio.initials, demoId: portfolio.id,
@@ -134,6 +134,10 @@ export function usePortfolios() {
       if (!portfolio || sameSplits(portfolio.splits, splits)) return false;
       save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, splits } : item) });
       return true;
+    },
+    setCashMode(portfolioId: string, cashMode: CashMode) {
+      const current = readState();
+      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, cashMode } : item) });
     },
     setBaseCurrency(portfolioId: string, currency: string) {
       if (!/^[A-Z]{3}$/.test(currency)) throw new Error("INVALID_CURRENCY");

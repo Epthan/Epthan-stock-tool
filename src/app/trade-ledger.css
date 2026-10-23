@@ -110,3 +110,9 @@ html[data-theme="day"] .tl-primary { color: #fff; }
 .cl-suggest-head span { flex: 1; min-width: 220px; font-size: 11px; color: var(--tl-muted); }
 .cl-suggest td { padding: 6px 10px; }
 .tl-select-small select { min-width: 92px; }
+.cl-money { display: flex; gap: 4px; }
+.cl-money select { width: 72px; flex: none; }
+.cl-money input { flex: 1; min-width: 0; }
+.cl-form { grid-template-columns: 120px 140px 190px 190px minmax(0, 1fr) auto; }
+.tl-section-heading .tl-select-small { align-self: flex-end; }
+@media (max-width: 900px) { .cl-form { grid-template-columns: 1fr 1fr; } .cl-form .tl-primary { grid-column: span 2; } }

@@ -41,14 +41,14 @@ function subscribeNever() { return () => {}; }
 export function TradeLedgerView() {
   const { locale } = useLanguage();
   const text = (english: string, chinese: string) => (locale === "zh" ? chinese : english);
-  const { portfolios, activePortfolio, selectPortfolio, saveCash, deleteCash, setBaseCurrency } = usePortfolios();
+  const { portfolios, activePortfolio, selectPortfolio, saveCash, deleteCash, setBaseCurrency, setCashMode } = usePortfolios();
   const { pickSymbol } = useStockSelection();
   const [editor, setEditor] = useState<{ symbol: string } | null>(null);
   const [quotes, setQuotes] = useState<Record<string, Quote | null>>({});
   const [filter, setFilter] = useState("");
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState("");
-  const [cashForm, setCashForm] = useState<{ kind: CashKind; date: string; amount: string; symbol: string; note: string }>({ kind: "deposit", date: tradeDate(new Date().toISOString()), amount: "", symbol: "", note: "" });
+  const [cashForm, setCashForm] = useState<{ kind: CashKind; date: string; amount: string; currency: string; toAmount: string; toCurrency: string; symbol: string; note: string }>({ kind: "deposit", currency: "", toAmount: "", toCurrency: "", date: tradeDate(new Date().toISOString()), amount: "", symbol: "", note: "" });
   const [cashError, setCashError] = useState("");
 
   const migrationRaw = useSyncExternalStore(subscribeNever, () => { try { return window.localStorage.getItem(legacyMigrationKey); } catch { return null; } }, () => null);
@@ -73,8 +73,13 @@ export function TradeLedgerView() {
   // ---- Currencies: positions are shown in each security's own currency; totals in the ledger currency ----
   const base = activePortfolio.baseCurrency ?? "USD";
   const unitOf = useMemo(() => Object.fromEntries(symbols.map((symbol) => [symbol, quotes[symbol] ? normalizeCurrency(quotes[symbol]!.currency) : null])), [symbols, quotes]);
-  const foreign = useMemo(() => [...new Set(Object.values(unitOf).filter((unit): unit is { currency: string; divisor: number } => !!unit).map((unit) => unit.currency))].filter((currency) => currency !== base).sort(), [unitOf, base]);
-  const firstDate = useMemo(() => trades.map((trade) => tradeDate(trade.tradedAt)).sort()[0] ?? "", [trades]);
+  const cashList = activePortfolio.cash;
+  const cashMode = activePortfolio.cashMode ?? "base";
+  const foreign = useMemo(() => [...new Set([
+    ...Object.values(unitOf).filter((unit): unit is { currency: string; divisor: number } => !!unit).map((unit) => unit.currency),
+    ...(cashList ?? []).flatMap((entry) => [entry.currency, entry.toCurrency]).filter((code): code is string => !!code),
+  ])].filter((currency) => currency !== base).sort(), [unitOf, base, cashList]);
+  const firstDate = useMemo(() => [...trades.map((trade) => tradeDate(trade.tradedAt)), ...(cashList ?? []).map((entry) => entry.date)].sort()[0] ?? "", [trades, cashList]);
   const fxKey = foreign.length && firstDate ? `fx:${foreign.join(",")}:${base}:${firstDate}` : "";
   const [fx, setFx] = useState<{ key: string; rates: Record<string, RatePoint[]> | null }>({ key: "", rates: null });
   useEffect(() => {
@@ -122,10 +127,17 @@ export function TradeLedgerView() {
   const totalRealized = quotesPending ? null : sumOrNull(positions.map((position) => position.realizedBase));
 
   const cashEntries = useMemo(() => activePortfolio.cash ?? [], [activePortfolio]);
-  // Trades settle in the ledger currency at the trade-date rate; cash entries are recorded in the ledger currency.
-  const cash = useMemo(() => cashSummary(cashEntries, baseComplete ? (baseTrades as PortfolioTrade[]) : trades), [cashEntries, trades, baseTrades, baseComplete]);
+  // Per-currency cash. In "base" mode trades settle in the ledger currency at the trade-date rate;
+  // in "local" mode each currency keeps its own balance and is marked at today's rate.
+  const rateFor = useCallback((currency: string, date?: string) => {
+    if (currency === base) return 1;
+    const series = fx.key === fxKey ? fx.rates?.[`${currency}:${base}`] : undefined;
+    return date ? rateOn(series, date) : series?.at(-1)?.rate ?? null;
+  }, [base, fx, fxKey]);
+  const cash = useMemo(() => cashSummary(cashEntries, trades, { base, mode: cashMode, rate: rateFor, unit: (symbol) => unitOf[symbol] ?? null }), [cashEntries, trades, base, cashMode, rateFor, unitOf]);
+  const cashCurrencies = useMemo(() => [...new Set([base, ...foreign, "USD", "AUD", "HKD", "CNY"])], [base, foreign]);
   const hasCash = cashEntries.length > 0;
-  const accountValue = totalMarket !== null && baseComplete ? totalMarket + cash.balance : null;
+  const accountValue = totalMarket !== null && baseComplete && Number.isFinite(cash.balance) ? totalMarket + cash.balance : null;
   const totalReturn = accountValue !== null && cash.deposits > 0 ? accountValue - cash.netContributions : null;
   const cashRows = useMemo(() => [...cashEntries].sort((left, right) => right.date.localeCompare(left.date)), [cashEntries]);
 
@@ -133,11 +145,16 @@ export function TradeLedgerView() {
     event.preventDefault();
     const amount = Number(cashForm.amount);
     try {
-      saveCash(activePortfolio.id, { id: crypto.randomUUID(), kind: cashForm.kind, date: cashForm.date, amount: Math.round(amount * 100) / 100, ...(cashForm.symbol.trim() ? { symbol: cashForm.symbol.trim().toUpperCase() } : {}), ...(cashForm.note.trim() ? { note: cashForm.note.trim().slice(0, 500) } : {}) });
-      setCashForm({ ...cashForm, amount: "", symbol: "", note: "" });
+      const currency = cashForm.currency || base;
+      const toCurrency = cashForm.toCurrency || (currency === base ? foreign[0] ?? "USD" : base);
+      saveCash(activePortfolio.id, { id: crypto.randomUUID(), kind: cashForm.kind, date: cashForm.date, amount: Math.round(amount * 100) / 100,
+        ...(currency !== base ? { currency } : {}),
+        ...(cashForm.kind === "fx" ? { currency, toCurrency, toAmount: Math.round(Number(cashForm.toAmount) * 100) / 100 } : {}),
+        ...(cashForm.symbol.trim() ? { symbol: cashForm.symbol.trim().toUpperCase() } : {}), ...(cashForm.note.trim() ? { note: cashForm.note.trim().slice(0, 500) } : {}) });
+      setCashForm({ ...cashForm, amount: "", toAmount: "", symbol: "", note: "" });
       setCashError("");
     } catch (reason) {
-      setCashError(reason instanceof Error && reason.message === "INVALID_TIME" ? text("Date cannot be in the future.", "日期不能晚于今天。") : text("Enter an amount greater than 0.", "请输入大于 0 的金额。"));
+      setCashError(reason instanceof Error && reason.message === "INVALID_TIME" ? text("Date cannot be in the future.", "日期不能晚于今天。") : reason instanceof Error && reason.message === "INVALID_FX" ? text("Enter the amount received and pick a different currency.", "请填写换得的金额，并选择不同的币种。") : text("Enter an amount greater than 0.", "请输入大于 0 的金额。"));
     }
   }
 
@@ -227,7 +244,9 @@ export function TradeLedgerView() {
     </section>
 
     {hasCash && <section className="tl-metrics tl-metrics-cash" aria-label={text("Cash summary", "现金概览")}>
-      <article><span>{text("Cash balance", "现金余额")}</span><strong className={cash.balance < -0.005 ? "tl-negative" : ""}>{money(cash.balance)}</strong><small>{cash.balance < -0.005 ? text("Negative — a deposit may be missing", "为负，可能漏记入金") : text("Deposits + sells + income − buys − costs", "入金+卖出+收入−买入−费用")}</small></article>
+      <article><span>{text("Cash balance", "现金余额")} · {base}</span><strong className={cash.negative || cash.balance < -0.005 ? "tl-negative" : ""}>{quotesPending ? "…" : money(cash.balance)}</strong><small>{Object.keys(cash.balances).length > 1 || Object.keys(cash.balances).some((code) => code !== base)
+        ? Object.entries(cash.balances).map(([code, value]) => `${code} ${money(value)}`).join(" · ") + (Math.abs(cash.fxGain) >= 0.005 && Number.isFinite(cash.fxGain) ? ` · ${text("FX", "汇兑")} ${signed(cash.fxGain)}` : "")
+        : cash.negative || cash.balance < -0.005 ? text("Negative — a deposit may be missing", "为负，可能漏记入金") : text("Deposits + sells + income − buys − costs", "入金+卖出+收入−买入−费用")}</small></article>
       <article><span>{text("Net contributions", "净投入")}</span><strong>{money(cash.netContributions)}</strong><small>{text("Deposits − withdrawals", "入金 − 出金")}</small></article>
       <article><span>{text("Dividends & interest", "分红与利息")}</span><strong className={tone(cash.income)}>{signed(cash.income)}</strong><small>{text("Cash income", "现金收入")}</small></article>
       <article><span>{text("Fees & tax", "费用与税")}</span><strong className={tone(-cash.costs)}>{signed(-cash.costs)}</strong><small>{text("Brokerage, withholding", "佣金、预扣税等")}</small></article>
@@ -283,7 +302,10 @@ export function TradeLedgerView() {
     </>}
 
     <section className="tl-section">
-      <div className="tl-section-heading"><div><h2>{text("Cash ledger", "现金账本")}</h2><p>{text(`Deposits, withdrawals, dividends, interest, fees and tax, in ${base}. Buys and sells move cash automatically (foreign trades at the trade-date rate).`, `入金、出金、分红、利息、费用和税，以 ${base} 记账。买卖交易会自动计入现金变动（外币交易按成交日汇率折算）。`)}</p></div></div>
+      <div className="tl-section-heading"><div><h2>{text("Cash ledger", "现金账本")}</h2><p>{cashMode === "local"
+        ? text(`Each currency keeps its own cash (Stake / IBKR style). Trades settle in the security's currency; use "FX conversion" when you change money. Totals in ${base} at today's rate.`, `每个币种单独记现金（Stake / IBKR 方式）。交易用证券本币结算，换汇时记一笔“换汇”。合计按今日汇率折成 ${base}。`)
+        : text(`Your broker converts every trade into ${base} at the trade-date rate (CommSec style). Buys and sells move cash automatically.`, `券商把每笔交易按成交日汇率换成 ${base} 结算（CommSec 方式）。买卖交易会自动计入现金变动。`)}</p></div>
+        <label className="tl-select tl-select-small">{text("Cash settlement", "现金结算方式")}<select value={cashMode} onChange={(event) => setCashMode(activePortfolio.id, event.target.value as "base" | "local")}><option value="base">{text(`All in ${base}`, `统一 ${base}`)}</option><option value="local">{text("Per currency", "分币种")}</option></select></label></div>
       {missingDividends.length > 0 && <div className="cl-suggest">
         <div className="cl-suggest-head"><strong>{text(`${missingDividends.length} dividend${missingDividends.length === 1 ? "" : "s"} may be missing`, `可能漏记了 ${missingDividends.length} 笔分红`)}</strong><span>{text("Estimated from Yahoo per-share dividends × shares held before the ex-date, gross of withholding tax. Check against your broker statement.", "按 Yahoo 每股分红 × 除息日前持股数估算，税前金额，请与券商结单核对。")}</span><button className="tl-button" onClick={() => addDividends(missingDividends)}>{text("Add all", "全部添加")}</button></div>
         <div className="tl-scroll"><table><tbody>{missingDividends.slice(0, 6).map((item) => <tr key={`${item.symbol}:${item.date}`}>
@@ -295,8 +317,9 @@ export function TradeLedgerView() {
       <form className="cl-form" onSubmit={addCash}>
         <label>{text("Type", "类型")}<select value={cashForm.kind} onChange={(event) => setCashForm({ ...cashForm, kind: event.target.value as CashKind })}>{CASH_KINDS.map((kind) => <option key={kind} value={kind}>{cashLabel[kind][locale === "zh" ? 1 : 0]}</option>)}</select></label>
         <label>{text("Date", "日期")}<input type="date" required value={cashForm.date} onChange={(event) => setCashForm({ ...cashForm, date: event.target.value })} /></label>
-        <label>{text("Amount", "金额")} ({base})<input type="number" min="0.01" step="0.01" required value={cashForm.amount} onChange={(event) => setCashForm({ ...cashForm, amount: event.target.value })} /></label>
-        <label>{text("Symbol (optional)", "代码（可选）")}<input value={cashForm.symbol} onChange={(event) => setCashForm({ ...cashForm, symbol: event.target.value })} /></label>
+        <label>{cashForm.kind === "fx" ? text("Sell amount", "换出金额") : text("Amount", "金额")}<span className="cl-money"><select aria-label={text("Currency", "币种")} value={cashForm.currency || base} onChange={(event) => setCashForm({ ...cashForm, currency: event.target.value })}>{cashCurrencies.map((code) => <option key={code}>{code}</option>)}</select><input type="number" min="0.01" step="0.01" required value={cashForm.amount} onChange={(event) => setCashForm({ ...cashForm, amount: event.target.value })} /></span></label>
+        {cashForm.kind === "fx" ? <label>{text("Receive", "换得金额")}<span className="cl-money"><select aria-label={text("Currency received", "换入币种")} value={cashForm.toCurrency || ((cashForm.currency || base) === base ? foreign[0] ?? "USD" : base)} onChange={(event) => setCashForm({ ...cashForm, toCurrency: event.target.value })}>{cashCurrencies.map((code) => <option key={code}>{code}</option>)}</select><input type="number" min="0.01" step="0.01" required value={cashForm.toAmount} onChange={(event) => setCashForm({ ...cashForm, toAmount: event.target.value })} /></span></label>
+          : <label>{text("Symbol (optional)", "代码（可选）")}<input value={cashForm.symbol} onChange={(event) => setCashForm({ ...cashForm, symbol: event.target.value })} /></label>}
         <label>{text("Note (optional)", "备注（可选）")}<input maxLength={500} value={cashForm.note} onChange={(event) => setCashForm({ ...cashForm, note: event.target.value })} /></label>
         <button className="tl-primary" type="submit">{text("Add", "添加")}</button>
       </form>
@@ -307,7 +330,9 @@ export function TradeLedgerView() {
           <td>{entry.date}</td>
           <td>{cashLabel[entry.kind][locale === "zh" ? 1 : 0]}</td>
           <td className="tl-left">{entry.symbol ?? ""}</td>
-          <td className={cashSign[entry.kind] > 0 ? "cl-in" : "cl-out"}>{cashSign[entry.kind] > 0 ? "+" : "−"}{money(entry.amount)}</td>
+          <td className={entry.kind === "fx" ? "" : cashSign[entry.kind] > 0 ? "cl-in" : "cl-out"}>{entry.kind === "fx"
+            ? `${entry.currency ?? base} ${money(entry.amount)} → ${entry.toCurrency} ${money(entry.toAmount)}`
+            : `${cashSign[entry.kind] > 0 ? "+" : "−"}${entry.currency && entry.currency !== base ? `${entry.currency} ` : ""}${money(entry.amount)}`}</td>
           <td className="tl-note">{entry.note ?? ""}</td>
           <td><button className="tl-row-button" onClick={() => deleteCash(activePortfolio.id, entry.id)}>{text("Delete", "删除")}</button></td>
         </tr>)}</tbody>

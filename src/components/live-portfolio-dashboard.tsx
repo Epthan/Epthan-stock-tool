@@ -22,16 +22,17 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
   const [benchmarkSymbol, setBenchmark] = useState<LiveBenchmark>("SPY");
   const benchmark = benchmarkSymbol === "^AXJO" ? "ASX 200" : benchmarkSymbol;
   const baseCurrency = portfolio.baseCurrency ?? "USD";
+  const cashMode = portfolio.cashMode ?? "base";
   const [state, setState] = useState<{ key: string; data?: LivePortfolioAnalysis; error?: string }>({ key: "" });
   const [retry, setRetry] = useState(0);
   const tradesJson = JSON.stringify({ trades: portfolio.trades ?? [], cash: portfolio.cash ?? [] });
-  const requestKey = `${portfolio.id}:${tradesJson}:${range}:${benchmarkSymbol}:${baseCurrency}:${portfolio.splits?.length ?? 0}:${retry}`;
+  const requestKey = `${portfolio.id}:${tradesJson}:${range}:${benchmarkSymbol}:${baseCurrency}:${cashMode}:${portfolio.splits?.length ?? 0}:${retry}`;
   const hasTrades = !!portfolio.trades?.length;
   useEffect(() => {
     const { trades, cash } = JSON.parse(tradesJson) as { trades: unknown[]; cash: unknown[] };
     if (!trades.length) return;
     let active = true;
-    const request = (forRange: PortfolioRange): [string, RequestInit] => [`analysis:${tradesJson}:${forRange}:${benchmarkSymbol}:${baseCurrency}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trades, cash, range: forRange, benchmark: benchmarkSymbol, baseCurrency }) }];
+    const request = (forRange: PortfolioRange): [string, RequestInit] => [`analysis:${tradesJson}:${forRange}:${benchmarkSymbol}:${baseCurrency}:${cashMode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trades, cash, range: forRange, benchmark: benchmarkSymbol, baseCurrency, cashMode }) }];
     const [key, init] = request(range);
     if (retry > 0) forgetCached(key);
     fetchCached<{ result: LivePortfolioAnalysis }>(key, "/api/market/portfolio-analysis", TTL.analysis, init, (fresh) => { if (active) setState({ key: requestKey, data: fresh.result }); })
@@ -43,7 +44,7 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
       })
       .catch((reason) => { if (active) setState({ key: requestKey, error: reason instanceof Error ? reason.message : "Unable to load market data." }); });
     return () => { active = false; };
-  }, [tradesJson, range, benchmarkSymbol, baseCurrency, requestKey, retry]);
+  }, [tradesJson, range, benchmarkSymbol, baseCurrency, cashMode, requestKey, retry]);
   const loading = hasTrades && state.key !== requestKey;
   // While a new range/benchmark loads, keep showing the previous result (marked as updating) instead of blanking the page.
   const data = state.data;

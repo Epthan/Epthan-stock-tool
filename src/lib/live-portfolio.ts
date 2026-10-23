@@ -22,7 +22,7 @@ export function xirr(flows: { date: string; amount: number }[]): number | null {
   return (low + high) / 2;
 }
 
-export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityHistory[], benchmark: SecurityHistory, range: PortfolioRange, cash: CashEntry[] = []) {
+export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityHistory[], benchmark: SecurityHistory, range: PortfolioRange, cash: CashEntry[] = [], fxRevaluation?: Map<string, number>) {
   const ordered = [...trades].sort((left, right) => left.tradedAt.localeCompare(right.tradedAt));
   const firstTrade = ordered[0]?.tradedAt;
   if (!firstTrade) throw new Error("No trades recorded.");
@@ -85,7 +85,7 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
     // Dividends, interest, fees and tax are part of the holdings' return; deposits / withdrawals are not.
     let income = 0;
     for (const entry of cashByDay.get(date) ?? []) {
-      if (entry.kind === "deposit" || entry.kind === "withdrawal") continue;
+      if (entry.kind === "deposit" || entry.kind === "withdrawal" || entry.id.startsWith("fx:")) continue; // FX spread is an account cost, not a holdings one
       const amount = cashSign[entry.kind] * entry.amount;
       income += amount;
       const key = entry.symbol && symbolSet.has(entry.symbol) ? entry.symbol : "__other";
@@ -184,8 +184,9 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
       }
       balance += tradeCash.get(date) ?? 0;
       if (external) flows.push({ date, amount: -external });
-      const value = (date >= firstTrade ? valueByDate.get(date) ?? 0 : 0) + balance;
-      if (balance < -0.01) negative = true;
+      const cashValue = balance + (fxRevaluation?.get(date) ?? 0); // foreign cash marked at today's rate
+      const value = (date >= firstTrade ? valueByDate.get(date) ?? 0 : 0) + cashValue;
+      if (cashValue < -0.01) negative = true;
       const base = previous + external; // flows land at the start of the day
       if (base > 0 && value >= 0) index *= value / base;
       series.push({ date, index, value });
@@ -197,7 +198,7 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
     const mwr = negative ? null : xirr([...flows, { date: lastPoint.date, amount: lastPoint.value }]);
     const years = (Date.parse(lastPoint.date) - Date.parse(series[0].date)) / (365.25 * 86400000);
     return {
-      value: lastPoint.value, cash: balance, cashWeight: lastPoint.value > 0 ? balance / lastPoint.value * 100 : null,
+      value: lastPoint.value, cash: balance + (fxRevaluation?.get(lastPoint.date) ?? 0), cashWeight: lastPoint.value > 0 ? balance / lastPoint.value * 100 : null,
       deposits, withdrawals, netContributions, income, costs, gain: lastPoint.value - netContributions,
       periodReturn: negative ? null : (lastPoint.index / (before?.index ?? 1) - 1) * 100,
       sinceInception: negative ? null : (lastPoint.index - 1) * 100,
