@@ -42,3 +42,7 @@ next-env.d.ts
 
 # local data store (portfolios, trades, watch lists)
 /data
+
+# tests
+/test-results
+/playwright-report
