@@ -351,3 +351,11 @@ html[data-skin] .trade-ledger { width: 100%; box-sizing: border-box; }
 .pm-trade-tags input { width: 110px; padding: 4px 10px; border-radius: 999px; border: 1px dashed var(--ui-line); background: transparent; color: var(--ui-ink); font-size: 12px; }
 .pm-trade-note .tl-tags i { font-style: normal; font-size: 10.5px; padding: 1px 7px; border-radius: 999px; color: var(--ui-accent); background: color-mix(in srgb, var(--ui-accent) 12%, transparent); }
 .pm-trade-note .tl-tags { display: inline-flex; gap: 4px; margin-right: 6px; }
+
+/* Backtest: token colours + your real trades */
+html[data-skin] .bt-strategy { color: var(--ui-chart-line); }
+html[data-skin] .bt-benchmark { color: var(--ui-chart-bench); }
+.bt-real { color: var(--ui-warn); font-weight: 600; }
+.bt-real-key { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 3px; border-radius: 4px; font-size: 10px; color: var(--ui-up); background: var(--ui-up-soft); }
+.bt-real-key.is-sell { color: var(--ui-down); background: var(--ui-down-soft); }
+.bt-marker-legend b + b { margin-left: 2px; }

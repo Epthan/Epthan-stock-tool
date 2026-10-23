@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
     }
     const bars = history.filter((bar) => bar.open != null && bar.close != null).map((bar) => ({ date: bar.day, open: bar.open!, close: bar.close! }));
     const result = runBacktest(bars, settings);
-    return NextResponse.json({ symbol, currency: quote.currency ?? "", settings, result, source: "Yahoo Finance daily OHLC", retrievedAt: new Date().toISOString() });
+    const prices = bars.filter((bar) => bar.date >= result.start && bar.date <= result.end).map((bar) => ({ date: bar.date, close: bar.close }));
+    return NextResponse.json({ symbol, currency: quote.currency ?? "", settings, result, prices, source: "Yahoo Finance daily OHLC", retrievedAt: new Date().toISOString() });
   } catch (error) {
     return NextResponse.json({ message: error instanceof Error ? error.message : "Unable to run backtest." }, { status: 400 });
   }
