@@ -376,3 +376,4 @@ html[data-skin] .bt-benchmark { color: var(--ui-chart-bench); }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ui-spinner { animation-duration: 2.4s; } }
 .ui-crash { padding: 24px; max-width: 760px; }
+.wpx-index.is-placeholder .wpx-num, .wpx-watch-row.is-placeholder .wpx-num { color: var(--ui-faint); }

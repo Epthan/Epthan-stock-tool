@@ -13,10 +13,8 @@ import { useLanguage } from "@/components/language-provider";
 import { StockChart, type ChartStyle } from "@/components/stock-chart";
 import { useStockSelection } from "@/components/stock-selection-provider";
 import {
-  mockIndexes,
   mockMarketBreadth,
   mockProviderPlan,
-  mockWatchlist,
   movingAverageLabels,
   timeframeLabels,
   type CandlePoint,
@@ -186,12 +184,14 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   const [dashboard, setDashboard] = useState<DashboardResponse>({
     provider: mockProviderPlan.provider,
     mode: "mock",
-    indexes: mockIndexes,
-    watchlist: mockWatchlist,
+    indexes: [],
+    watchlist: [],
     marketBreadth: mockMarketBreadth,
     isLive: false,
     message: messages.common.loading,
   });
+  // No simulated prices on screen: until Yahoo answers the strip and list show placeholders.
+  const [marketState, setMarketState] = useState<"loading" | "live" | "error">("loading");
   const [candles, setCandles] = useState<CandlePoint[]>([]);
   const [loadedChartSymbol, setLoadedChartSymbol] = useState("");
   const chartCandles = loadedChartSymbol === resolvedSelectedSymbol ? candles : [];
@@ -252,18 +252,15 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
     async function loadDashboard() {
       try {
         const url = `/api/market/dashboard?symbols=${encodeURIComponent(activeWatchlist.symbols.join(","))}`;
-        const payload = await fetchCached<DashboardResponse>(`dashboard:${activeWatchlist.symbols.join(",")}`, url, 10_000, undefined, (fresh) => { if (!ignore) setDashboard(fresh); });
-
-        if (!ignore) {
-          setDashboard(payload);
-        }
+        const accept = (next: DashboardResponse) => {
+          if (ignore) return;
+          if (next.mode === "live") { setDashboard(next); setMarketState("live"); }
+          else setMarketState((current) => (current === "live" ? current : "error")); // keep the last live snapshot if we had one
+        };
+        const payload = await fetchCached<DashboardResponse>(`dashboard:${activeWatchlist.symbols.join(",")}`, url, 10_000, undefined, accept);
+        accept(payload);
       } catch {
-        if (!ignore) {
-          setDashboard((current) => ({
-            ...current,
-            message: noDataMessage,
-          }));
-        }
+        if (!ignore) setMarketState((current) => (current === "live" ? current : "error"));
       }
     }
 
@@ -580,8 +577,9 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
         <header className="wpx-tools"><div><nav aria-label={locale === "zh" ? "市场工具" : "Market tools"}><button aria-pressed={workplaceView === "research"} onClick={() => setWorkplaceView("research")}>{locale === "zh" ? "行情研究" : "Research"}</button><button aria-pressed={workplaceView === "backtest"} onClick={() => { setWorkplaceView("backtest"); setIsChartLightboxOpen(false); }}>{locale === "zh" ? "策略回测" : "Backtest"}</button></nav></div><PortfolioManager onPick={handleSymbolPick} /></header>
         {workplaceView === "backtest" ? <BacktestPanel key={resolvedSelectedSymbol} symbol={resolvedSelectedSymbol} /> : <>
         <section className="wpx-indexes" aria-label={zh ? "主要指数" : "Major indexes"}>
+          {!dashboard.indexes.length && ["SPY", "QQQ", "DIA", "IWM"].map((symbol) => <div key={symbol} className="wpx-index is-placeholder"><span className="wpx-index-symbol">{symbol}</span><span className="wpx-num">—</span></div>)}
           {dashboard.indexes.map((index) => <div key={index.symbol} className="wpx-index"><span className="wpx-index-symbol">{index.symbol}</span><span className="wpx-num">{formatPrice(index.price)}</span><span className={`wpx-num ${index.trend === "up" ? "is-up" : "is-down"}`}>{formatPercent(index.changePercent)}</span></div>)}
-          <span className="wpx-index-note">{dashboard.isLive ? (zh ? "Yahoo 行情快照，约延迟 15 分钟" : "Yahoo snapshot, ~15 min delayed") : (zh ? "演示数据，非实时行情" : "Demo data, not live")}</span>
+          <span className="wpx-index-note">{marketState === "live" ? (zh ? "Yahoo 行情快照，约延迟 15 分钟" : "Yahoo snapshot, ~15 min delayed") : marketState === "loading" ? (zh ? "正在加载行情…" : "Loading market data…") : (zh ? "行情暂不可用，每 15 秒自动重试" : "Market data unavailable — retrying every 15 s")}</span>
         </section>
 
         <nav className="wp-mobile-tabs" aria-label={locale === "zh" ? "工作台视图" : "Workplace views"}>{[["chart", locale === "zh" ? "图表" : "Chart"], ["watchlist", locale === "zh" ? "自选" : "Watchlist"], ["details", locale === "zh" ? "公司资料" : "Company"]].map(([value, label]) => <button key={value} aria-pressed={mobileView === value} onClick={() => setMobileView(value)}>{label}</button>)}</nav>
@@ -636,6 +634,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
               </select>
             </div>
             <div className="wpx-watch-list">
+              {!dashboard.watchlist.length && activeWatchlist.symbols.map((symbol) => <div key={symbol} className="wpx-watch-row is-placeholder"><button type="button" onClick={() => handleSymbolPick(symbol)} className="wpx-watch-pick"><span className="wpx-watch-symbol">{symbol}</span><span className="wpx-num wpx-faint">{marketState === "error" ? (zh ? "暂无行情" : "no data") : "…"}</span></button></div>)}
               {filteredAndSortedWatchlist.map((item) => (
                 <div
                   key={item.symbol}
