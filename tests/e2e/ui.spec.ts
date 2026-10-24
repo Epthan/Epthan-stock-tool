@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { PORTFOLIO, mockMarket, open, resetStore, seed, watchErrors } from "./fixtures";
 
 /** Layout, i18n, touch targets, keyboard, skins. Test titles start with requirement IDs (see tests/requirements.ts). */
-test.beforeEach(() => resetStore());
+test.beforeEach(async ({ request }) => { await resetStore(request); });
 
 test("C14 skin and language persist", async ({ page }) => {
   await open(page, "/");

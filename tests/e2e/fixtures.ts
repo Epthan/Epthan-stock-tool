@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Page } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { runBacktest } from "@/lib/backtest";
 import { analyzePortfolio } from "@/lib/live-portfolio";
 import { buildBreakdowns } from "@/lib/breakdowns";
@@ -65,8 +65,15 @@ export async function mockMarket(page: Page, options: MockOptions = {}) {
 }
 
 /** Fresh state: empty server store, browser seeded once per test (not on every navigation). */
-/** Wipes only the e2e server's own data folder (test-results/data-e2e), never ./data. */
-export function resetStore() { fs.rmSync(dataDirFor("e2e"), { recursive: true, force: true }); }
+/**
+ * Empties the e2e server's own data folder (test-results/data-e2e), never ./data. Done through the test-only
+ * reset endpoint, which closes the SQLite files first (Windows cannot delete open files).
+ */
+export async function resetStore(request: APIRequestContext) {
+  const response = await request.post("/api/store/reset");
+  if (!response.ok()) throw new Error(`store reset failed (${response.status()})`);
+  if (fs.existsSync(path.join(dataDirFor("e2e"), "store.db"))) throw new Error("store reset left data behind");
+}
 export async function seed(page: Page, { locale = "zh", skin = "gray", portfolio = true }: { locale?: string; skin?: string; portfolio?: boolean } = {}) {
   await page.addInitScript(({ locale, skin, data }) => {
     if (sessionStorage.getItem("qa-seeded")) return;

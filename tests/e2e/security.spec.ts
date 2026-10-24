@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mockMarket, portfolios, resetStore, seed } from "./fixtures";
 
 /** Security. Test titles start with requirement IDs (see tests/requirements.ts). */
-test.beforeEach(() => resetStore());
+test.beforeEach(async ({ request }) => { await resetStore(request); });
 
 test("G01 notes and tags render as text (no XSS)", async ({ page }) => {
   await seed(page); await mockMarket(page);

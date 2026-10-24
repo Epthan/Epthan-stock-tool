@@ -59,6 +59,11 @@ export function openDatabase(name: string, schema: string): Database | null {
   return db;
 }
 
+/** Close every open database (test reset: Windows cannot delete a file that is still open). */
+export function closeDatabases() {
+  for (const [name, handle] of handles) { try { handle.db.close(); } catch { /* already closed */ } handles.delete(name); }
+}
+
 /** Run `work` inside a transaction (rolled back on error). */
 export function transaction<T>(db: Database, work: () => T): T {
   db.exec("BEGIN IMMEDIATE");

@@ -1,7 +1,7 @@
 # Stock Tool — handoff
 
 Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · lightweight-charts 5 · d3-hierarchy · yahoo-finance2 3.
-Version **1.3.0** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
+Version **1.3.1** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
 Everything runs on one machine; the browser talks only to this app's `/api/*` routes, which talk to Yahoo.
 
 ## 1. Architecture in one picture

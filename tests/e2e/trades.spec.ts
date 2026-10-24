@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { at, open, portfolios, resetStore, watchErrors } from "./fixtures";
 
 /** Trade log, cash ledger, ledger currency, brokerage, dividends. Test titles start with requirement IDs (see tests/requirements.ts). */
-test.beforeEach(() => resetStore());
+test.beforeEach(async ({ request }) => { await resetStore(request); });
 
 test("C08 trades: add with tags, edit, delete", async ({ page }) => {
   await open(page, "/portfolio");

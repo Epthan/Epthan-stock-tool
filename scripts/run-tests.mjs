@@ -43,7 +43,7 @@ function run(stage) {
   const result = spawnSync(stage.cmd, { shell: true, cwd: root, env: { ...process.env, ...stage.env, FORCE_COLOR: "0" }, stdio: stage.capture ? ["ignore", "pipe", "inherit"] : "inherit", maxBuffer: 64 * 1024 * 1024 });
   if (stage.capture) fs.writeFileSync(path.join(root, stage.capture), result.stdout?.toString() ?? "");
   const seconds = (Date.now() - started) / 1000;
-  process.stdout.write(`  ${result.status === 0 ? "✓" : "✗"} ${stage.label} (${seconds.toFixed(1)}s)\n`);
+  process.stdout.write(`  ${result.status === 0 ? "✓" : stage.allowFail ? "!" : "✗"} ${stage.label} (${seconds.toFixed(1)}s)\n`);
   return { id: stage.id, label: stage.label, exit: result.status ?? 1, seconds };
 }
 

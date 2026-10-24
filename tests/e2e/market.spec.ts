@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { open, resetStore, watchErrors } from "./fixtures";
 
 /** Market page: tabs, search, watch lists, chart, backtest, drawings. Test titles start with requirement IDs (see tests/requirements.ts). */
-test.beforeEach(() => resetStore());
+test.beforeEach(async ({ request }) => { await resetStore(request); });
 
 test("C01/C02 market tabs remembered; index click opens research", async ({ page }) => {
   const errors = watchErrors(page);

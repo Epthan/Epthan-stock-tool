@@ -14,7 +14,7 @@ export function testServer(suite: "e2e" | "smoke" | "live", port: number) {
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { NEXT_DIST_DIR: TEST_DIST_DIR, STOCK_TOOL_DATA_DIR: dataDirFor(suite) },
+    env: { NEXT_DIST_DIR: TEST_DIST_DIR, STOCK_TOOL_DATA_DIR: dataDirFor(suite), STOCK_TOOL_TEST_MODE: "1" },
   };
 }
 

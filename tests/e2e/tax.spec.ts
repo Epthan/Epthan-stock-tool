@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { at, audSigned, open, resetStore, watchErrors } from "./fixtures";
 
 /** Australian tax report. Test titles start with requirement IDs (see tests/requirements.ts). */
-test.beforeEach(() => resetStore());
+test.beforeEach(async ({ request }) => { await resetStore(request); });
 
 test("T06 tax report: FIFO CGT event in AUD, myTax labels, CSV export", async ({ page }) => {
   const errors = watchErrors(page);

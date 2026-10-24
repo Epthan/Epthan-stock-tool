@@ -3,6 +3,11 @@
 Versions follow `MAJOR.MINOR.PATCH`: a new feature bumps MINOR, a fix bumps PATCH. Each release is a git tag (`v1.0.0`).
 The running version shows on the logo tooltip and in Trades → 历史版本.
 
+## 1.3.1 — 2026-10-25
+
+- Test framework on Windows: the end-to-end suite now resets its data through a test-only endpoint that closes the
+  SQLite files first (Windows cannot delete open files, which failed 33 tests on the first run on Windows).
+
 ## 1.3.0 — 2026-10-25
 
 - **Test framework**: one command (`run-tests.bat` / `npm run test:full`) runs lint, type-check (incl. tests), unit tests
