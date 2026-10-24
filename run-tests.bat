@@ -10,6 +10,8 @@ if errorlevel 1 (
   echo Installing / updating dependencies...
   call npm install --no-audit --no-fund
   if errorlevel 1 ( echo [x] npm install failed. & pause & exit /b 1 )
+  rem A running start-localhost.bat restarts itself when next.config.ts changes, so it picks up the new packages.
+  node -e "const f=require('fs');const t=new Date();f.utimesSync('next.config.ts',t,t)"
 )
 echo Checking the test browser (the first time this downloads Chromium, about 150 MB)...
 call npx playwright install chromium
