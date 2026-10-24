@@ -170,6 +170,24 @@ export function usePortfolios() {
       const current = readState();
       save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, cash: (item.cash ?? []).filter((entry) => entry.id !== entryId) } : item) });
     },
+    /** Add brokerage to several trades at once (linked fee entries); validated and saved together. */
+    addBrokerage(portfolioId: string, items: { tradeId: string; amount: number; currency: string }[]) {
+      const current = readState();
+      const portfolio = current.portfolios.find((item) => item.id === portfolioId);
+      if (!portfolio) throw new Error("PORTFOLIO_NOT_FOUND");
+      const base = portfolio.baseCurrency ?? "USD";
+      const byId = new Map((portfolio.trades ?? []).map((trade) => [trade.id, trade]));
+      const added: CashEntry[] = items.flatMap((item) => {
+        const trade = byId.get(item.tradeId);
+        if (!trade || !(item.amount > 0)) return [];
+        return [{ id: crypto.randomUUID(), kind: "fee" as const, date: tradeDate(trade.tradedAt), amount: Math.round(item.amount * 100) / 100, ...(item.currency !== base ? { currency: item.currency } : {}), symbol: trade.symbol, tradeId: trade.id, note: `${trade.side === "buy" ? "Buy" : "Sell"} ${trade.symbol} brokerage` }];
+      });
+      const linked = new Set(added.map((entry) => entry.tradeId));
+      const cash = [...(portfolio.cash ?? []).filter((entry) => !(entry.tradeId && linked.has(entry.tradeId))), ...added];
+      validateCashEntries(cash);
+      save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, cash } : item) });
+      return added.length;
+    },
     /** Bulk add from a CSV import. Everything is validated together; nothing is saved if anything fails. */
     importRecords(portfolioId: string, newTrades: PortfolioTrade[], newCash: CashEntry[]) {
       const current = readState();

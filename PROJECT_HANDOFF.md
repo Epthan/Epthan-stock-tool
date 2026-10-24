@@ -1,7 +1,7 @@
 # Stock Tool — handoff
 
 Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · lightweight-charts 5 · d3-hierarchy · yahoo-finance2 3.
-Version **1.0.0** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
+Version **1.1.0** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
 Everything runs on one machine; the browser talks only to this app's `/api/*` routes, which talk to Yahoo.
 
 ## 1. Architecture in one picture
@@ -52,6 +52,7 @@ Formulas and conventions: `PORTFOLIO_DASHBOARD.md`.
 | Backtest | `components/backtest-panel.tsx`, `lib/backtest.ts`, `lib/real-vs-backtest.ts`, `api/market/backtest` |
 | Portfolio dashboard | `components/portfolio-dashboard.tsx` (shell + demo), `live-portfolio-dashboard.tsx`, `trade-analysis.tsx`, `trader-charts.tsx`, `performance-insights.tsx`, `breakdown-table.tsx` |
 | Trades page | `components/trade-ledger-view.tsx`, `portfolio-trades-dialog.tsx`, `csv-import-dialog.tsx`, `data-sync.tsx` (sync, backup, history dialog) |
+| Brokerage fill | `components/brokerage-fill-dialog.tsx`, `lib/brokerage.ts` (fee schedules, custom rule) |
 | Tax | `components/tax-report-view.tsx`, `lib/au-tax.ts` (CGT events, loss ordering, discount, dividends, CSV), `lib/lots.ts` |
 | Server storage | `lib/server-sqlite.ts` (node:sqlite wrapper), `lib/server-store.ts`, `lib/price-archive.ts`, `api/store`, `api/store/snapshots`, `api/store/info` |
 | Compare / Heatmap | `components/compare-view.tsx`, `treemap-view.tsx`, `lib/treemap-data.ts` |

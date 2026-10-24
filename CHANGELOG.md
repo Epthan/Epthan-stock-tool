@@ -3,6 +3,13 @@
 Versions follow `MAJOR.MINOR.PATCH`: a new feature bumps MINOR, a fix bumps PATCH. Each release is a git tag (`v1.0.0`).
 The running version shows on the logo tooltip and in Trades → 历史版本.
 
+## 1.1.0 — 2026-10-25
+
+- **Fill in missing brokerage** (Trades → 补佣金, or from the notice on the Tax page): pick a broker fee schedule —
+  IBKR fixed (US), Stake (ASX / US), CommSec (ASX) — or a custom rule (fixed + % with a minimum, any currency),
+  preview the fee for every trade without brokerage, untick any you want to skip, and save them in one go as linked
+  fee entries. One step to undo via History.
+
 ## 1.0.0 — 2026-10-25
 
 First stable version. Everything below is in this release.

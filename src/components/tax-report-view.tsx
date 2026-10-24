@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { usePortfolios } from "@/hooks/use-portfolios";
+import { BrokerageFillDialog } from "@/components/brokerage-fill-dialog";
 import { TTL, fetchCached } from "@/lib/client-cache";
 import { applySplits } from "@/lib/corporate-actions";
 import { auTaxReport, financialYear, fyLabel, fyRange, restateInAud, taxCsv } from "@/lib/au-tax";
@@ -78,6 +79,8 @@ export function TaxReportView() {
   const currentFy = financialYear(new Date().toISOString().slice(0, 10));
   const years = useMemo(() => [...new Set([...(report?.years.map((year) => year.fy) ?? []), currentFy])].sort((a, b) => b - a), [report, currentFy]);
   const [chosenFy, setFy] = useState<number | null>(null);
+  const [filling, setFilling] = useState(false);
+  const [notice, setNotice] = useState("");
   const fy = chosenFy != null && years.includes(chosenFy) ? chosenFy : report?.years.at(-1)?.fy ?? currentFy;
   const year = report?.years.find((item) => item.fy === fy);
   const events = report?.events.filter((event) => event.fy === fy) ?? [];
@@ -134,7 +137,8 @@ export function TaxReportView() {
       <Link className="tl-primary" href="/portfolio">{text("Go to trade log", "去录入交易")}</Link>
     </section> : !report ? <section className="tl-section"><p className="tl-muted">{text("Loading quotes and exchange rates…", "正在读取报价和汇率…")}</p></section> : <>
       {(result!.missing.length > 0 || fx.failed.length > 0) && <p className="tl-notice tl-notice-warn" role="alert">{text(`Missing exchange rates or currency for: ${[...result!.missing, ...fx.failed].join(", ")}. Affected amounts show as —; try again later.`, `缺少以下汇率或币种信息：${[...result!.missing, ...fx.failed].join("、")}。受影响的金额显示为 —，请稍后再试。`)}</p>}
-      {report.tradesWithoutBrokerage > 0 && <p className="tl-notice" role="status">{text(`${report.tradesWithoutBrokerage} trade${report.tradesWithoutBrokerage === 1 ? " has" : "s have"} no brokerage recorded. Brokerage raises the cost base and lowers proceeds — add it in the trade editor to avoid overstating gains.`, `有 ${report.tradesWithoutBrokerage} 笔交易没有记录佣金。佣金会计入成本、减少卖出所得，请在交易编辑里补上，否则利得会被高估。`)}</p>}
+      {report.tradesWithoutBrokerage > 0 && <p className="tl-notice" role="status">{text(`${report.tradesWithoutBrokerage} trade${report.tradesWithoutBrokerage === 1 ? " has" : "s have"} no brokerage recorded. Brokerage raises the cost base and lowers proceeds — add it in the trade editor to avoid overstating gains.`, `有 ${report.tradesWithoutBrokerage} 笔交易没有记录佣金。佣金会计入成本、减少卖出所得，请在交易编辑里补上，否则利得会被高估。`)} <button type="button" className="tl-row-button" onClick={() => setFilling(true)}>{text("Fill in by fee schedule", "按收费标准批量补上")}</button></p>}
+      {notice && <p className="tl-notice" role="status">{notice}</p>}
 
       <section className="tl-metrics" aria-label={text("Year summary", "年度概览")}>
         <article><span>{text("Net capital gain", "净资本利得")}</span><strong className={tone(year?.netCapitalGain)}>{aud(year?.netCapitalGain ?? 0)}</strong><small>{text("After losses and the 50% discount · 18A", "扣除亏损和 50% 折扣后 · 18A")}</small></article>
@@ -224,5 +228,6 @@ export function TaxReportView() {
         <p className="tl-muted">{text("This is a calculation aid, not tax advice.", "本页仅用于辅助计算，不构成税务建议。")}</p>
       </section>
     </>}
+    {filling && <BrokerageFillDialog portfolioId={activePortfolio.id} zh={zh} onClose={(message) => { setFilling(false); if (message) setNotice(message); }} />}
   </main>;
 }

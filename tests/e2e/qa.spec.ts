@@ -420,3 +420,18 @@ test("J04 edit from a stale device is refused, newer data loaded, refused versio
   const history = (await (await page.request.get("/api/store/snapshots")).json()).snapshots as { reason: string }[];
   expect(history.some((item) => item.reason === "before-restore")).toBe(true);
 });
+
+test("J05 fill missing brokerage from a fee schedule (IBKR fixed)", async ({ page }) => {
+  await open(page, "/portfolio");
+  await page.getByRole("button", { name: "补佣金" }).click();
+  const dialog = page.locator("dialog.bf-dialog");
+  await dialog.locator("select").first().selectOption("ibkr-fixed");
+  await expect(dialog.locator(".ci-counts")).toContainText("3 笔将补上");
+  await dialog.getByRole("button", { name: "补上 3 笔" }).click();
+  await expect(page.locator(".tl-notice", { hasText: "已为 3 笔交易补上佣金" })).toBeVisible();
+  await page.waitForTimeout(1500);
+  const fees = (await portfolios(page))[0].cash.filter((entry: { kind: string; tradeId?: string }) => entry.kind === "fee" && entry.tradeId);
+  expect(fees.map((fee: { tradeId: string; amount: number; currency?: string }) => [fee.tradeId, fee.amount, fee.currency ?? "USD"]).sort()).toEqual([["t1", 1, "USD"], ["t2", 1, "USD"], ["t3", 1, "USD"]]);
+  await page.goto("/tax"); await page.waitForTimeout(1500);
+  await expect(page.locator(".tl-notice", { hasText: "没有记录佣金" })).toHaveCount(0);
+});

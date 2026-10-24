@@ -118,3 +118,10 @@ html[data-skin] .trade-ledger.tax-report .tl-heading h1 { position: static; widt
 .tax-report .tax-method ul { font-size: 13px; }
 .tax-report .tax-labels td:nth-child(2), .tax-report .tax-steps td:first-child { white-space: normal; min-width: 0; }
 .tax-report .tax-labels, .tax-report .tax-steps { min-width: 0; width: 100%; }
+
+/* ---- Brokerage fill dialog ----------------------------------------- */
+.bf-options { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.bf-note { font-size: 12px; line-height: 1.55; color: var(--ui-ink-2); }
+.bf-dialog .ci-preview td:first-child, .bf-dialog .ci-preview th:first-child { width: 28px; }
+.tax-report .tl-notice .tl-row-button { margin-left: 8px; }
+.ci-dialog { margin: auto; }

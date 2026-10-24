@@ -3,7 +3,7 @@
 A personal trading workstation: market research, a trade and cash ledger, and portfolio analytics that answer
 "am I actually beating the index, and which of my approaches makes money?". Runs locally; data comes from Yahoo Finance.
 
-**Version 1.0.0** — see [CHANGELOG.md](CHANGELOG.md). This folder is the working copy: every change is made here,
+**Version 1.1.0** — see [CHANGELOG.md](CHANGELOG.md). This folder is the working copy: every change is made here,
 committed with git and released as a new version (tag `vX.Y.Z`). The full git history of each release is in
 `releases/stock-tool-vX.Y.Z.bundle`; with git installed, `git clone releases\stock-tool-v1.0.0.bundle stock-tool-git` restores it.
 

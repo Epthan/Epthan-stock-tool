@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { useLanguage } from "@/components/language-provider";
 import { BackupControls } from "@/components/data-sync";
 import { CsvImportDialog } from "@/components/csv-import-dialog";
+import { BrokerageFillDialog } from "@/components/brokerage-fill-dialog";
 import { useCorporateActions } from "@/hooks/use-corporate-actions";
 import { splitFactor, splitLabel } from "@/lib/corporate-actions";
 import { CASH_KINDS, cashLabel, cashSign, cashSummary, type CashKind } from "@/lib/cash-ledger";
@@ -47,6 +48,7 @@ export function TradeLedgerView() {
   const [quotes, setQuotes] = useState<Record<string, Quote | null>>({});
   const [filter, setFilter] = useState("");
   const [importing, setImporting] = useState(false);
+  const [filling, setFilling] = useState(false);
   const [notice, setNotice] = useState("");
   const [cashForm, setCashForm] = useState<{ kind: CashKind; date: string; amount: string; currency: string; toAmount: string; toCurrency: string; symbol: string; note: string; frankedPct: string; frankingCredit: string; withheld: string }>({ kind: "deposit", currency: "", toAmount: "", toCurrency: "", date: tradeDate(new Date().toISOString()), amount: "", symbol: "", note: "", frankedPct: "", frankingCredit: "", withheld: "" });
   const [cashError, setCashError] = useState("");
@@ -233,6 +235,7 @@ export function TradeLedgerView() {
         </label>
         <button className="tl-primary" onClick={() => setEditor({ symbol: "" })}>{text("+ Add trade", "+ 新增交易")}</button>
         <button className="tl-button" onClick={() => setImporting(true)}>{text("Import CSV", "导入 CSV")}</button>
+        {trades.length > 0 && <button className="tl-button" onClick={() => setFilling(true)}>{text("Fill brokerage", "补佣金")}</button>}
         <BackupControls zh={locale === "zh"} />
         <Link className="tl-link" href="/dashboard">{text("Dashboard", "组合分析")} ↗</Link>
       </div>
@@ -354,6 +357,7 @@ export function TradeLedgerView() {
       </table></div> : <p className="tl-muted">{text("No cash entries yet. Record your deposits to see cash balance, net contributions and total return.", "还没有现金流水。录入入金后即可看到现金余额、净投入和总收益。")}</p>}
     </section>
 
+    {filling && <BrokerageFillDialog portfolioId={activePortfolio.id} zh={locale === "zh"} onClose={(message) => { setFilling(false); if (message) setNotice(message); }} />}
     {importing && <CsvImportDialog portfolioId={activePortfolio.id} zh={locale === "zh"} onClose={(message) => { setImporting(false); if (message) setNotice(message); }} />}
 
     {editor && <PortfolioTradesDialog key={`${activePortfolio.id}:${editor.symbol}`} portfolioId={activePortfolio.id} symbol={editor.symbol} onClose={() => setEditor(null)} />}
