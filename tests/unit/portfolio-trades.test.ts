@@ -5,7 +5,7 @@ import { applySplits, splitFactor } from "@/lib/corporate-actions";
 const buy = (id: string, tradedAt: string, price: number, quantity: number, symbol = "AAA"): PortfolioTrade => ({ id, symbol, side: "buy", tradedAt, price, quantity });
 const sell = (id: string, tradedAt: string, price: number, quantity: number, symbol = "AAA"): PortfolioTrade => ({ id, symbol, side: "sell", tradedAt, price, quantity });
 
-describe("parcel (FIFO) position", () => {
+describe("[A01] parcel (FIFO) position", () => {
   it("sells the oldest parcel first; cost of what remains drives average cost", () => {
     const trades = [buy("1", "2024-01-02", 10, 100), buy("2", "2024-01-03", 20, 100), sell("3", "2024-01-04", 30, 50)];
     const position = getTradePosition(trades, "AAA");
@@ -36,7 +36,7 @@ describe("parcel (FIFO) position", () => {
   });
 });
 
-describe("validation", () => {
+describe("[B01] validation", () => {
   it("rejects selling more than held at that date", () => {
     expect(() => validatePortfolioTrades([sell("1", "2024-01-02", 10, 1), buy("2", "2024-01-03", 10, 1)])).toThrow("INSUFFICIENT_SHARES");
   });
@@ -56,7 +56,7 @@ describe("validation", () => {
   });
 });
 
-describe("splits", () => {
+describe("[A07] splits", () => {
   it("restates only trades before the split date, compounding multiple splits", () => {
     const splits = [{ symbol: "X", date: "2024-03-01", ratio: 2 }, { symbol: "X", date: "2024-06-01", ratio: 3 }, { symbol: "Y", date: "2024-01-01", ratio: 4 }];
     expect(splitFactor(splits, "X", "2024-02-01")).toBe(6);
@@ -68,7 +68,7 @@ describe("splits", () => {
   });
 });
 
-describe("legacy import and tags", () => {
+describe("[B05] legacy import and tags", () => {
   it("skips invalid legacy records and keeps the rest", () => {
     const result = importLegacyTrades([
       { symbol: "aaa", side: "buy", tradedAt: "2024-01-02", price: 10, quantity: 5 },

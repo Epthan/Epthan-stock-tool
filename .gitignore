@@ -45,6 +45,7 @@ next-env.d.ts
 
 # tests
 /test-results
+/.next-test
 /playwright-report
 
 # git history bundles of each release (git clone releases/stock-tool-vX.Y.Z.bundle)

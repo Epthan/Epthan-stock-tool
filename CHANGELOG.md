@@ -3,6 +3,20 @@
 Versions follow `MAJOR.MINOR.PATCH`: a new feature bumps MINOR, a fix bumps PATCH. Each release is a git tag (`v1.0.0`).
 The running version shows on the logo tooltip and in Trades → 历史版本.
 
+## 1.3.0 — 2026-10-25
+
+- **Test framework**: one command (`run-tests.bat` / `npm run test:full`) runs lint, type-check (incl. tests), unit tests
+  with coverage, dependency audit, an isolated production build, smoke, end-to-end and live-data suites, and writes
+  `test-results/report.html`. 73 requirements in `tests/requirements.mjs`, each traced to its tests.
+- Test runs are isolated: own build folder, ports and data folders; a guard checks your `data/` folder is untouched.
+  (Before, the end-to-end suite deleted `./data` — harmless in CI, dangerous on your PC.)
+- New live suite against real Yahoo data; new unit tests for the backtest, risk statistics (vs an independent
+  implementation), watch lists, overview formatting, browser cache retries, CSS colour hygiene.
+- Fix: "fetch failed" from the server (Yahoo unreachable) now shows as a network problem with automatic retry, not as a
+  generic error.
+- Security: dependency audit fixes; yahoo-finance2 3.15 → 4.0.5 (its old bundled zod had a high-severity advisory).
+  Runtime dependencies now have no known vulnerabilities.
+
 ## 1.2.0 — 2026-10-25
 
 - **Drawing on the research chart** (and the full-screen chart): trend line, ray, horizontal line, rectangle,

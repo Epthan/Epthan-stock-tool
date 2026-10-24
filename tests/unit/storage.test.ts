@@ -14,7 +14,7 @@ const { loadDaily } = await import("@/lib/yahoo-finance");
 const KEY = "stock-tool.portfolios.v1";
 beforeEach(() => { process.env.STOCK_TOOL_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "stock-tool-")); chart.mockReset(); });
 
-describe("SQLite store", () => {
+describe("[B08] SQLite store", () => {
   it("migrates an existing store.json once and keeps it as .bak", () => {
     const dir = process.env.STOCK_TOOL_DATA_DIR!;
     fs.writeFileSync(path.join(dir, "store.json"), JSON.stringify({ version: 1, updatedAt: "2026-01-01T00:00:00.000Z", data: { [KEY]: "[1]", "not.allowed": "x" } }));
@@ -50,7 +50,7 @@ describe("SQLite store", () => {
 const bar = (day: string, close: number) => ({ date: new Date(`${day}T14:30:00Z`), open: close, high: close, low: close, close, volume: 100 });
 const chartResult = (bars: ReturnType<typeof bar>[], splits: { date: Date; numerator: number; denominator: number }[] = []) => ({ meta: { gmtoffset: -14400, currentTradingPeriod: { regular: { end: new Date("2000-01-01") } } }, quotes: bars, events: { splits, dividends: [] } });
 
-describe("price archive", () => {
+describe("[B09] price archive", () => {
   it("downloads once, then only the recent tail, and serves the archive when Yahoo is down", async () => {
     chart.mockResolvedValueOnce(chartResult([bar("2024-01-02", 10), bar("2024-01-03", 11), bar("2024-03-01", 12)]));
     const first = await loadDaily("AAA", "2024-01-01", "2024-03-05");

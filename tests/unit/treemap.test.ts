@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseConstituentTable } from "@/lib/treemap-data";
 
 const rows = (n: number, cell: "td" | "th") => Array.from({ length: n }, (_, i) => `<tr><${cell}>T${String.fromCharCode(65 + (i % 26))}${i}</${cell}><td>Company ${i}</td><td>Technology</td></tr>`).join("");
-describe("index constituents parser", () => {
+describe("[C13] index constituents parser", () => {
   it("reads a Nasdaq-100 style table without the wikitable class and with row-header tickers", () => {
     const html = `<table><tr><th>Other</th></tr></table><table id="constituents"><tr><th>Ticker</th><th>Company</th><th>ICB Industry</th><th>ICB Subsector</th></tr>${rows(101, "th")}</table>`;
     const parsed = parseConstituentTable(html, "nasdaq100");

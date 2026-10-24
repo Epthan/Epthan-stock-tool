@@ -3,7 +3,7 @@ import { FEE_SCHEDULES, customFee, marketOf, proposeBrokerage } from "@/lib/brok
 
 const schedule = (id: string) => FEE_SCHEDULES.find((item) => item.id === id)!.fee;
 
-describe("fee schedules", () => {
+describe("[T08] fee schedules", () => {
   it("IBKR fixed: per share with US$1 minimum and 1% cap; no ASX", () => {
     const fee = schedule("ibkr-fixed");
     expect(fee("US", 6219, 15)).toEqual({ amount: 1, currency: "USD" }); // 15 × 0.005 = 0.075 → min 1

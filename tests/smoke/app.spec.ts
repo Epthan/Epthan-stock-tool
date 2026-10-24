@@ -40,7 +40,7 @@ function watchErrors(page: Page) {
 }
 
 // ---- tests ----------------------------------------------------------------
-test("every page survives market data being down", async ({ page }) => {
+test("D01 every page survives market data being down", async ({ page }) => {
   const errors = watchErrors(page);
   await mockApis(page);
   for (const path of ["/", "/dashboard", "/portfolio", "/compare", "/treemap"]) {
@@ -52,7 +52,7 @@ test("every page survives market data being down", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("dashboard renders analysis, account panel and breakdowns", async ({ page }) => {
+test("C06 dashboard renders analysis, account panel and breakdowns", async ({ page }) => {
   const errors = watchErrors(page);
   const data = analysis();
   await mockApis(page, { "/api/market/portfolio-analysis": () => ({ result: data, benchmark: "SPY" }), "/api/market/corporate-actions": () => ({ splits: [], dividends: [], failed: [] }) });
@@ -64,7 +64,7 @@ test("dashboard renders analysis, account panel and breakdowns", async ({ page }
   expect(errors).toEqual([]);
 });
 
-test("trade log shows positions, tags and the cash ledger", async ({ page }) => {
+test("C08 trade log shows positions, tags and the cash ledger", async ({ page }) => {
   const errors = watchErrors(page);
   await mockApis(page, {
     "/api/market/quote": () => ({ quote: { symbol: "AAA", price: 150, currency: "USD" } }),

@@ -7,7 +7,7 @@ const t = (id: string, side: "buy" | "sell", tradedAt: string, price: number, qu
 const fee = (id: string, date: string, amount: number, extra: Partial<CashEntry> = {}): CashEntry => ({ id, kind: "fee", date, amount, ...extra });
 const domestic = (symbol: string) => !symbol.endsWith(".AX");
 
-describe("dates", () => {
+describe("[T01] dates", () => {
   it("financial year runs 1 July – 30 June, named by the end year", () => {
     expect(financialYear("2024-06-30")).toBe(2024);
     expect(financialYear("2024-07-01")).toBe(2025);
@@ -18,7 +18,7 @@ describe("dates", () => {
   });
 });
 
-describe("capital gains", () => {
+describe("[T02][T03] capital gains", () => {
   it("applies the 50% discount only to parcels held long enough, FIFO across parcels", () => {
     const trades = [t("b1", "buy", "2023-01-10", 10, 100), t("b2", "buy", "2024-03-01", 20, 100), t("s1", "sell", "2024-09-02", 30, 150)];
     const report = auTaxReport({ trades, cash: [], isForeign: domestic, today: "2024-10-01" });
@@ -63,7 +63,7 @@ describe("capital gains", () => {
   });
 });
 
-describe("dividends and currency", () => {
+describe("[T04][T05] dividends and currency", () => {
   it("splits franked / unfranked, grosses up foreign dividends and flags missing data", () => {
     const cash: CashEntry[] = [
       { id: "d1", kind: "dividend", date: "2024-09-20", amount: 700, symbol: "BHP.AX", franked: 700, frankingCredit: 300 },

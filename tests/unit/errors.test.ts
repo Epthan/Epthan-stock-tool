@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { classifyError } from "@/lib/friendly-error";
 import { isTransient } from "@/lib/yahoo-finance";
 
-describe("error handling", () => {
+describe("[D02] error handling", () => {
   it("classifies user-facing errors", () => {
     expect(classifyError("Too Many Requests")).toBe("rate");
     expect(classifyError("Failed to fetch")).toBe("network");
@@ -16,7 +16,7 @@ describe("error handling", () => {
   });
 });
 
-describe("symbol errors", () => {
+describe("[D02] symbol errors", () => {
   it("explains unknown or delisted symbols", () => {
     expect(classifyError("No data found, symbol may be delisted")).toBe("symbol");
     expect(classifyError("No quote data for ZZZZ")).toBe("symbol");

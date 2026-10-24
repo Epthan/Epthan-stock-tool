@@ -7,7 +7,7 @@ function run(csv: string, suffix = "", existing: Parameters<typeof buildImport>[
   return buildImport(rows, { headerRow, mapping, dateOrder: "auto", suffix, existingTrades: existing, existingCash: [] });
 }
 
-describe("csv import", () => {
+describe("[B05] csv import", () => {
   it("IBKR: signed quantity, commission, sells checked against holdings", () => {
     const out = run(`"Symbol","TradeDate","Quantity","TradePrice","IBCommission","Buy/Sell"\n"AAPL","20240115","10","185.5","-1.00","BUY"\n"AAPL","20240301","-4","179.2","-1.00","SELL"\n"MSFT","20240301","-4","400","-1","SELL"`);
     expect(out.map((row) => row.status)).toEqual(["trade", "trade", "skipped"]);

@@ -7,7 +7,7 @@ import { series, tradingDays } from "./fixtures";
 const days = tradingDays(60);
 const flatBench = series("SPY", days, () => 400);
 
-describe("holdings return", () => {
+describe("[A02][A03][A04] holdings return", () => {
   it("is the price return when holding a single position", () => {
     const stock = series("AAA", days, (index) => 100 * (1 + index / 100));
     const result = analyzePortfolio([{ id: "1", symbol: "AAA", side: "buy", tradedAt: days[0], price: 100, quantity: 10 }], [stock], flatBench, "ALL");
@@ -49,7 +49,7 @@ describe("holdings return", () => {
   });
 });
 
-describe("account level", () => {
+describe("[A05][A06] account level", () => {
   it("includes idle cash in TWR and computes money-weighted return", () => {
     const stock = series("AAA", days, (index) => (index < 1 ? 100 : 110));
     const trades: PortfolioTrade[] = [{ id: "1", symbol: "AAA", side: "buy", tradedAt: days[0], price: 100, quantity: 10 }];
@@ -74,7 +74,7 @@ describe("account level", () => {
   });
 });
 
-describe("breakdowns", () => {
+describe("[A09] breakdowns", () => {
   it("splits realized P&L across FIFO entry tags and keeps open lots as unrealized", () => {
     const stock = series("AAA", days, (index) => 100 + index * (20 / 30));
     const trades: PortfolioTrade[] = [

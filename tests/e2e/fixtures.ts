@@ -5,6 +5,7 @@ import { runBacktest } from "@/lib/backtest";
 import { analyzePortfolio } from "@/lib/live-portfolio";
 import { buildBreakdowns } from "@/lib/breakdowns";
 import type { PortfolioTrade } from "@/lib/portfolio-trades";
+import { dataDirFor } from "../support/servers";
 
 /** Deterministic market: 520 weekdays from 2024-01-02, random walks per symbol. */
 export const days: string[] = [];
@@ -64,7 +65,8 @@ export async function mockMarket(page: Page, options: MockOptions = {}) {
 }
 
 /** Fresh state: empty server store, browser seeded once per test (not on every navigation). */
-export function resetStore() { fs.rmSync(path.join(process.cwd(), "data"), { recursive: true, force: true }); }
+/** Wipes only the e2e server's own data folder (test-results/data-e2e), never ./data. */
+export function resetStore() { fs.rmSync(dataDirFor("e2e"), { recursive: true, force: true }); }
 export async function seed(page: Page, { locale = "zh", skin = "gray", portfolio = true }: { locale?: string; skin?: string; portfolio?: boolean } = {}) {
   await page.addInitScript(({ locale, skin, data }) => {
     if (sessionStorage.getItem("qa-seeded")) return;
@@ -82,3 +84,14 @@ export function watchErrors(page: Page) {
   page.on("console", (message) => { if (message.type() === "error" && !/Failed to load resource|503|404/.test(message.text())) errors.push(message.text()); });
   return errors;
 }
+
+/** Seed the browser, mock the market, open a page and let it settle. */
+export async function open(page: Page, url: string, opts: Parameters<typeof seed>[1] = {}, mock: MockOptions = {}) {
+  await seed(page, opts);
+  await mockMarket(page, mock);
+  await page.goto(url);
+  await page.waitForTimeout(1200);
+}
+export const store = async (page: Page) => (await (await page.request.get("/api/store")).json()) as { updatedAt: string | null; data: Record<string, string>; revs: Record<string, number> };
+export const portfolios = async (page: Page) => JSON.parse((await store(page)).data["stock-tool.portfolios.v1"] ?? "[]");
+export const audSigned = (value: number) => `${value > 0 ? "+" : "−"}${Math.abs(value).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

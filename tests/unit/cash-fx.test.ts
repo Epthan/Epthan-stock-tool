@@ -10,7 +10,7 @@ const context = (mode: "base" | "local"): CashContext => ({
   unit: (symbol) => (symbol.endsWith(".AX") ? { currency: "AUD", divisor: 1 } : symbol.endsWith(".L") ? { currency: "GBP", divisor: 100 } : { currency: "USD", divisor: 1 }),
 });
 
-describe("cash summary", () => {
+describe("[A08] cash summary", () => {
   const trades: PortfolioTrade[] = [{ id: "t1", symbol: "AAPL", side: "buy", tradedAt: "2024-02-01", price: 100, quantity: 10 }];
   const entries: CashEntry[] = [
     { id: "d", kind: "deposit", date: "2024-01-02", amount: 3000 },
@@ -53,7 +53,7 @@ describe("cash summary", () => {
   });
 });
 
-describe("fx helpers", () => {
+describe("[A08] fx helpers", () => {
   it("normalises minor units", () => {
     expect(normalizeCurrency("GBp")).toEqual({ currency: "GBP", divisor: 100 });
     expect(normalizeCurrency("usd")).toEqual({ currency: "USD", divisor: 1 });

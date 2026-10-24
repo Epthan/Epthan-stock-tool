@@ -418,7 +418,7 @@
 
 /* CSV import dialog */
 .ci-dialog { width: min(980px, calc(100vw - 24px)); max-height: calc(100vh - 40px); padding: 0; border: 1px solid var(--ui-line); border-radius: 10px; background: var(--ui-panel); color: var(--ui-ink); box-shadow: 0 24px 80px rgb(0 0 0 / .35); }
-.ci-dialog::backdrop { background: rgb(8 12 18 / .55); backdrop-filter: blur(4px); }
+.ci-dialog::backdrop { background: color-mix(in srgb, var(--ui-bg) 60%, transparent); backdrop-filter: blur(4px); }
 .ci-dialog[open] { display: flex; flex-direction: column; }
 .ci-top, .ci-actions { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--ui-line); }
 .ci-top strong { flex: 1; font-size: 15px; }

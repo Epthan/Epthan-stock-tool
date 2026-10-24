@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fibLevels, snapPrice, timeMapper } from "@/lib/chart-drawing";
 
-describe("chart drawing anchors", () => {
+describe("[A11] chart drawing anchors", () => {
   const day = 86400;
   const times = [0, 1, 2, 5, 6].map((d) => 1_700_000_000 + d * day); // weekend gap between index 2 and 3
   const map = timeMapper(times);

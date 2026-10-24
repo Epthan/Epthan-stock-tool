@@ -4,7 +4,7 @@ export type ErrorKind = "rate" | "network" | "price" | "symbol" | "input" | "oth
 export function classifyError(message: string | undefined): ErrorKind {
   const text = message ?? "";
   if (/429|too many|rate.?limit|crumb|unauthori[sz]ed/i.test(text)) return "rate";
-  if (/failed to fetch|network|timeout|timed out|ECONN|EAI_AGAIN|ENOTFOUND|HTTP 5\d\d|502|503|504|unavailable/i.test(text)) return "network";
+  if (/failed to fetch|fetch failed|socket hang up|network|timeout|timed out|ECONN|EAI_AGAIN|ENOTFOUND|HTTP 5\d\d|502|503|504|unavailable/i.test(text)) return "network";
   if (/no daily price|completed daily price|historical prices incomplete|no historical|no fx rates/i.test(text)) return "price";
   if (/not found|no quote data|no data found|delisted|no price history/i.test(text)) return "symbol";
   if (/invalid|record at least|choose|enter|require|supports up to|insufficient/i.test(text)) return "input";

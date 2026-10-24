@@ -1,7 +1,7 @@
 # Stock Tool — handoff
 
 Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · lightweight-charts 5 · d3-hierarchy · yahoo-finance2 3.
-Version **1.2.0** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
+Version **1.3.0** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
 Everything runs on one machine; the browser talks only to this app's `/api/*` routes, which talk to Yahoo.
 
 ## 1. Architecture in one picture
@@ -82,10 +82,9 @@ Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "v
 
 ## 7. Tests
 
-- `tests/unit/*.test.ts` (vitest): positions, validation, splits, legacy import, tags, cash & FX, holdings/account returns,
-  contribution reconciliation, XIRR, breakdowns, CSV import, error classification.
-- `tests/smoke/app.spec.ts` (Playwright): every page with Yahoo "down", dashboard with an analysis fixture, trade log. APIs are mocked,
-  nothing is written to `data/store.json`.
+See `tests/README.md`. Runner: `scripts/run-tests.mjs` (stages → `test-results/report.html`); catalog:
+`tests/requirements.mjs`; layers: `tests/unit` (Vitest), `tests/smoke`, `tests/e2e` (by feature), `tests/live` (Playwright).
+Test servers: `.next-test` build, ports 3100 / 3200 / 3300, data in `test-results/data-*` (`tests/support/servers.ts`).
 
 ## 8. Known limits / next
 
