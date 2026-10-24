@@ -1,0 +1,5 @@
+# Line endings: LF in the repository; Windows batch files are checked out with CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.ico binary

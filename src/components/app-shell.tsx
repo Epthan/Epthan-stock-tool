@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <DataSync />
       <CorporateActionSync />
       <nav className="shell-rail" aria-label={zh ? "主导航" : "Main navigation"}>
-        <Link href="/" className="shell-logo" aria-label="Stock Tool">S</Link>
+        <Link href="/" className="shell-logo" aria-label="Stock Tool" title={`Stock Tool v${process.env.NEXT_PUBLIC_APP_VERSION ?? ""}`}>S</Link>
         {items.map((item) => (
           <Link key={item.href} href={item.href} className="shell-item" aria-current={item.active ? "page" : undefined}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{item.icon}</svg>

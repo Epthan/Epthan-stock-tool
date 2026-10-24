@@ -1,6 +1,7 @@
 # Stock Tool — handoff
 
 Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · lightweight-charts 5 · d3-hierarchy · yahoo-finance2 3.
+Version **1.0.0** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
 Everything runs on one machine; the browser talks only to this app's `/api/*` routes, which talk to Yahoo.
 
 ## 1. Architecture in one picture
@@ -69,9 +70,7 @@ API routes (`src/app/api`): `store`, `store/snapshots`, `store/info`, `market/{d
 | `app/redesign.css` | Redesigned Dashboard and Market layouts, frosted glass, mobile rules, breakdowns, states |
 | `app/pages.css` | Compare and Heatmap pages, shared `pg-*` page scaffold |
 
-Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "var(--…)" }}`. The legacy files
-`portfolio-dashboard.css`, `portfolio-manager.css`, `product-refinement.css`, `backtest.css`, `trade-ledger.css`,
-`trader-analytics.css`, `components/app-nav.tsx` and `api/market/sparklines` are no longer used and can be deleted.
+Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "var(--…)" }}`.
 
 ## 6. Caching and failure handling
 
@@ -92,6 +91,11 @@ Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "v
 - Corporate actions other than splits (DRP, rights issues, spin-offs, mergers, return of capital) are not handled — also not in the tax report.
 - Tax: FIFO only (no specific-parcel selection), no 45-day franking rule, individual investors only; FX uses Yahoo daily reference rates.
 - New folders under `src/` are not always picked up by a running `next dev` on Windows — restart the server after adding one.
-- `src/lib/server/` on the original machine holds stale copies from a move (now `lib/server-*.ts`, `lib/price-archive.ts`) and can be deleted.
 - Dividend suggestions use Yahoo per-share amounts × shares held; withholding tax must be entered separately.
 - Mobile app: plan is PWA first, then a Capacitor wrapper, reusing this UI.
+
+## 9. Making changes
+
+1. Work in this folder (the v1.0 working copy). `start-localhost.bat` runs the dev server and reinstalls dependencies when `package-lock.json` changes.
+2. Before a release: `npm run check`, `npm run build && npm run test:smoke`, `npm run test:qa`.
+3. Bump `version` in `package.json` (feature → minor, fix → patch), add a `CHANGELOG.md` entry, commit, tag `vX.Y.Z`.
