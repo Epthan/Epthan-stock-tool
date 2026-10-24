@@ -3,7 +3,7 @@
 A personal trading workstation: market research, a trade and cash ledger, and portfolio analytics that answer
 "am I actually beating the index, and which of my approaches makes money?". Runs locally; data comes from Yahoo Finance.
 
-**Version 1.1.0** — see [CHANGELOG.md](CHANGELOG.md). This folder is the working copy: every change is made here,
+**Version 1.2.0** — see [CHANGELOG.md](CHANGELOG.md). This folder is the working copy: every change is made here,
 committed with git and released as a new version (tag `vX.Y.Z`). The full git history of each release is in
 `releases/stock-tool-vX.Y.Z.bundle`; with git installed, `git clone releases\stock-tool-v1.0.0.bundle stock-tool-git` restores it.
 
@@ -21,7 +21,7 @@ committed with git and released as a new version (tag `vX.Y.Z`). The full git hi
 
 | Page | Route | What it is for |
 |---|---|---|
-| Market | `/` | Watch lists, chart (line / candles, MAs), company facts, your position in the stock, strategy backtest overlaid with your real trades |
+| Market | `/` | Watch lists, chart (line / candles, MAs, temporary drawings: trend / ray / horizontal / rectangle / Fibonacci), company facts, your position in the stock, strategy backtest overlaid with your real trades |
 | Portfolio | `/dashboard` | Overview, trade analysis, performance & risk, allocation & risk, holdings, methodology |
 | Trades | `/portfolio` | Trade log per portfolio (with brokerage), cash ledger (franking / withholding on dividends), CSV import, backup / restore / history, ledger currency |
 | Tax | `/tax` | Australian tax report per financial year: CGT schedule by parcel (FIFO, 50% discount, losses carried forward), dividends with franking credits and foreign tax, myTax labels, CSV for your accountant, parcels close to the 12-month mark |

@@ -3,6 +3,13 @@
 Versions follow `MAJOR.MINOR.PATCH`: a new feature bumps MINOR, a fix bumps PATCH. Each release is a git tag (`v1.0.0`).
 The running version shows on the logo tooltip and in Trades → 历史版本.
 
+## 1.2.0 — 2026-10-25
+
+- **Drawing on the research chart** (and the full-screen chart): trend line, ray, horizontal line, rectangle,
+  Fibonacci retracement; magnet snap to open / high / low / close; select a line to drag its handles or delete it
+  (Delete key), undo, clear. Lines are anchored to date and price, so they stay put when you scroll, zoom, change
+  timeframe or chart type. They are temporary: changing stock, leaving the page or reloading clears them.
+
 ## 1.1.0 — 2026-10-25
 
 - **Fill in missing brokerage** (Trades → 补佣金, or from the notice on the Tax page): pick a broker fee schedule —

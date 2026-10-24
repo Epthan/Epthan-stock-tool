@@ -125,3 +125,24 @@ html[data-skin] .trade-ledger.tax-report .tl-heading h1 { position: static; widt
 .bf-dialog .ci-preview td:first-child, .bf-dialog .ci-preview th:first-child { width: 28px; }
 .tax-report .tl-notice .tl-row-button { margin-left: 8px; }
 .ci-dialog { margin: auto; }
+
+/* ---- Chart drawings ------------------------------------------------- */
+.cd-host { position: relative; }
+.cd-layer { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 3; }
+.cd-layer.is-drawing { pointer-events: all; cursor: crosshair; touch-action: none; }
+.cd-line { stroke: var(--ui-accent); stroke-width: 1.6; fill: none; }
+.cd-hit { stroke: transparent; stroke-width: 12; pointer-events: stroke; cursor: pointer; }
+.cd-rect { stroke: var(--ui-accent); stroke-width: 1.4; fill: color-mix(in srgb, var(--ui-accent) 12%, transparent); pointer-events: all; cursor: pointer; }
+.cd-guide { stroke: var(--ui-muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.cd-label { fill: var(--ui-ink-2); font-size: 10px; font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--ui-panel); stroke-width: 3px; }
+.cd-shape.is-selected .cd-line, .cd-shape.is-selected .cd-rect { stroke-width: 2.4; }
+.cd-shape.is-draft .cd-line, .cd-shape.is-draft .cd-rect { stroke-dasharray: 5 3; }
+.cd-handle { fill: var(--ui-panel); stroke: var(--ui-accent); stroke-width: 2; pointer-events: all; cursor: grab; touch-action: none; }
+.cd-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 6px; }
+.cd-tool { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 8px; border: 1px solid var(--ui-line); border-radius: 6px; background: var(--ui-panel); color: var(--ui-ink-2); font-size: 11px; cursor: pointer; }
+.cd-tool svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.cd-tool[aria-pressed="true"] { border-color: var(--ui-accent); background: var(--ui-accent-soft); color: var(--ui-accent); }
+.cd-tool:disabled { opacity: .45; cursor: not-allowed; }
+.cd-sep { width: 1px; height: 18px; background: var(--ui-line); margin: 0 4px; }
+.cd-hint { flex: 1 1 220px; color: var(--ui-muted); font-size: 11px; margin-left: 4px; }
+@media (max-width: 760px) { .cd-tool span { display: none; } .cd-tool { min-height: 40px; min-width: 40px; justify-content: center; } .cd-hint { flex-basis: 100%; margin: 2px 0 0; } }

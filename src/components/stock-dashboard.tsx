@@ -786,6 +786,9 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
                     movingAverages={enabledMovingAverages}
                     onTimeframeChange={handleChartTimeframeChange}
                     timeframe={activeTimeframe}
+                    drawable
+                    drawingKey={resolvedSelectedSymbol}
+                    zh={zh}
                   />
             </div>
             {(rangeLow != null && rangeHigh != null && selectedQuote) || (selectedQuote?.volume && companyDetail?.averageVolume) ? <div className="wpx-tracks">

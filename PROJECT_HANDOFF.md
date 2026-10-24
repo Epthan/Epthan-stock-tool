@@ -1,7 +1,7 @@
 # Stock Tool — handoff
 
 Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · lightweight-charts 5 · d3-hierarchy · yahoo-finance2 3.
-Version **1.1.0** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
+Version **1.2.0** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
 Everything runs on one machine; the browser talks only to this app's `/api/*` routes, which talk to Yahoo.
 
 ## 1. Architecture in one picture
@@ -48,7 +48,7 @@ Formulas and conventions: `PORTFOLIO_DASHBOARD.md`.
 | Area | Files |
 |---|---|
 | Shell, theme, language | `components/app-shell.tsx`, `theme-provider.tsx`, `language-provider.tsx`, `app/layout.tsx` |
-| Market page | `components/stock-dashboard.tsx`, `stock-chart.tsx`, `chart-lightbox.tsx`, `symbol-search-box.tsx`, `portfolio-manager.tsx` |
+| Market page | `components/stock-dashboard.tsx`, `stock-chart.tsx`, `chart-drawings.tsx` + `lib/chart-drawing.ts` (in-memory drawings anchored to time/price), `chart-lightbox.tsx`, `symbol-search-box.tsx`, `portfolio-manager.tsx` |
 | Backtest | `components/backtest-panel.tsx`, `lib/backtest.ts`, `lib/real-vs-backtest.ts`, `api/market/backtest` |
 | Portfolio dashboard | `components/portfolio-dashboard.tsx` (shell + demo), `live-portfolio-dashboard.tsx`, `trade-analysis.tsx`, `trader-charts.tsx`, `performance-insights.tsx`, `breakdown-table.tsx` |
 | Trades page | `components/trade-ledger-view.tsx`, `portfolio-trades-dialog.tsx`, `csv-import-dialog.tsx`, `data-sync.tsx` (sync, backup, history dialog) |

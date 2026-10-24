@@ -455,6 +455,9 @@ export function ChartLightbox({
                 movingAverages={movingAverages}
                 onTimeframeChange={onTimeframeChange}
                 timeframe={timeframe}
+                drawable
+                drawingKey={symbol}
+                zh={locale === "zh"}
               />
             )}
           </div>

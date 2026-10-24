@@ -1,6 +1,8 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ChartDrawingLayer, ChartDrawingToolbar } from "@/components/chart-drawings";
+import type { Drawing, DrawingTool } from "@/lib/chart-drawing";
 import { useTheme } from "@/components/theme-provider";
 import {
   CandlestickSeries,
@@ -8,7 +10,9 @@ import {
   createChart,
   HistogramSeries,
   type IChartApi,
+  type ISeriesApi,
   LineSeries,
+  type SeriesType,
   type LogicalRange,
   type UTCTimestamp,
 } from "lightweight-charts";
@@ -26,6 +30,10 @@ type StockChartProps = {
   movingAverages: MovingAverageKey[];
   onTimeframeChange?: (timeframe: TimeframeKey) => void;
   timeframe?: TimeframeKey;
+  /** Show the drawing toolbar. Drawings live in memory only and are cleared when `drawingKey` changes or the chart unmounts. */
+  drawable?: boolean;
+  drawingKey?: string;
+  zh?: boolean;
 };
 
 type MovingAveragePoint = {
@@ -95,7 +103,7 @@ function captureChartSnapshot(chart: IChartApi | null) {
 }
 
 export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function StockChart(
-  { candles, chartStyle, heightClassName = "h-[320px]", movingAverages, onTimeframeChange, timeframe }: StockChartProps,
+  { candles, chartStyle, heightClassName = "h-[320px]", movingAverages, onTimeframeChange, timeframe, drawable = false, drawingKey = "", zh = false }: StockChartProps,
   ref,
 ) {
   const { skin } = useTheme();
@@ -104,6 +112,20 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
   const lastSuggestedAtRef = useRef(0);
   const pendingZoomDirectionRef = useRef<"in" | "out" | null>(null);
   const pendingZoomExpiresAtRef = useRef(0);
+
+  // ---- Drawings (temporary): kept across re-creation of the chart, reset when the key (symbol) changes ----
+  const [api, setApi] = useState<{ chart: IChartApi; series: ISeriesApi<SeriesType> } | null>(null);
+  const [tick, setTick] = useState(0);
+  const frame = useRef(0);
+  const bump = useCallback(() => { cancelAnimationFrame(frame.current); frame.current = requestAnimationFrame(() => setTick((value) => value + 1)); }, []);
+  const [drawStore, setDrawStore] = useState<{ key: string; list: Drawing[] }>({ key: drawingKey, list: [] });
+  const drawings = drawStore.key === drawingKey ? drawStore.list : [];
+  const setDrawings = useCallback((update: (list: Drawing[]) => Drawing[]) => setDrawStore((current) => ({ key: drawingKey, list: update(current.key === drawingKey ? current.list : []) })), [drawingKey]);
+  const [tool, setTool] = useState<DrawingTool | null>(null);
+  const [magnet, setMagnet] = useState(true);
+  const [selected, setSelected] = useState<{ key: string; id: string | null }>({ key: drawingKey, id: null });
+  const selectedId = selected.key === drawingKey ? selected.id : null;
+  const setSelectedId = useCallback((id: string | null) => setSelected({ key: drawingKey, id }), [drawingKey]);
 
   useImperativeHandle(ref, () => ({
     captureSnapshot: () => captureChartSnapshot(chartApiRef.current),
@@ -280,8 +302,20 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
     }
 
     chart.timeScale().fitContent();
+    // Drawings follow the chart: re-render the overlay when it scrolls, zooms or resizes.
+    chart.timeScale().subscribeVisibleLogicalRangeChange(bump);
+    chart.timeScale().subscribeSizeChange(bump);
+    container.addEventListener("pointermove", bump, { passive: true });
+    container.addEventListener("wheel", bump, { passive: true });
+    setApi({ chart, series: priceSeries });
+    bump();
 
     return () => {
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(bump);
+      chart.timeScale().unsubscribeSizeChange(bump);
+      container.removeEventListener("pointermove", bump);
+      container.removeEventListener("wheel", bump);
+      setApi(null);
       container.removeEventListener("wheel", handleWheel);
       if (onTimeframeChange && timeframe) {
         chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
@@ -289,12 +323,16 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
       chartApiRef.current = null;
       chart.remove();
     };
-  }, [candles, chartStyle, movingAverages, onTimeframeChange, timeframe, skin]);
+  }, [candles, chartStyle, movingAverages, onTimeframeChange, timeframe, skin, bump]);
 
   return (
     <div className="space-y-3">
-      <div className={`${heightClassName} w-full`}>
+      {drawable && <ChartDrawingToolbar zh={zh} tool={tool} setTool={setTool} magnet={magnet} setMagnet={setMagnet} count={drawings.length} selected={!!selectedId}
+        onUndo={() => setDrawings((list) => list.slice(0, -1))} onDelete={() => { setDrawings((list) => list.filter((item) => item.id !== selectedId)); setSelectedId(null); }} onClear={() => { setDrawings(() => []); setSelectedId(null); }} />}
+      <div className={`${heightClassName} w-full cd-host`} onPointerDown={drawable && !tool ? () => setSelectedId(null) : undefined}>
         <div ref={containerRef} className="h-full w-full" />
+        {drawable && <ChartDrawingLayer chart={api?.chart ?? null} series={api?.series ?? null} candles={candles} tick={tick} drawings={drawings} setDrawings={setDrawings}
+          tool={tool} setTool={setTool} magnet={magnet} selectedId={selectedId} setSelectedId={setSelectedId} />}
       </div>
       {movingAverages.length > 0 && (
         <div className="chart-ma-legend">

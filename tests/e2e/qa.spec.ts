@@ -435,3 +435,48 @@ test("J05 fill missing brokerage from a fee schedule (IBKR fixed)", async ({ pag
   await page.goto("/tax"); await page.waitForTimeout(1500);
   await expect(page.locator(".tl-notice", { hasText: "没有记录佣金" })).toHaveCount(0);
 });
+
+test("J06 chart drawings: draw, keep across timeframe, clear on symbol change and page change", async ({ page }) => {
+  const errors = watchErrors(page);
+  await open(page, "/");
+  await page.locator(".wpx-tools > div > nav button", { hasText: "个股研究" }).click();
+  const search = page.locator(".shell-search input, header input").first();
+  await search.fill("AAPL"); await search.press("Enter");
+  await expect(page.locator(".wpx-quote-title h2")).toHaveText("AAPL");
+  const host = page.locator(".wpx-chart .cd-host");
+  await expect(host.locator("canvas").first()).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await host.scrollIntoViewIfNeeded();
+  const box = (await host.boundingBox())!;
+  // Trend line by dragging
+  await page.locator(".wpx-chart .cd-toolbar button", { hasText: "趋势线" }).click();
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.6);
+  await page.mouse.down(); await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.3, { steps: 6 }); await page.mouse.up();
+  // Horizontal line by one click
+  await page.locator(".wpx-chart .cd-toolbar button", { hasText: "水平线" }).click();
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.45);
+  await expect(host.locator(".cd-line")).toHaveCount(2);
+  // Another timeframe: still drawn
+  await page.locator(".wpx-research button", { hasText: /^1Y$/ }).first().click();
+  await page.waitForTimeout(500);
+  await expect(host.locator(".cd-line")).toHaveCount(2);
+  // Select + delete via keyboard
+  await host.locator(".cd-hit").first().click({ force: true });
+  await page.keyboard.press("Delete");
+  await expect(host.locator(".cd-line")).toHaveCount(1);
+  // Change stock: gone
+  await search.fill("MSFT"); await search.press("Enter");
+  await expect(page.locator(".wpx-quote-title h2")).toHaveText("MSFT");
+  await expect(host.locator(".cd-line")).toHaveCount(0);
+  await host.scrollIntoViewIfNeeded();
+  const again = (await host.boundingBox())!;
+  Object.assign(box, again);
+  // Draw again, then leave the page and come back: gone
+  await page.locator(".wpx-chart .cd-toolbar button", { hasText: "水平线" }).click();
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.45);
+  await expect(host.locator(".cd-line")).toHaveCount(1);
+  await page.locator(".shell-rail a", { hasText: "交易" }).click(); await page.waitForURL("**/portfolio");
+  await page.locator(".shell-rail a", { hasText: "行情" }).click(); await page.waitForURL(/\/$/); await page.waitForTimeout(1200);
+  await expect(page.locator(".wpx-chart .cd-line")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
