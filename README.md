@@ -10,6 +10,19 @@ It runs on your own computer. Your trades stay in a local database; market data 
 
 > Screenshots use the deterministic mock data from the test suite, not real portfolios.
 
+## How the numbers are built
+
+Most of the work in this project is data work, not UI:
+
+- **Ingestion** – daily prices, FX rates, splits and dividends from Yahoo Finance for US, ASX, Hong Kong, China A-share and Korean listings. Price history is archived in SQLite and updated incrementally.
+- **Cleaning** – trades are restated for stock splits, minor currency units (e.g. GBp) are normalised, and all markets are aligned to one trading calendar with holidays forward-filled.
+- **Metrics** – time-weighted return, money-weighted return (XIRR), contribution by holding, benchmark comparison and risk measures. Per-holding contributions reconcile exactly to the period P&L.
+- **Attribution** – returns broken down by sector, holding period and user-defined tags.
+- **Tax** – Australian CGT per financial year: FIFO parcels, loss ordering, the 50% discount and franking credits, with CSV export.
+- **Testing** – calculations are covered by unit tests (Vitest) and every page and user flow by smoke and end-to-end tests (Playwright), all running on fixed mock data.
+
+Formulas and conventions are documented in [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) and [`docs/TAX.md`](docs/TAX.md).
+
 ## Features
 
 | Page | Route | What it does |
