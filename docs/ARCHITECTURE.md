@@ -1,7 +1,7 @@
-# Stock Tool — handoff
+# Architecture
 
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · lightweight-charts 5 · d3-hierarchy · yahoo-finance2 3.
-Version **1.3.2** (see `CHANGELOG.md`; releases are git tags `vX.Y.Z`, the version comes from `package.json`).
+Next.js 16 (App Router, Turbopack) · React 19 · TypeScript · Tailwind 4 · lightweight-charts 5 · d3-hierarchy · yahoo-finance2 4 · `node:sqlite`.
+The version comes from `package.json` (see [CHANGELOG.md](../CHANGELOG.md)); releases are git tags `vX.Y.Z`.
 Everything runs on one machine; the browser talks only to this app's `/api/*` routes, which talk to Yahoo.
 
 ## 1. Architecture in one picture
@@ -41,7 +41,7 @@ analysis route fills in the real close (`demo: true`), so demo and recorded port
 4. `analyzePortfolio` (`lib/live-portfolio.ts`): holdings TWR incl. income/costs, contributions, account TWR + XIRR, trade analytics (FIFO holding days, tags), risk.
 5. `buildBreakdowns` (`lib/breakdowns.ts`): sector (Yahoo profile), holding period, tag attribution.
 
-Formulas and conventions: `PORTFOLIO_DASHBOARD.md`.
+Formulas and conventions: [METHODOLOGY.md](METHODOLOGY.md). Tax rules: [TAX.md](TAX.md). Storage details: [DATA.md](DATA.md).
 
 ## 4. File map
 
@@ -54,13 +54,13 @@ Formulas and conventions: `PORTFOLIO_DASHBOARD.md`.
 | Trades page | `components/trade-ledger-view.tsx`, `portfolio-trades-dialog.tsx`, `csv-import-dialog.tsx`, `data-sync.tsx` (sync, backup, history dialog) |
 | Brokerage fill | `components/brokerage-fill-dialog.tsx`, `lib/brokerage.ts` (fee schedules, custom rule) |
 | Tax | `components/tax-report-view.tsx`, `lib/au-tax.ts` (CGT events, loss ordering, discount, dividends, CSV), `lib/lots.ts` |
-| Server storage | `lib/server-sqlite.ts` (node:sqlite wrapper), `lib/server-store.ts`, `lib/price-archive.ts`, `api/store`, `api/store/snapshots`, `api/store/info` |
+| Server storage | `lib/server-sqlite.ts` (node:sqlite wrapper, `STOCK_TOOL_DATA_DIR`), `lib/server-store.ts`, `lib/price-archive.ts`, `api/store`, `api/store/snapshots`, `api/store/info`, `api/store/reset` |
 | Compare / Heatmap | `components/compare-view.tsx`, `treemap-view.tsx`, `lib/treemap-data.ts` |
 | States | `components/state-panel.tsx` (`StatePanel`, `ErrorState` with auto-retry), `lib/friendly-error.ts`, `app/error.tsx` |
 | Calculations | `lib/live-portfolio.ts`, `trader-analytics.ts`, `trader-insights.ts`, `breakdowns.ts`, `cash-ledger.ts`, `fx.ts`, `corporate-actions.ts`, `csv-import.ts`, `portfolio-trades.ts` |
 | Data access | `lib/yahoo-finance.ts` (server cache), `lib/client-cache.ts` (browser cache) |
 
-API routes (`src/app/api`): `store`, `store/snapshots`, `store/info`, `market/{dashboard,quote,candles,company,search,treemap,portfolio-analysis,corporate-actions,fx,backtest}`.
+API routes (`src/app/api`): `store`, `store/snapshots`, `store/info`, `store/reset` (test servers only), `market/{dashboard,quote,candles,company,search,treemap,portfolio-analysis,corporate-actions,fx,backtest}`.
 
 ## 5. Styles
 
@@ -71,7 +71,11 @@ API routes (`src/app/api`): `store`, `store/snapshots`, `store/info`, `market/{d
 | `app/redesign.css` | Redesigned Dashboard and Market layouts, frosted glass, mobile rules, breakdowns, states |
 | `app/pages.css` | Compare and Heatmap pages, shared `pg-*` page scaffold |
 
-Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "var(--…)" }}`.
+Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "var(--…)" }}` (checked by test E04).
+
+**Languages.** The UI is bilingual. Components get `zh` from `useLanguage()` (`components/language-provider.tsx`) and
+write every string inline as `text("English", "中文")`, so both languages live next to each other. Test E03 checks that
+the Chinese UI contains no untranslated English. Code, comments and documentation are in English.
 
 ## 6. Caching and failure handling
 
@@ -82,7 +86,7 @@ Rule: colours only via `--ui-*` tokens; SVG colours through `style={{ stroke: "v
 
 ## 7. Tests
 
-See `tests/README.md`. Runner: `scripts/run-tests.mjs` (stages → `test-results/report.html`); catalog:
+See [TESTING.md](TESTING.md). Runner: `scripts/run-tests.mjs` (stages → `test-results/report.html`); catalog:
 `tests/requirements.mjs`; layers: `tests/unit` (Vitest), `tests/smoke`, `tests/e2e` (by feature), `tests/live` (Playwright).
 Test servers: `.next-test` build, ports 3100 / 3200 / 3300, data in `test-results/data-*` (`tests/support/servers.ts`).
 
@@ -92,10 +96,18 @@ Test servers: `.next-test` build, ports 3100 / 3200 / 3300, data in `test-result
 - Tax: FIFO only (no specific-parcel selection), no 45-day franking rule, individual investors only; FX uses Yahoo daily reference rates.
 - New folders under `src/` are not always picked up by a running `next dev` on Windows — restart the server after adding one.
 - Dividend suggestions use Yahoo per-share amounts × shares held; withholding tax must be entered separately.
+- No authentication: the app is designed for one person on a trusted machine or home network ([SECURITY.md](../SECURITY.md)).
 - Mobile app: plan is PWA first, then a Capacitor wrapper, reusing this UI.
 
-## 9. Making changes
+## 9. Configuration
 
-1. Work in this folder (the v1.0 working copy). `start-localhost.bat` runs the dev server and reinstalls dependencies when `package-lock.json` changes.
-2. Before a release: `npm run check`, `npm run build && npm run test:smoke`, `npm run test:qa`.
-3. Bump `version` in `package.json` (feature → minor, fix → patch), add a `CHANGELOG.md` entry, commit, tag `vX.Y.Z`.
+| Variable | Effect |
+|---|---|
+| `STOCK_TOOL_DATA_DIR` | Folder for `store.db` / `prices.db` (default `./data`) |
+| `NEXT_DIST_DIR` | Next.js build folder (default `.next`; the test suites use `.next-test`) |
+| `STOCK_TOOL_TEST_MODE=1` | Enables `POST /api/store/reset`. Set only by the test servers |
+| `NEXT_PUBLIC_APP_VERSION` | Injected from `package.json` by `next.config.ts`; shown in the logo tooltip and History dialog |
+
+## 10. Making changes
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md).

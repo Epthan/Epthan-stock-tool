@@ -20,7 +20,7 @@ echo.
 echo Running all checks. Your data folder and a running start-localhost.bat are not touched.
 echo Takes about 6-10 minutes. Add --quick to skip the browser suites.
 echo.
-call node scripts\run-tests.mjs --live %*
+call node scripts\run-tests.mjs --live --lang=zh %*
 set RESULT=%errorlevel%
 if exist "test-results\report.html" start "" "test-results\report.html"
 echo.

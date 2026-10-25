@@ -10,6 +10,7 @@ import { DataSync } from "@/components/data-sync";
 import { CorporateActionSync } from "@/components/corporate-action-sync";
 import { useTheme, type ThemeChoice } from "@/components/theme-provider";
 
+// Nav icons as inline SVG paths (stroke only), so they pick up currentColor from the theme.
 const icons = {
   market: <path d="M3 17l5-6 4 3 6-8 3 4M3 21h18" />,
   portfolio: <><circle cx="12" cy="12" r="8.5" /><path d="M12 3.5V12l6 6" /></>,
@@ -19,6 +20,7 @@ const icons = {
   tax: <><path d="M6 3h9l3 3v15H6z" /><path d="M9 16l6-6M9.5 10.5h.01M14.5 15.5h.01" /></>,
 };
 
+// Side nav, top bar (search, skin, language) and the background sync components, around every page.
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { locale, toggleLocale, messages } = useLanguage();

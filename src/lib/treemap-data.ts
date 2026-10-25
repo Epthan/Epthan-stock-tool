@@ -1,3 +1,4 @@
+// Heatmap data: index membership scraped from Wikipedia, prices and market caps from Yahoo.
 import * as cheerio from "cheerio";
 import { getYahooChart, getYahooQuote, getYahooQuoteSummary, getYahooQuotes } from "@/lib/yahoo-finance";
 import type { TimeframeKey } from "@/lib/mock-market";
@@ -34,6 +35,7 @@ type CacheValue = {
   items: TreemapItem[];
 };
 
+// Finished tiles per index + range. 15 minutes is plenty for a heatmap.
 const cache = new Map<string, CacheValue>();
 const ttlMs = 15 * 60 * 1000;
 
@@ -42,6 +44,7 @@ const sources: Record<TreemapIndexKey, string> = {
   nasdaq100: "https://en.wikipedia.org/wiki/Nasdaq-100",
 };
 
+// Strip footnote markers like "[3]" and collapse whitespace.
 function textOf(value: string) {
   return value.replace(/\[[^\]]+\]/g, "").replace(/\s+/g, " ").trim();
 }
@@ -101,9 +104,11 @@ export function parseConstituentTable(html: string, index: TreemapIndexKey): Con
     if (ticker < 0 || company < 0) continue;
     const rows = $(table).find("tr").toArray().slice(1).map((row) => {
       const cells = $(row).find("th, td").toArray().map((cell) => textOf($(cell).text()));
+      // Wikipedia writes BRK.B, Yahoo wants BRK-B.
       const symbol = (cells[ticker] ?? "").replace(".", "-").toUpperCase();
       return /^[A-Z][A-Z0-9-]{0,9}$/.test(symbol) ? { symbol, name: cells[company] ?? symbol, sector: (sector >= 0 ? cells[sector] : "") || "Other" } : null;
     }).filter(Boolean) as Constituent[];
+    // Small tables on the page (recent changes etc.) also have ticker columns; the real one is long.
     if (rows.length >= 50) return rows;
   }
   throw new Error(`Could not locate ${index === "sp100" ? "S&P 100" : "Nasdaq-100"} constituents table`);
@@ -124,6 +129,7 @@ async function mapConstituentChange(item: Constituent, timeframe: TimeframeKey) 
       };
     }
 
+    // Longer ranges: first to last close of the chart.
     const chart = await getYahooChart(item.symbol, timeframe);
     const bars = chart.quotes.filter((bar) => bar.close !== null);
 
@@ -151,6 +157,7 @@ async function mapConstituentChange(item: Constituent, timeframe: TimeframeKey) 
   }
 }
 
+// Watch-list and holdings maps have no membership table, so look up name and sector per symbol.
 async function resolveCustomConstituent(symbol: string) {
   try {
     const [quote, summary] = await Promise.all([
@@ -188,6 +195,7 @@ async function mapInBatches(items: Constituent[], timeframe: TimeframeKey, batch
     return results;
   }
 
+  // Chart requests are per symbol; batching keeps us under Yahoo's rate limits.
   for (let index = 0; index < items.length; index += batchSize) {
     const batch = items.slice(index, index + batchSize);
     const resolved = await Promise.all(batch.map((item) => mapConstituentChange(item, timeframe)));

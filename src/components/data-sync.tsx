@@ -18,6 +18,7 @@ export const CONFLICT_EVENT = "stock-tool-sync-conflict";
 
 /** Server revisions this browser's data is based on. Kept in localStorage so every tab shares them. */
 const revsKey = "stock-tool.sync-revs.v1";
+// The original setItem, so writing the revisions doesn't itself get queued for sync.
 let setItemRaw: ((key: string, value: string) => void) | null = null;
 function readRevs(): Record<string, number> | null { try { return JSON.parse(window.localStorage.getItem(revsKey) ?? "null"); } catch { return null; } }
 function writeRevs(revs: Record<string, number> | undefined) {
@@ -26,15 +27,18 @@ function writeRevs(revs: Record<string, number> | undefined) {
 }
 
 let installed = false;
+// True while we write server data into storage; those writes must not be pushed back.
 let applying = false;
 let pending: Record<string, string | null> = {};
 let timer: ReturnType<typeof setTimeout> | undefined;
+// updatedAt of the last server state we applied; an unchanged server is skipped on pull.
 let lastSeen: string | null = null;
 
 function push() {
   const data = pending;
   pending = {};
   const known = readRevs();
+  // No revisions yet (very first push): send none, and the server accepts the write as is.
   const revs = known ? Object.fromEntries(Object.keys(data).map((key) => [key, known[key] ?? 0])) : undefined;
   fetch("/api/store", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data, revs }) })
     .then(async (response) => {
@@ -51,9 +55,12 @@ function push() {
       if (result.updatedAt) lastSeen = result.updatedAt;
       writeRevs(result.revs);
     })
+    // Offline or server down: keep the changes and send them with the next write.
+    // Anything queued meanwhile is newer, so it wins over the failed batch.
     .catch(() => { pending = { ...data, ...pending }; });
 }
 
+// Debounced, so typing in a form or a bulk import becomes one request.
 function queue(key: string, value: string | null) {
   if (applying || !keys.has(key)) return;
   pending[key] = value;
@@ -61,6 +68,8 @@ function queue(key: string, value: string | null) {
   timer = setTimeout(push, 600);
 }
 
+// Patch Storage once so every localStorage write anywhere in the app is synced, without each
+// feature having to call a sync API. Only the keys in SYNCED_KEYS are sent.
 function install() {
   if (installed) return;
   installed = true;
@@ -96,6 +105,7 @@ export function applyServerData(data: Record<string, string>, replace = false) {
     applying = false;
   }
   if (changed) {
+    // The real storage event only fires in other tabs; fire it here so this tab's hooks re-read too.
     window.dispatchEvent(new Event("storage"));
     window.dispatchEvent(new Event("portfolio-selection-change"));
   }
@@ -103,6 +113,7 @@ export function applyServerData(data: Record<string, string>, replace = false) {
 }
 
 async function pull() {
+  // Unsent local changes win: pulling now would overwrite them before they reach the server.
   if (Object.keys(pending).length) return;
   const response = await fetch("/api/store", { cache: "no-store" });
   if (!response.ok) return;
@@ -163,6 +174,7 @@ export function BackupControls({ zh }: { zh: boolean }) {
       const parsed = JSON.parse(await file.text()) as { app?: string; data?: Record<string, string> };
       if (parsed.app !== "stock-tool" || !parsed.data || typeof parsed.data !== "object") throw new Error();
       if (!window.confirm(zh ? "用备份覆盖当前所有组合、交易与自选？" : "Replace all current portfolios, trades and watch lists with this backup?")) return;
+      // Drop unsent local edits; the backup replaces everything anyway.
       clearTimeout(timer);
       pending = {};
       const response = await fetch("/api/store", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: parsed.data, replace: true }) });
@@ -171,7 +183,7 @@ export function BackupControls({ zh }: { zh: boolean }) {
       lastSeen = saved.updatedAt ?? null;
       writeRevs(saved.revs);
       applyServerData(parsed.data, true);
-      window.location.reload();
+      window.location.reload(); // simplest way to make every page re-read its state
     } catch {
       window.alert(zh ? "无法读取该备份文件。" : "That file is not a valid Stock Tool backup.");
     }

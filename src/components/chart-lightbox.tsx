@@ -5,6 +5,8 @@ import { StockChart, type ChartStyle, type StockChartHandle } from "@/components
 import type { CandlePoint, MovingAverageKey, TimeframeKey } from "@/lib/mock-market";
 import type { Locale } from "@/components/language-provider";
 
+// Full-screen chart. Two modes: the live chart (with the same temporary drawing tools as the
+// research page), and a snapshot editor where you scribble on a PNG of the chart and save it.
 type Point = {
   x: number;
   y: number;
@@ -35,6 +37,8 @@ type ChartLightboxProps = {
   timeframe?: TimeframeKey;
 };
 
+// Pen colours chosen to read on both light and dark chart backgrounds. They end up baked into
+// the exported PNG, so they are fixed values rather than theme tokens.
 const strokeColors = ["#f8fafc", "#38bdf8", "#34d399", "#f59e0b", "#fb7185"];
 const penCursor =
   'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path fill="%23f8fafc" d="M20.5 3.8a2.8 2.8 0 0 1 4 4L11.2 21.1l-5.4 1.3 1.3-5.4z"/><path fill="%2307111f" d="M7.5 20.5l2 2-3 .7z"/></svg>\') 4 24, crosshair';
@@ -89,6 +93,7 @@ function createStroke(color: string, point: Point): Stroke {
   };
 }
 
+// The eraser removes whole strokes, not pixels: any stroke passing within `threshold` of the pointer.
 function isPointNearStroke(point: Point, stroke: Stroke, threshold: number) {
   return stroke.points.some((strokePoint) => {
     const dx = strokePoint.x - point.x;
@@ -148,6 +153,8 @@ export function ChartLightbox({
     previewImage.src = nextImage;
   }
 
+  // Strokes are stored in image pixels, not screen pixels, so they line up in the saved PNG
+  // whatever size the preview is shown at.
   function getPointFromEvent(clientX: number, clientY: number) {
     const container = imageContainerRef.current;
 
@@ -177,6 +184,7 @@ export function ChartLightbox({
       return;
     }
 
+    // 16 screen pixels, converted to image pixels.
     const threshold = 16 * resolved.scale;
     setStrokes((current) => current.filter((stroke) => !isPointNearStroke(resolved.point, stroke, threshold)));
   }
@@ -248,6 +256,7 @@ export function ChartLightbox({
     setDraftStroke(null);
   }
 
+  // Redraw the snapshot and the strokes onto a canvas at the original resolution, then download it.
   async function handleSave() {
     if (!capturedSnapshot) {
       return;

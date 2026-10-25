@@ -7,6 +7,7 @@ import { usePortfolios } from "@/hooks/use-portfolios";
 /** Detects share splits for every portfolio with trades and stores them, so positions stay on today's share basis everywhere. */
 export function CorporateActionSync() {
   const { portfolios, setSplits } = usePortfolios();
+  // Only symbol and date matter for split lookups, so edits to price or notes don't trigger a refetch.
   const signature = portfolios.map((portfolio) => `${portfolio.id}:${(portfolio.trades ?? []).map((trade) => `${trade.symbol}@${trade.tradedAt}`).join(",")}`).join("|");
   useEffect(() => {
     let active = true;

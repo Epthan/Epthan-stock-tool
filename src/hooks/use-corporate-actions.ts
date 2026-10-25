@@ -14,6 +14,7 @@ export function corporateActionsRequest(portfolio: Pick<ManagedPortfolio, "trade
   const trades = portfolio.trades ?? [];
   if (!trades.length) return null;
   const symbols = [...new Set(trades.map((trade) => trade.symbol))].sort().join(",");
+  // Events before the first trade can't affect any position, so there is no need to fetch them.
   const from = trades.map((trade) => tradeDate(trade.tradedAt)).sort()[0];
   return { key: `corporate:${symbols}:${from}`, url: `/api/market/corporate-actions?symbols=${encodeURIComponent(symbols)}&from=${from}` };
 }

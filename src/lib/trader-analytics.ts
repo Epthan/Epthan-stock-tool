@@ -3,6 +3,7 @@ import { chronological } from "@/lib/lots";
 
 /** Annual risk-free rate assumed for Sharpe / Sortino. Shown in the methodology notes. */
 export const RISK_FREE_RATE = 0.04;
+// 63 trading days ≈ one quarter.
 const TRADING_DAYS = 252;
 const ROLLING_WINDOW = 63;
 
@@ -25,6 +26,7 @@ function covariance(left: number[], right: number[]) {
   return sum / (n - 1);
 }
 const finite = (value: number) => (Number.isFinite(value) ? value : null);
+// Calendar days between two YYYY-MM-DD dates (UTC, so DST can't shift the count).
 const days = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
 
 /* ------------------------------------------------------------------ */
@@ -33,6 +35,7 @@ const days = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:0
 
 export type DailyReturn = { date: string; portfolio: number; benchmark: number };
 
+// All inputs are simple daily returns (0.01 = 1%). Outputs are in percent unless they are ratios.
 export function returnStatistics(returns: DailyReturn[]) {
   const rp = returns.map((row) => row.portfolio);
   const rb = returns.map((row) => row.benchmark);
@@ -65,6 +68,7 @@ export function returnStatistics(returns: DailyReturn[]) {
   const up = returns.filter((row) => row.benchmark > 0);
   const down = returns.filter((row) => row.benchmark < 0);
   const capture = (rows: DailyReturn[]) => rows.length >= 5 ? mean(rows.map((row) => row.portfolio)) / mean(rows.map((row) => row.benchmark)) * 100 : NaN;
+  // With fewer than ~2 months of data the ratios swing wildly, so they are withheld.
   const reliable = n >= 40;
 
   return {
@@ -89,6 +93,7 @@ export function returnStatistics(returns: DailyReturn[]) {
   };
 }
 
+// Excess return and beta over a trailing window, for the rolling charts.
 export function rollingSeries(returns: DailyReturn[], window = ROLLING_WINDOW) {
   return returns.map((row, index) => {
     if (index + 1 < window) return { date: row.date, excess: null, beta: null };
@@ -101,6 +106,7 @@ export function rollingSeries(returns: DailyReturn[], window = ROLLING_WINDOW) {
   });
 }
 
+// Calendar-month returns compounded from the daily series. Partial first/last months are included as is.
 export function monthlyReturns(returns: DailyReturn[]) {
   const months = new Map<string, { portfolio: number; benchmark: number; days: number }>();
   for (const row of returns) {
@@ -126,12 +132,18 @@ export type ClosedTrade = {
 };
 export type EntryTrade = { id: string; symbol: string; date: string; price: number; after5: number | null; after20: number | null; excess5: number | null; excess20: number | null };
 
+// % move from `base` to the close `offset` trading days after `date`; null if that day hasn't happened yet.
 function forwardChange(prices: Price[], date: string, base: number, offset: number) {
   const index = prices.findIndex((price) => price.date === date);
   if (index < 0 || index + offset >= prices.length) return null;
   return (prices[index + offset].close / base - 1) * 100;
 }
 
+/**
+ * Replays the trades to get closed trades (one per sale) and entry trades (one per buy).
+ * Lots are rebuilt from the full history, but only trades on or after `cutoff` are reported,
+ * so a sale in the selected period still uses its real, older cost.
+ */
 export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], benchmark: Series, cutoff: string) {
   const priceBySymbol = new Map(securities.map((security) => [security.symbol, security.prices]));
   const ordered = chronological(trades);
@@ -163,7 +175,7 @@ export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], b
         const used = Math.min(lot.quantity, remaining);
         weightedDays += used * days(lot.date, trade.tradedAt);
         matchedCost += used * lot.unitCost;
-        // Tags on the sale itself also count (e.g. "stop-loss"); entry tags come from the lots.
+        // A parcel with several tags splits its shares evenly between them; untagged parcels are grouped together.
         for (const tag of lot.tags.length ? lot.tags : ["__untagged"]) tagged.set(tag, (tagged.get(tag) ?? 0) + used / Math.max(1, lot.tags.length));
         lot.quantity -= used;
         remaining -= used;
@@ -208,6 +220,7 @@ export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], b
       averageWin,
       averageLoss,
       payoffRatio: averageWin != null && averageLoss ? averageWin / averageLoss : null,
+      // No losing trades at all: infinite profit factor, shown as "∞".
       profitFactor: grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? Infinity : null,
       expectancy: closed.length ? closed.reduce((sum, trade) => sum + trade.pnl, 0) / closed.length : null,
       expectancyPercent: avg(closed.map((trade) => trade.returnPercent)),
@@ -225,6 +238,7 @@ export function tradeAnalytics(trades: PortfolioTrade[], securities: Series[], b
   };
 }
 
+// Fixed-width bins with overflow buckets at each end, so outliers don't stretch the chart.
 export function returnHistogram(values: number[], width = 5, limit = 30) {
   const bins: { from: number; to: number; count: number }[] = [];
   for (let from = -limit - width; from < limit + width; from += width) bins.push({ from, to: from + width, count: 0 });
@@ -236,6 +250,7 @@ export function returnHistogram(values: number[], width = 5, limit = 30) {
   return bins;
 }
 
+// Do you trade more after a losing month? Compares trade counts in the month after a loss vs after a gain.
 export function monthlyActivity(trades: PortfolioTrade[], months: { month: string; portfolio: number }[]) {
   const counts = new Map<string, number>();
   for (const trade of trades) counts.set(trade.tradedAt.slice(0, 7), (counts.get(trade.tradedAt.slice(0, 7)) ?? 0) + 1);
@@ -250,6 +265,7 @@ export function monthlyActivity(trades: PortfolioTrade[], months: { month: strin
 /* Current-position risk                                                */
 /* ------------------------------------------------------------------ */
 
+// Concentration and risk contribution for the current holdings, from one year of daily returns.
 export function positionRisk(holdings: { symbol: string; value: number }[], securities: Series[], end: string) {
   const open = holdings.filter((holding) => holding.value > 0);
   const total = open.reduce((sum, holding) => sum + holding.value, 0);
@@ -263,6 +279,7 @@ export function positionRisk(holdings: { symbol: string; value: number }[], secu
   const from = start.toISOString().slice(0, 10);
   const maps = open.map((holding) => new Map((securities.find((security) => security.symbol === holding.symbol)?.prices ?? []).map((price) => [price.date, price.close])));
   const reference = securities.find((security) => security.symbol === open[0]?.symbol)?.prices.filter((price) => price.date >= from && price.date <= end).map((price) => price.date) ?? [];
+  // Only days on which every holding traded, so the covariance matrix is built from matching returns.
   const dates = reference.filter((date) => maps.every((map) => map.has(date)));
   const returns = open.map((_, column) => dates.slice(1).map((date, index) => maps[column].get(date)! / maps[column].get(dates[index])! - 1));
   const n = dates.length - 1;
@@ -275,6 +292,7 @@ export function positionRisk(holdings: { symbol: string; value: number }[], secu
   return { concentration, contributions, correlation: { symbols: open.map((holding) => holding.symbol), matrix }, volatility: Math.sqrt(variance * TRADING_DAYS) * 100, observations: n };
 }
 
+// Distance from the 52-week high (on closes) and how long the position has been open.
 export function priceContext(prices: Price[], end: string, since: string | null) {
   const start = new Date(`${end}T00:00:00Z`);
   start.setUTCFullYear(start.getUTCFullYear() - 1);

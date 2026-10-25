@@ -17,6 +17,10 @@ import type { PortfolioRange } from "@/lib/portfolio-analytics";
 
 type LiveBenchmark = "SPY" | "QQQ" | "^AXJO";
 
+/**
+ * Portfolio page for a recorded (or demo) portfolio. The analysis runs on the server; this component
+ * only fetches it and lays out the six views. `view` picks which one is shown.
+ */
 export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHolding, demoCash }: { portfolio: ManagedPortfolio; view: string; demoCash?: number; onPick: (symbol: string) => void; onUpdateHolding: (symbol: string) => void }) {
   const { locale } = useLanguage();
   const text = (english: string, chinese: string) => locale === "zh" ? chinese : english;
@@ -28,7 +32,9 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
   const [state, setState] = useState<{ key: string; data?: LivePortfolioAnalysis; error?: string }>({ key: "" });
   const [retry, setRetry] = useState(0);
   const retryAnalysis = useCallback(() => setRetry((value) => value + 1), []);
+  // Serialised once so the effect depends on content, not on a new array every render.
   const tradesJson = JSON.stringify({ trades: portfolio.trades ?? [], cash: portfolio.cash ?? [] });
+  // Anything that changes the answer goes into the key; a stale response is ignored by comparing keys.
   const requestKey = `${portfolio.id}:${tradesJson}:${range}:${benchmarkSymbol}:${baseCurrency}:${cashMode}:${portfolio.splits?.length ?? 0}:${retry}`;
   const hasTrades = !!portfolio.trades?.length;
   useEffect(() => {
@@ -37,6 +43,7 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
     let active = true;
     const request = (forRange: PortfolioRange): [string, RequestInit] => [`analysis:${tradesJson}:${forRange}:${benchmarkSymbol}:${baseCurrency}:${cashMode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trades, cash, range: forRange, benchmark: benchmarkSymbol, baseCurrency, cashMode, ...(demoCash != null ? { demo: true, demoCash } : {}) }) }];
     const [key, init] = request(range);
+    // Retry means "really refetch", not "serve the cached failure again".
     if (retry > 0) forgetCached(key);
     fetchCached<{ result: LivePortfolioAnalysis }>(key, "/api/market/portfolio-analysis", TTL.analysis, init, (fresh) => { if (active) setState({ key: requestKey, data: fresh.result }); })
       .then((payload) => {
@@ -62,6 +69,7 @@ export function LivePortfolioDashboard({ portfolio, view, onPick, onUpdateHoldin
   const decimal = (value: number) => value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const signedAmount = (value: number) => `${value > 0 ? "+" : ""}${decimal(value)}`;
   const contributions = [...holdings].sort((left, right) => right.contribution - left.contribution);
+  // Symbols in the portfolio list without any trades are left out of the analysis; the page lists them.
   const unrecorded = portfolio.symbols.filter((symbol) => !portfolio.trades?.some((trade) => trade.symbol === symbol));
   const st = data?.statistics;
   const tr = data?.trading.stats;

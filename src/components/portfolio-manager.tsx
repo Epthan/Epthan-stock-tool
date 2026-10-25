@@ -7,6 +7,8 @@ import { SymbolSearchBox } from "@/components/symbol-search-box";
 import { usePortfolios } from "@/hooks/use-portfolios";
 import { PortfolioTradesDialog } from "@/components/portfolio-trades-dialog";
 
+// "Portfolios" dialog on the Market page: create, rename and delete portfolios, and manage their symbol lists.
+// Adding a symbol here is not a purchase; trades are recorded separately.
 export function PortfolioManager({ onPick, triggerLabel }: { onPick: (symbol: string) => void; triggerLabel?: string }) {
   const { locale } = useLanguage();
   const text = (english: string, chinese: string) => locale === "zh" ? chinese : english;
@@ -22,6 +24,7 @@ export function PortfolioManager({ onPick, triggerLabel }: { onPick: (symbol: st
   const symbolsKey = activePortfolio.symbols.join(",");
   useEffect(() => {
     const controller = new AbortController();
+    // Company names for the list. One request per symbol is fine for a portfolio-sized list.
     for (const symbol of symbolsKey.split(",").filter(Boolean)) {
       fetch(`/api/market/quote?symbol=${encodeURIComponent(symbol)}`, { signal: controller.signal }).then(async (response) => {
         if (!response.ok) return;

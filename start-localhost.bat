@@ -18,5 +18,5 @@ if errorlevel 1 (
   if errorlevel 1 ( echo [x] npm install failed. & pause & exit /b 1 )
 )
 echo Starting dev server on http://localhost:3000 ...
-call npm run dev
+call npx next dev -H 127.0.0.1
 pause

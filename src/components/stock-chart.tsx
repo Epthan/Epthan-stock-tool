@@ -41,6 +41,7 @@ type MovingAveragePoint = {
   value: number;
 };
 
+// Fixed MA colours (not theme tokens) so a given average looks the same in every skin and in the legend.
 const movingAverageColors: Record<MovingAverageKey, string> = {
   5: "#f59e0b",
   10: "#22c55e",
@@ -49,12 +50,14 @@ const movingAverageColors: Record<MovingAverageKey, string> = {
   200: "#f472b6",
 };
 
+// lightweight-charts takes rgba() strings; theme tokens are hex.
 function withAlpha(hex: string, alpha: number) {
   const value = hex.replace("#", "");
   if (!/^[0-9a-f]{6}$/i.test(value)) return hex;
   return `rgba(${parseInt(value.slice(0, 2), 16)}, ${parseInt(value.slice(2, 4), 16)}, ${parseInt(value.slice(4, 6), 16)}, ${alpha})`;
 }
 
+// Running-sum SMA of closes; null until `period` bars are available.
 function calculateMovingAverage(candles: CandlePoint[], period: MovingAverageKey) {
   let sum = 0;
 
@@ -80,6 +83,7 @@ function isMovingAveragePoint(point: MovingAveragePoint | null): point is Moving
   return point !== null;
 }
 
+// Wheel zoom past the data steps to the neighbouring range (6M → 3M when zooming in, → 1Y when zooming out).
 function getNextTimeframe(timeframe: TimeframeKey, direction: "in" | "out") {
   const index = timeframeLabels.indexOf(timeframe);
 
@@ -119,6 +123,8 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
   const frame = useRef(0);
   const bump = useCallback(() => { cancelAnimationFrame(frame.current); frame.current = requestAnimationFrame(() => setTick((value) => value + 1)); }, []);
   const [drawStore, setDrawStore] = useState<{ key: string; list: Drawing[] }>({ key: drawingKey, list: [] });
+  // Drawings are tagged with the key they were made under; a different key simply reads as an empty list,
+  // which clears them on a symbol change without an effect.
   const drawings = drawStore.key === drawingKey ? drawStore.list : [];
   const setDrawings = useCallback((update: (list: Drawing[]) => Drawing[]) => setDrawStore((current) => ({ key: drawingKey, list: update(current.key === drawingKey ? current.list : []) })), [drawingKey]);
   const [tool, setTool] = useState<DrawingTool | null>(null);
@@ -131,6 +137,8 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
     captureSnapshot: () => captureChartSnapshot(chartApiRef.current),
   }));
 
+  // The chart is rebuilt from scratch whenever data, style, MAs or the skin change. That is cheap at these
+  // sizes and avoids keeping series in sync by hand. Drawings survive because they live in React state.
   useEffect(() => {
     const container = containerRef.current;
 
@@ -169,6 +177,7 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
     });
     chartApiRef.current = chart;
 
+    // Remember the wheel direction briefly so the range-change handler knows the user zoomed (vs. panned).
     const handleWheel = (event: WheelEvent) => {
       pendingZoomDirectionRef.current = event.deltaY < 0 ? "in" : "out";
       pendingZoomExpiresAtRef.current = Date.now() + 1200;
@@ -196,6 +205,7 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
       priceFormat: {
         type: "volume",
       },
+      // Empty id = overlay scale: volume sits in the bottom ~20% of the price pane.
       priceScaleId: "",
       color: colors.line,
     });
@@ -267,6 +277,8 @@ export const StockChart = forwardRef<StockChartHandle, StockChartProps>(function
         return;
       }
 
+      // Zoomed in to under ~60% of the bars, or out beyond the data: switch range.
+      // The 900 ms guard stops one long wheel gesture from skipping several ranges.
       const ratio = visibleBars / candles.length;
       const now = Date.now();
 

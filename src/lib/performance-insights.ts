@@ -1,5 +1,10 @@
+// Cumulative returns in percent, as plotted on the dashboard.
 export type ReturnPoint = { date: string; portfolio: number; benchmark: number };
 
+/**
+ * Drawdown, time under water and rolling volatility from a cumulative return series.
+ * `window` is in observations (20 ≈ one trading month of daily points).
+ */
 export function buildPerformanceInsights(points: ReturnPoint[], window = 20, periodsPerYear = 252) {
   let portfolioPeak = 1;
   let benchmarkPeak = 1;
@@ -21,6 +26,7 @@ export function buildPerformanceInsights(points: ReturnPoint[], window = 20, per
   const series = points.map((point, index) => {
     const value = 1 + point.portfolio / 100;
     const market = 1 + point.benchmark / 100;
+    // Small tolerance so a return to the exact previous high counts as a new peak.
     if (value >= portfolioPeak - 1e-12) { portfolioPeak = Math.max(portfolioPeak, value); peakDate = point.date; underwater = 0; }
     else underwater += 1;
     longestUnderwater = Math.max(longestUnderwater, underwater);
@@ -30,6 +36,7 @@ export function buildPerformanceInsights(points: ReturnPoint[], window = 20, per
     if (portfolioDrawdown < maxDrawdown) { maxDrawdown = portfolioDrawdown; troughDate = point.date; maxPeakDate = peakDate; }
     if (index > 0) {
       const previous = points[index - 1];
+      // A wiped-out account (index <= 0) has no meaningful daily return.
       portfolioReturns.push(1 + previous.portfolio / 100 > 0 ? value / (1 + previous.portfolio / 100) - 1 : NaN);
       benchmarkReturns.push(1 + previous.benchmark / 100 > 0 ? market / (1 + previous.benchmark / 100) - 1 : NaN);
     }

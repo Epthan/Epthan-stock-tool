@@ -6,7 +6,10 @@ import { monthlyActivity, monthlyReturns, positionRisk, priceContext, returnStat
 export type DailyPrice = { date: string; close: number };
 export type SecurityHistory = { symbol: string; name: string; currency: string; prices: DailyPrice[] };
 
-/** Annualised money-weighted return (XIRR). flows: negative = money put in, positive = money taken out / final value. */
+/**
+ * Annualised money-weighted return (XIRR). flows: negative = money put in, positive = money taken out / final value.
+ * Solved by bisection rather than Newton: slower, but it cannot diverge on odd cash-flow patterns.
+ */
 export function xirr(flows: { date: string; amount: number }[]): number | null {
   if (flows.length < 2 || !flows.some((flow) => flow.amount < 0) || !flows.some((flow) => flow.amount > 0)) return null;
   const t0 = Date.parse(flows[0].date);
@@ -22,6 +25,10 @@ export function xirr(flows: { date: string; amount: number }[]): number | null {
   return (low + high) / 2;
 }
 
+/**
+ * The core analysis for a recorded portfolio. Everything comes in already converted to one currency
+ * and restated for splits (see the portfolio-analysis route). The benchmark's dates act as the calendar.
+ */
 export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityHistory[], benchmark: SecurityHistory, range: PortfolioRange, cash: CashEntry[] = [], fxRevaluation?: Map<string, number>) {
   const ordered = [...trades].sort((left, right) => left.tradedAt.localeCompare(right.tradedAt));
   const firstTrade = ordered[0]?.tradedAt;
@@ -50,9 +57,11 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
   let totalPnl = 0;
   const totals: Record<string, number> = {};
   const benchMap = new Map(benchmark.prices.map((price) => [price.date, price.close]));
+  // The chart starts from the close before the first trade, so day one already shows a return.
   const initialBaselineDate = benchmarkDates.filter((date) => date < dates[0]).at(-1);
   const benchInitial = benchMap.get(initialBaselineDate ?? dates[0])!;
   let cursor = 0;
+  // One pass per trading day: value before trades, apply the day's trades, value at the close.
   for (const date of dates) {
     let startValue = 0;
     let purchases = 0;
@@ -77,6 +86,7 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
       const related = dailyTrades.filter((trade) => trade.symbol === security.symbol);
       const buys = related.filter((trade) => trade.side === "buy").reduce((sum, trade) => sum + trade.price * trade.quantity, 0);
       const sells = related.filter((trade) => trade.side === "sell").reduce((sum, trade) => sum + trade.price * trade.quantity, 0);
+      // Per-symbol P&L for the day. Summed over the period this reconciles exactly with total P&L.
       const contribution = quantity * close - previousQuantity * (previousPrices.get(security.symbol) ?? close) + sells - buys;
       totals[security.symbol] = (totals[security.symbol] ?? 0) + contribution;
       value += quantity * close;
@@ -94,6 +104,7 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
     const dailyPnl = value + sales + income - startValue - purchases;
     totalPnl += dailyPnl;
     const denominator = startValue + purchases;
+    // Buys count as start-of-day money, sells as end-of-day money (see docs/METHODOLOGY.md).
     if (denominator > 0) growth *= Math.max(0, value + sales + income) / denominator;
     rows.push({ date, value, pnl: totalPnl, index: growth, benchmarkIndex: benchMap.get(date)! / benchInitial, contributions: { ...totals } });
   }
@@ -101,6 +112,7 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
   if (range === "YTD") threshold.setUTCMonth(0, 1);
   else if (range === "1Y") threshold.setUTCFullYear(threshold.getUTCFullYear() - 1);
   else if (range !== "ALL") threshold.setUTCMonth(threshold.getUTCMonth() - ({ "1M": 1, "3M": 3, "6M": 6 }[range]));
+  // Everything above is computed over the full history; the selected range only re-bases what is shown.
   const cutoff = range === "ALL" ? firstTrade : threshold.toISOString().slice(0, 10);
   const firstIndex = Math.max(0, rows.findIndex((row) => row.date >= cutoff));
   const baseline = rows[firstIndex - 1];
@@ -118,6 +130,7 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
     const price = security.prices.filter((row) => row.date <= end).at(-1)?.close ?? null;
     const value = position.quantity * (price ?? 0);
     const pairs: { stock: number; market: number }[] = [];
+    // Per-holding beta: up to two years of daily returns against the benchmark.
     const betaStart = new Date(`${end}T00:00:00Z`);
     betaStart.setUTCFullYear(betaStart.getUTCFullYear() - 2);
     const betaDate = betaStart.toISOString().slice(0, 10);
@@ -132,6 +145,7 @@ export function analyzePortfolio(trades: PortfolioTrade[], securities: SecurityH
     const averageStock = pairs.reduce((sum, pair) => sum + pair.stock, 0) / pairs.length;
     const averageMarket = pairs.reduce((sum, pair) => sum + pair.market, 0) / pairs.length;
     const variance = pairs.reduce((sum, pair) => sum + (pair.market - averageMarket) ** 2, 0);
+    // Fewer than ~3 months of overlap gives a beta too noisy to show.
     const beta = pairs.length >= 60 && variance > 0 ? pairs.reduce((sum, pair) => sum + (pair.stock - averageStock) * (pair.market - averageMarket), 0) / variance : null;
     return { symbol: security.symbol, name: security.name, ...position, price, value, weight: last.value > 0 ? value / last.value * 100 : 0, unrealized: position.averageCost == null ? 0 : position.quantity * ((price ?? 0) - position.averageCost), contribution: (last.contributions[security.symbol] ?? 0) - (baseline?.contributions[security.symbol] ?? 0), beta, betaSamples: pairs.length };
   });

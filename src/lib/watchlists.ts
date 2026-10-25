@@ -9,8 +9,10 @@ export type CustomWatchlist = {
 
 export const watchlistsStorageKey = "stock-tool.watchlists.v2";
 export const activeWatchlistStorageKey = "stock-tool.active-watchlist-id.v2";
+// Pre-v2 single list (a plain array of symbols). Read once and converted, never written.
 export const legacyWatchlistStorageKey = "stock-tool.watchlist";
 
+// Upper-case, drop blanks and duplicates. An empty or broken list falls back to the defaults.
 function sanitizeSymbols(symbols: unknown) {
   if (!Array.isArray(symbols)) {
     return defaultWatchlist;
@@ -33,6 +35,7 @@ export function createDefaultWatchlists() {
   ] satisfies CustomWatchlist[];
 }
 
+// Runs on the client only; on the server we render the defaults and hydrate afterwards.
 export function loadStoredWatchlists() {
   if (typeof window === "undefined") {
     return {
@@ -56,6 +59,7 @@ export function loadStoredWatchlists() {
             }
 
             const candidate = item as { id?: unknown; name?: unknown; symbols?: unknown };
+            // Older saves could lack ids or names; give them stable fallbacks.
             const id = typeof candidate.id === "string" ? candidate.id : `list-${index + 1}`;
             const name =
               typeof candidate.name === "string" && candidate.name.trim()

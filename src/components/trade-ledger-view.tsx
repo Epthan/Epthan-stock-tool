@@ -31,14 +31,16 @@ function tone(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value) || Math.abs(value) < 0.005) return "";
   return value > 0 ? "tl-positive" : "tl-negative";
 }
+// RFC 4180 quoting: wrap in quotes when needed and double any quotes inside.
 function csvCell(value: string | number) {
   const text = String(value);
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+// The migration record is written once before this page ever renders, so there is nothing to subscribe to.
 function subscribeNever() { return () => {}; }
 
-/** Unified trade log: reads and writes the same per-portfolio records used by Workplace and Dashboard. */
+/** Trades page: trade log, positions, cash ledger and data tools for the active portfolio. */
 export function TradeLedgerView() {
   const { locale } = useLanguage();
   const text = (english: string, chinese: string) => (locale === "zh" ? chinese : english);
@@ -53,6 +55,7 @@ export function TradeLedgerView() {
   const [cashForm, setCashForm] = useState<{ kind: CashKind; date: string; amount: string; currency: string; toAmount: string; toCurrency: string; symbol: string; note: string; frankedPct: string; frankingCredit: string; withheld: string }>({ kind: "deposit", currency: "", toAmount: "", toCurrency: "", date: tradeDate(new Date().toISOString()), amount: "", symbol: "", note: "", frankedPct: "", frankingCredit: "", withheld: "" });
   const [cashError, setCashError] = useState("");
 
+  // Read via useSyncExternalStore (not useState) so the server render and hydration agree.
   const migrationRaw = useSyncExternalStore(subscribeNever, () => { try { return window.localStorage.getItem(legacyMigrationKey); } catch { return null; } }, () => null);
   const migration = useMemo(() => { try { return JSON.parse(migrationRaw ?? "null") as LegacyMigration | null; } catch { return null; } }, [migrationRaw]);
 

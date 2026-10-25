@@ -12,6 +12,8 @@ import {
 
 export type Locale = "en" | "zh";
 
+// Shared strings for the shell and the older parts of the Market page. Newer components keep
+// their strings inline with text("English", "中文") instead, next to where they are used.
 type Messages = {
   nav: {
     title: string;
@@ -288,7 +290,10 @@ function detectBrowserLocale(): Locale {
   return language.startsWith("zh") ? "zh" : "en";
 }
 
+// Same pattern as the portfolio store: localStorage is the source of truth, a custom event
+// tells other components in this tab, the storage event covers other tabs.
 const localeEvent = "stock-tool-locale-change";
+// No saved choice yet: follow the browser language.
 function readLocale(): Locale {
   try {
     const stored = window.localStorage.getItem(storageKey);

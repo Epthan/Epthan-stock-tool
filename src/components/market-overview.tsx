@@ -20,6 +20,7 @@ export function MarketOverview({ zh, onPick }: { zh: boolean; onPick: (symbol: s
       .then((payload) => { if (active) { setData(payload); setError(""); } })
       .catch((reason: Error) => { if (active) setError(reason.message); });
     load();
+    // Same 30 s rhythm as the cache TTL, so each tick is one real request at most.
     const timer = window.setInterval(load, 30_000);
     return () => { active = false; window.clearInterval(timer); };
   }, [retry]);

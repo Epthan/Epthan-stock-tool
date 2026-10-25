@@ -44,6 +44,7 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "playwright.qa.config.ts",
-    "playwright.live.config.ts"
+    "playwright.live.config.ts",
+    "playwright.docs.config.ts"
   ]
 }

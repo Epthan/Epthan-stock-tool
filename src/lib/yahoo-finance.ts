@@ -43,16 +43,19 @@ function cached<T>(key: string, ttl: number, load: () => Promise<T>): Promise<T>
     if (hit.promise) return hit.promise as Promise<T>;
     return Promise.resolve(hit.value as T);
   }
+  // Remember the last good value before replacing the entry, so a failed refresh can fall back to it.
   const previous = hit?.value ?? hit?.stale;
   const promise = withRetry(load).then(
     (value) => { store.set(key, { expires: Date.now() + ttl, value }); return value; },
     (error) => {
+      // Serve stale, but try Yahoo again within a minute rather than waiting a full TTL.
       if (previous !== undefined) { store.set(key, { expires: Date.now() + Math.min(ttl, MINUTE), value: previous }); return previous as T; }
       store.delete(key);
       throw error;
     },
   );
   store.set(key, { expires: now + ttl, promise, stale: previous });
+  // Maps iterate in insertion order, so this drops the oldest entry.
   if (store.size > MAX_ENTRIES) store.delete(store.keys().next().value as string);
   return promise;
 }
@@ -67,6 +70,7 @@ export async function getYahooQuotes(symbols: string[]) {
   const missing = symbols.filter((symbol) => { const hit = store.get(`quote:${symbol}`); return !(hit && hit.expires > now); });
   if (missing.length) {
     const batch = cached(`quotes:${[...missing].sort().join(",")}`, QUOTE_TTL, () => fetchQuotes(missing));
+    // Seed the per-symbol entries from the batch so the lookups below don't each hit Yahoo.
     for (const symbol of missing) store.set(`quote:${symbol}`, { expires: now + QUOTE_TTL, promise: batch.then((rows) => rows.find((row) => row.symbol === symbol)) });
     await batch.catch(() => undefined);
   }
@@ -162,6 +166,7 @@ async function getDaily(symbol: string, period1: string, period2: string): Promi
     return { rows: data.rows.filter((row) => within(row.day)), splits: data.splits.filter((item) => within(item.date)), dividends: data.dividends.filter((item) => within(item.date)) };
   }
   const data = cached(`daily2:${symbol}:${period1}:${period2}`, 30 * MINUTE, () => loadDaily(symbol, period1, period2));
+  // Only remember this request as the cover if it is at least as wide as what we had.
   const widest = !cover || cover.expires <= now || (period1 <= cover.from && period2 >= cover.to);
   if (widest) dailyCover.set(symbol, { from: period1, to: period2, expires: now + 30 * MINUTE, data });
   data.catch(() => { if (dailyCover.get(symbol)?.data === data) dailyCover.delete(symbol); });
@@ -183,6 +188,7 @@ export async function searchYahooSymbols(query: string) {
   }));
 }
 
+// "MAX" just means far enough back; Yahoo clamps to the listing date.
 function getStartDate(now: Date, timeframe: TimeframeKey) {
   const start = new Date(now);
 
@@ -225,6 +231,7 @@ function getStartDate(now: Date, timeframe: TimeframeKey) {
   return start;
 }
 
+// Keep bar counts reasonable: intraday bars for short ranges, coarser bars as the range grows.
 function getChartInterval(timeframe: TimeframeKey) {
   switch (timeframe) {
     case "1D":

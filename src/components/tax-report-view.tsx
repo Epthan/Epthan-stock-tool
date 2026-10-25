@@ -16,10 +16,14 @@ type Quote = { price: number; currency: string };
 const aud = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : value.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const signedAud = (value: number | null | undefined) => (value == null || !Number.isFinite(value) ? "—" : Math.abs(value) < 0.005 ? aud(0) : `${value > 0 ? "+" : "−"}${aud(Math.abs(value))}`);
 const tone = (value: number | null | undefined) => (value == null || !Number.isFinite(value) || Math.abs(value) < 0.005 ? "" : value > 0 ? "tl-positive" : "tl-negative");
-/** Quote currency from the symbol suffix when no quote is available. */
+/** Quote currency from the symbol suffix, until the quote arrives or when Yahoo has none: .AX is AUD, a bare ticker USD. */
 const guessCurrency = (symbol: string) => (symbol.endsWith(".AX") ? "AUD" : !symbol.includes(".") ? "USD" : null);
 
 /** Australian tax report (CGT + investment income) for the active portfolio, one financial year at a time. */
+/**
+ * Tax page. Unlike the Portfolio page this runs entirely in the browser: it needs only quotes (for
+ * currencies and today's values) and FX history, and the calculation itself is in lib/au-tax.
+ */
 export function TaxReportView() {
   const { locale } = useLanguage();
   const zh = locale === "zh";
@@ -31,6 +35,7 @@ export function TaxReportView() {
   const symbols = useMemo(() => [...new Set(trades.map((trade) => trade.symbol))].sort(), [trades]);
   const symbolKey = symbols.join(",");
 
+  // Quotes tell us each security's currency and minor unit (e.g. GBp), which the AUD conversion needs.
   const [quotes, setQuotes] = useState<Record<string, Quote | null>>({});
   useEffect(() => {
     if (!symbolKey) return;
@@ -81,6 +86,7 @@ export function TaxReportView() {
   const [chosenFy, setFy] = useState<number | null>(null);
   const [filling, setFilling] = useState(false);
   const [notice, setNotice] = useState("");
+  // Default to the latest year with activity, not the current one, which is often still empty.
   const fy = chosenFy != null && years.includes(chosenFy) ? chosenFy : report?.years.at(-1)?.fy ?? currentFy;
   const year = report?.years.find((item) => item.fy === fy);
   const events = report?.events.filter((event) => event.fy === fy) ?? [];

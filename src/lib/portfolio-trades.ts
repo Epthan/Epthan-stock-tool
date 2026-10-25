@@ -1,16 +1,21 @@
 import { applySplits, type StockSplit } from "@/lib/corporate-actions";
 import { chronological, lotPosition } from "@/lib/lots";
 
+// `price` is per share in the security's quote currency, as typed, before any split restatement.
+// `tradedAt` is a YYYY-MM-DD trade date (older records may carry a full timestamp).
 export type PortfolioTrade = { id: string; symbol: string; side: "buy" | "sell"; tradedAt: string; price: number; quantity: number; note?: string; tags?: string[] };
 
 /** Suggested strategy tags; any short free-text tag is allowed. */
 export const SUGGESTED_TAGS: [string, string][] = [["breakout", "突破"], ["dip", "抄底"], ["long-term", "长持"], ["earnings", "财报"], ["momentum", "动量"], ["swing", "波段"], ["value", "价值"], ["hedge", "对冲"]];
+// Accepts an array or a free-text string (comma, semicolon, hash or space separated, either width).
+// At most 6 tags of 24 characters.
 export function normalizeTags(input: unknown): string[] | undefined {
   const list = Array.isArray(input) ? input : typeof input === "string" ? input.split(/[,，;；#\s]+/) : [];
   const tags = [...new Set(list.map((tag) => String(tag).trim().slice(0, 24)).filter(Boolean))].slice(0, 6);
   return tags.length ? tags : undefined;
 }
 
+// Old records stored full ISO timestamps. Take the local calendar day, which is what the user typed.
 export function tradeDate(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const date = new Date(value);
@@ -18,6 +23,8 @@ export function tradeDate(value: string) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+// Throws an error code (INVALID_TRADE, INVALID_AMOUNT, INVALID_TIME, INSUFFICIENT_SHARES); the UI translates it.
+// Replays every trade in order, so a sell is checked against what was held on its own date.
 export function validatePortfolioTrades(rawTrades: PortfolioTrade[], splits?: StockSplit[]) {
   const trades = applySplits(rawTrades, splits);
   const quantities = new Map<string, number>();
@@ -28,6 +35,7 @@ export function validatePortfolioTrades(rawTrades: PortfolioTrade[], splits?: St
     if (![trade.price, trade.quantity].every((value) => Number.isFinite(value) && value > 0 && value <= 1e12)) throw new Error("INVALID_AMOUNT");
     if (!Number.isFinite(Date.parse(trade.tradedAt)) || !tradeDate(trade.tradedAt) || tradeDate(trade.tradedAt) > tradeDate(new Date().toISOString())) throw new Error("INVALID_TIME");
     const available = quantities.get(trade.symbol) ?? 0;
+    // Tolerance for fractional shares that don't add up exactly in floating point.
     if (trade.side === "sell" && trade.quantity > available + 1e-8) throw new Error("INSUFFICIENT_SHARES");
     quantities.set(trade.symbol, Math.max(0, available + (trade.side === "buy" ? trade.quantity : -trade.quantity)));
   }

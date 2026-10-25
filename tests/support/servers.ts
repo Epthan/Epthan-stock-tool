@@ -6,9 +6,9 @@ import path from "node:path";
  * - each suite has its own data folder under test-results/, wiped before every test
  */
 export const TEST_DIST_DIR = ".next-test";
-export const dataDirFor = (suite: "e2e" | "smoke" | "live") => path.join(process.cwd(), "test-results", `data-${suite}`);
+export const dataDirFor = (suite: "e2e" | "smoke" | "live" | "docs") => path.join(process.cwd(), "test-results", `data-${suite}`);
 
-export function testServer(suite: "e2e" | "smoke" | "live", port: number) {
+export function testServer(suite: "e2e" | "smoke" | "live" | "docs", port: number) {
   return {
     command: `npx next start -p ${port} -H 127.0.0.1`,
     url: `http://127.0.0.1:${port}`,

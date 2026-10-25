@@ -9,6 +9,8 @@ type StockSelectionContextValue = {
   pickSymbol: (symbol: string) => void;
 };
 
+// App-wide "current stock". Picking a symbol anywhere (search box, holdings table, heatmap tile)
+// sets it and takes you to the Market page, which reads it. Kept in memory only.
 const StockSelectionContext = createContext<StockSelectionContextValue | null>(null);
 
 export function StockSelectionProvider({ children }: { children: ReactNode }) {

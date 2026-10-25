@@ -32,6 +32,7 @@ export function SymbolSearchBox({
   const resolvedPlaceholder = placeholder ?? messages.search.placeholder;
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  // Typing stays responsive; the request follows the deferred value rather than every keystroke.
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const isSearching =
     searchQuery.trim().length > 0 && deferredSearchQuery.trim() !== searchQuery.trim();

@@ -23,9 +23,11 @@ function demoTrades(demoId: string): { trades: PortfolioTrade[]; cash: number } 
   if (!demo) return null;
   const start = new Date(); start.setUTCFullYear(start.getUTCFullYear() - 2);
   const tradedAt = start.toISOString().slice(0, 10);
+  // price: 1 is a placeholder; the server swaps in the real close for demo requests.
   return { cash: demo.cash, trades: DEMO_SYMBOLS.flatMap((symbol, index) => demo.quantities[index] > 0 ? [{ id: `demo-${demo.id}-${symbol}`, symbol, side: "buy" as const, tradedAt, price: 1, quantity: demo.quantities[index] }] : []) };
 }
 
+// Portfolio page shell: portfolio picker, view tabs, demo banner. The analysis itself is LivePortfolioDashboard.
 export function PortfolioDashboard() {
   const { locale } = useLanguage();
   const { pickSymbol } = useStockSelection();

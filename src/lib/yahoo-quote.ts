@@ -1,6 +1,7 @@
 import { getMarketFromSymbol } from "@/lib/market-symbols";
 import { symbolMeta, type QuoteCard, type WatchlistRow } from "@/lib/mock-market";
 
+// The handful of quote fields we read. yahoo-finance2 returns far more, and its types change between versions.
 export type YahooQuote = {
   symbol?: string;
   shortName?: string;
@@ -16,6 +17,7 @@ export type YahooQuote = {
   currency?: string;
 };
 
+// Narrow an unknown Yahoo result without validating every field.
 export function toYahooQuote(quote: unknown): YahooQuote | undefined {
   if (!quote || typeof quote !== "object") {
     return undefined;
@@ -24,6 +26,8 @@ export function toYahooQuote(quote: unknown): YahooQuote | undefined {
   return quote as YahooQuote;
 }
 
+// Returns null when Yahoo has no price or previous close (delisted, halted, bad symbol)
+// so callers can show "no data" instead of a zero.
 export function mapYahooQuote(symbol: string, quote?: YahooQuote): QuoteCard | WatchlistRow | null {
   const price = quote?.regularMarketPrice;
   const previousClose = quote?.regularMarketPreviousClose;
@@ -32,6 +36,7 @@ export function mapYahooQuote(symbol: string, quote?: YahooQuote): QuoteCard | W
     return null;
   }
 
+  // Prefer Yahoo's own change figures; they account for things like ex-dividend adjustments.
   const change = quote?.regularMarketChange ?? price - previousClose;
   const changePercent =
     quote?.regularMarketChangePercent ?? (previousClose === 0 ? 0 : (change / previousClose) * 100);

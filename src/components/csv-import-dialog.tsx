@@ -10,6 +10,8 @@ const fieldLabel: Record<Field, [string, string]> = {
   amount: ["Amount", "金额"], fee: ["Fee / brokerage", "佣金/费用"], note: ["Note", "备注"], tags: ["Tags", "标签"], details: ["Details", "摘要"], debit: ["Debit", "借方"], credit: ["Credit", "贷方"],
 };
 
+// Broker CSV import: pick a file, check the detected columns, preview every row, then import all or nothing.
+// Parsing and validation live in lib/csv-import; this is the UI around it.
 export function CsvImportDialog({ portfolioId, zh, onClose }: { portfolioId: string; zh: boolean; onClose: (message?: string) => void }) {
   const text = (english: string, chinese: string) => (zh ? chinese : english);
   const { portfolios, importRecords } = usePortfolios();
@@ -32,11 +34,13 @@ export function CsvImportDialog({ portfolioId, zh, onClose }: { portfolioId: str
     if (content.includes("�")) { try { content = new TextDecoder("gbk").decode(buffer); } catch {} } // Chinese brokers export GBK
     const parsed = parseCsv(content);
     if (parsed.length < 2) { setError(text("No rows found in this file.", "文件里没有可读的数据行。")); return; }
+    // Some exports have a few lines of account info above the real header, so the header row is detected too.
     const detected = detectMapping(parsed);
     setFileName(file.name); setRows(parsed); setHeaderRow(detected.headerRow); setMapping(detected.mapping);
   }
 
   const header = rows[headerRow] ?? [];
+  // Re-run the whole import as a dry run whenever a setting changes; the preview is exactly what will be saved.
   const result = useMemo(() => {
     if (!rows.length || !portfolio) return null;
     try { return buildImport(rows, { headerRow, mapping, dateOrder, suffix, existingTrades: portfolio.trades ?? [], existingCash: portfolio.cash ?? [], splits: portfolio.splits }); }

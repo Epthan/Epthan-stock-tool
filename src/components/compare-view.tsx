@@ -18,8 +18,11 @@ type Loaded = { symbol: string; candles: CandlePoint[] | null; quote: WatchlistR
 
 const TIMEFRAMES: TimeframeKey[] = ["5D", "1M", "3M", "6M", "1Y", "5Y"];
 const DAILY: TimeframeKey[] = ["1M", "3M", "6M", "1Y", "5Y", "10Y", "MAX"];
+// More lines than this and the chart turns into spaghetti.
 const MAX_SYMBOLS = 8;
 
+// Quote and candles for one symbol. Failures come back as data (error text), so one bad symbol
+// doesn't sink the whole comparison.
 function loadSymbol(symbol: string, timeframe: TimeframeKey): Promise<Loaded> {
   const intraday = !DAILY.includes(timeframe);
   return Promise.all([
@@ -44,6 +47,7 @@ function stats(candles: CandlePoint[], daily: boolean) {
   const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
   const sd = Math.sqrt(returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / Math.max(1, returns.length - 1));
   const high = Math.max(...closes), low = Math.min(...closes), last = closes.at(-1)!;
+  // Volatility is only annualised for daily bars; for intraday bars the right factor is unclear.
   return { change: (last / closes[0] - 1) * 100, maxDrawdown: maxDrawdown * 100, volatility: daily ? sd * Math.sqrt(252) * 100 : null, fromHigh: (last / high - 1) * 100, rangePosition: high > low ? (last - low) / (high - low) * 100 : 50 };
 }
 

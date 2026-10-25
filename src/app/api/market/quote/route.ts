@@ -3,6 +3,7 @@ import { normalizeSymbol } from "@/lib/market-symbols";
 import { getYahooQuote } from "@/lib/yahoo-finance";
 import { mapYahooQuote, type YahooQuote } from "@/lib/yahoo-quote";
 
+// GET /api/market/quote?symbol=AAPL: a single quote. 404 when Yahoo has no price for the symbol.
 export async function GET(request: NextRequest) {
   const symbol = normalizeSymbol(request.nextUrl.searchParams.get("symbol") ?? "");
 

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
-/** Skins: 灰白 (gray, light), 黑金 (gold, light content + graphite frame), 夜间 (night). */
+/** Skins: gray (Light), gold (light content + graphite frame), night (dark). */
 export type ThemeChoice = "auto" | "gray" | "gold" | "night";
 export type Skin = "gray" | "gold" | "night";
 type ResolvedTheme = "day" | "night";
@@ -55,6 +55,8 @@ function normalizeDegrees(value: number) {
   return ((value % 360) + 360) % 360;
 }
 
+// Sunrise / sunset with the standard almanac approximation (accurate to a few minutes), using the
+// "official" zenith of 90.833°. Returns null during polar day or night, when the sun doesn't cross it.
 function getSunTime(date: Date, coordinates: Coordinates, isSunrise: boolean) {
   const dayStart = new Date(date.getFullYear(), 0, 0);
   const dayOfYear = Math.floor((date.getTime() - dayStart.getTime()) / 86_400_000);
@@ -100,6 +102,7 @@ function getSunTime(date: Date, coordinates: Coordinates, isSunrise: boolean) {
   return time;
 }
 
+// "Auto" means day skin between sunrise and sunset. Without a location, 6am–6pm local time.
 function getAutoTheme(date: Date, coordinates: Coordinates | null): ResolvedTheme {
   if (!coordinates) {
     const hour = date.getHours();
@@ -129,6 +132,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Coarse location for the sunrise calculation only; it never leaves the browser.
+    // If the user declines, the 6am–6pm fallback is used.
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setCoordinates({
@@ -142,6 +147,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Re-check once a minute so Auto flips at sunset without a reload.
     const interval = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(interval);
   }, []);

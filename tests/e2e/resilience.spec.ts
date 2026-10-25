@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mockMarket, resetStore, seed, watchErrors } from "./fixtures";
 
-/** Market data down, empty states. Test titles start with requirement IDs (see tests/requirements.ts). */
+/** Market data down, empty states. Test titles start with requirement IDs (see tests/requirements.mjs). */
 test.beforeEach(async ({ request }) => { await resetStore(request); });
 
 test("D01 Yahoo down: every page degrades gracefully", async ({ page }) => {

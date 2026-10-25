@@ -11,9 +11,11 @@ import { realTradeCurve } from "@/lib/real-vs-backtest";
 
 type BacktestResponse = { symbol: string; currency: string; settings: BacktestSettings; result: BacktestResult; prices: { date: string; close: number }[]; source: string; retrievedAt: string };
 
+// Backtest tab of the Market page: settings form, equity curve vs buy and hold, and your real trades overlaid.
 export function BacktestPanel({ symbol }: { symbol: string }) {
   const { locale } = useLanguage();
   const text = (english: string, chinese: string) => locale === "zh" ? chinese : english;
+  // Yesterday: today's bar may not be final yet.
   const [latestDate] = useState(() => new Date(Date.now() - 86400000).toISOString().slice(0, 10));
   // Your recorded trades in this stock (active portfolio), on today's share basis to match split-adjusted prices.
   const { activePortfolio } = usePortfolios();
@@ -23,6 +25,7 @@ export function BacktestPanel({ symbol }: { symbol: string }) {
     const start = new Date(end);
     start.setUTCFullYear(start.getUTCFullYear() - 2);
     const firstReal = (activePortfolio.trades ?? []).filter((trade) => trade.symbol === symbol).map((trade) => tradeDate(trade.tradedAt)).sort()[0];
+    // If you traded this stock before the default window, start the test two weeks before your first trade.
     if (firstReal) { const aligned = new Date(`${firstReal}T00:00:00Z`); aligned.setUTCDate(aligned.getUTCDate() - 14); if (aligned < start) start.setTime(aligned.getTime()); }
     return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10), short: 20, long: 50, capital: 10000, commission: 0.1, slippage: 0.05 };
   });
@@ -33,11 +36,13 @@ export function BacktestPanel({ symbol }: { symbol: string }) {
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
   const result = response?.result;
+  // Settings edited since the last run: the result on screen no longer matches the form.
   const changed = !!response && JSON.stringify(settings) !== JSON.stringify(response.settings);
   const signed = (value: number) => `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
   const amount = (value: number) => value.toLocaleString(locale === "zh" ? "zh-CN" : "en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
   async function run() {
     if (settings.short >= settings.long) { setError(text("Short SMA must be smaller than long SMA.", "短均线周期必须小于长均线周期。")); return; }
+    // Only the latest run counts; an older one still in flight is cancelled.
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;

@@ -8,10 +8,12 @@ import { SUGGESTED_TAGS, getTradePosition, normalizeTags, tradeDate, type Portfo
 import { feeTradeId } from "@/lib/au-tax";
 import { BASE_CURRENCIES } from "@/lib/fx";
 
+// Today in the user's time zone (toISOString alone would give the UTC date).
 function localDate() {
   return tradeDate(new Date().toISOString());
 }
 
+// Add / edit / delete trades for one symbol in one portfolio. Shared by the Market, Portfolio and Trades pages.
 export function PortfolioTradesDialog({ portfolioId, symbol: initialSymbol, onClose }: { portfolioId: string; symbol: string; onClose: () => void }) {
   const [symbol, setSymbol] = useState(initialSymbol);
   const { locale } = useLanguage();
@@ -30,6 +32,7 @@ export function PortfolioTradesDialog({ portfolioId, symbol: initialSymbol, onCl
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { dialog.current?.showModal(); if (!initialSymbol) dialog.current?.querySelector<HTMLInputElement>(".pm-stock-search input")?.focus(); }, [initialSymbol]);
   function reset() { setForm({ id: "", side: "buy", tradedAt: localDate(), price: "", quantity: "", note: "", tags: [], brokerage: "", brokerageCurrency: base }); setError(""); }
+  // Validation throws short codes (see validatePortfolioTrades); turn them into something a person can act on.
   function errorMessage(reason: unknown) {
     const code = reason instanceof Error ? reason.message : "";
     return ({

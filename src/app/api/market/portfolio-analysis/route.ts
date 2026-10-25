@@ -8,6 +8,9 @@ import { validatePortfolioTrades, tradeDate, type PortfolioTrade } from "@/lib/p
 import type { PortfolioRange } from "@/lib/portfolio-analytics";
 import { cashRevaluation, entriesInBase, validateCashEntries, type CashContext, type CashEntry } from "@/lib/cash-ledger";
 
+// POST /api/market/portfolio-analysis: the full dashboard analysis for one portfolio.
+// The browser sends its trades and cash; nothing is read from the server store here.
+// Steps: daily prices and splits → split restatement → FX into the ledger currency → analyzePortfolio → breakdowns.
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -24,7 +27,10 @@ export async function POST(request: NextRequest) {
     const end = new Date();
     const betaStart = new Date(end); betaStart.setUTCFullYear(betaStart.getUTCFullYear() - 2);
     const firstCash = cash.reduce((min, entry) => (entry.date < min ? entry.date : min), first);
+    // Start a week before the first trade or cash entry (so day one has a previous close),
+    // and at least two years back so per-holding beta has enough history.
     const begin = new Date(Math.min(Date.parse(first) - 7 * 86400000, Date.parse(firstCash) - 7 * 86400000, betaStart.getTime())).toISOString().slice(0, 10);
+    // period2 is exclusive; tomorrow makes sure today's finished bar is included.
     const tomorrow = new Date(end.getTime() + 86400000).toISOString().slice(0, 10);
     const [quotes, histories] = await Promise.all([
       getYahooQuotes(symbols),
@@ -70,6 +76,7 @@ export async function POST(request: NextRequest) {
       let previous: number | undefined;
       const prices: { date: string; close: number }[] = [];
       for (const date of calendar) {
+        // Carry forward only after the first real price; before listing there is no value at all.
         const close = map.get(date) ?? (firstDate && date > firstDate ? previous : undefined);
         if (close == null) continue;
         previous = close;

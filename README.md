@@ -1,67 +1,97 @@
 # Stock Tool
 
-A personal trading workstation: market research, a trade and cash ledger, and portfolio analytics that answer
-"am I actually beating the index, and which of my approaches makes money?". Runs locally; data comes from Yahoo Finance.
+A self-hosted trading workstation for individual investors: market research, a trade and cash ledger, portfolio
+analytics, and an Australian tax report. It answers questions like *"am I actually beating the index?"*, *"which of my
+approaches makes money?"* and *"what goes into myTax this year?"*.
 
-**Version 1.3.2** — see [CHANGELOG.md](CHANGELOG.md). This folder is the working copy: every change is made here,
-committed with git and released as a new version (tag `vX.Y.Z`). The full git history of each release is in
-`releases/stock-tool-vX.Y.Z.bundle`; with git installed, `git clone releases\stock-tool-v1.0.0.bundle stock-tool-git` restores it.
+It runs on your own computer. Your trades stay in a local database; market data comes from Yahoo Finance.
 
-## Start
+![Market page with chart, drawing tools and company facts](docs/images/market.png)
 
-| What | How |
-|---|---|
-| Use it on this PC | double-click `start-localhost.bat` → <http://localhost:3000> |
-| Use it on your phone (same Wi-Fi) | double-click `start-phone.bat` → it builds, prints the address, e.g. `http://192.168.1.20:3001` |
-| From a terminal | `npm install` once, then `npm run dev` |
+> Screenshots use the deterministic mock data from the test suite, not real portfolios.
 
-`start-phone.bat` exposes the app to everyone on the same network. Only run it on a network you trust.
+## Features
 
-## Pages
+| Page | Route | What it does |
+| --- | --- | --- |
+| **Market** | `/` | Watch lists; line / candle chart with moving averages; temporary drawings (trend line, ray, horizontal line, rectangle, Fibonacci retracement); company facts and analyst view; your position in the stock; moving-average crossover backtest overlaid with your real trades |
+| **Portfolio** | `/dashboard` | Holdings and account returns (time-weighted and money-weighted / XIRR), benchmark comparison, contribution by holding, risk (volatility, drawdown, beta, risk contribution, correlation), trade analytics (win rate, payoff, profit factor, holding periods, tag attribution), rule-based key findings |
+| **Trades** | `/portfolio` | Trade log per portfolio with brokerage and tags; parcel (FIFO) cost and realised P&L; cash ledger (deposits, withdrawals, FX conversions, dividends with franking / withholding, interest, fees, tax); broker CSV import; bulk brokerage fill from a fee schedule; backup, restore and version history |
+| **Tax** | `/tax` | Australian tax report per financial year: CGT schedule by parcel, 12-month discount, loss ordering and carry-forward, franked / unfranked dividends and franking credits, foreign income and tax offset, myTax labels, CSV for your accountant |
+| **Compare** | `/compare` | Several symbols rebased to 0% on one chart, plus a side-by-side table |
+| **Heatmap** | `/treemap` | S&P 100, Nasdaq-100, a watch list or your holdings, sized by market cap or position value |
 
-| Page | Route | What it is for |
-|---|---|---|
-| Market | `/` | Watch lists, chart (line / candles, MAs, temporary drawings: trend / ray / horizontal / rectangle / Fibonacci), company facts, your position in the stock, strategy backtest overlaid with your real trades |
-| Portfolio | `/dashboard` | Overview, trade analysis, performance & risk, allocation & risk, holdings, methodology |
-| Trades | `/portfolio` | Trade log per portfolio (with brokerage), cash ledger (franking / withholding on dividends), CSV import, backup / restore / history, ledger currency |
-| Tax | `/tax` | Australian tax report per financial year: CGT schedule by parcel (FIFO, 50% discount, losses carried forward), dividends with franking credits and foreign tax, myTax labels, CSV for your accountant, parcels close to the 12-month mark |
-| Compare | `/compare` | Watch list or holdings rebased to 0% on one chart, plus a side-by-side table |
-| Heatmap | `/treemap` | S&P 100 / Nasdaq 100 / watch list / holdings, sized by market cap or position value |
+Also: three skins (Light, Gold, Night) plus Auto, an English / Chinese interface, a phone layout, and multi-device
+use on your home network with conflict detection.
 
-Three skins (灰白 gray, 黑金 gold, 夜间 night) and Chinese / English are switched in the top bar.
+<table>
+<tr><td><img src="docs/images/portfolio.png" alt="Portfolio overview"></td><td><img src="docs/images/tax.png" alt="Tax report"></td></tr>
+<tr><td><img src="docs/images/trades.png" alt="Trade log"></td><td><img src="docs/images/heatmap.png" alt="Heatmap, night skin"></td></tr>
+</table>
+
+## Quick start
+
+**Requirements:** [Node.js](https://nodejs.org) **22.13 or newer** (22 LTS recommended). Node 22.13+ has SQLite
+built in; older versions fall back to a JSON file without history or a price archive.
+
+| Goal | Windows | Any OS |
+| --- | --- | --- |
+| Use it on this computer | double-click `start-localhost.bat` | `npm install` then `npm run dev` |
+| Use it from your phone on the same Wi-Fi | double-click `start-phone.bat` | `npm run build` then `npx next start -H 0.0.0.0 -p 3001` |
+| Run every check | double-click `run-tests.bat` | `npm run test:all` (add `--live` via `npm run test:full`) |
+
+Then open <http://localhost:3000> (or the address `start-phone.bat` prints, e.g. `http://192.168.1.20:3001`).
+
+The batch files install or update dependencies automatically when `package-lock.json` changes.
+
+The app has no login. Read [SECURITY.md](SECURITY.md) before exposing it to a network.
 
 ## Your data
 
-- Portfolios, trades, cash entries, splits and watch lists are saved in **`data/store.db`** (SQLite, built into Node 22.13+) in this folder and mirrored in the browser. Every device that opens the app sees the same data. On older Node it falls back to `data/store.json` (no history, no price archive). An old `store.json` is migrated once and kept as `store.json.bak`.
-- **History**: the server keeps earlier versions automatically (at most every 10 minutes while you edit, always before a restore). Trades page → 历史版本 restores or downloads any of them.
-- **Two devices editing at once**: a save based on stale data is refused instead of overwriting; the browser loads the newer data and your refused edit is kept in History.
-- **Back up**: Trades page → 备份数据 downloads a JSON file. **Restore**: 恢复备份 replaces everything with a backup.
-- **Price archive**: daily prices are kept in `data/prices.db`. After the first download only the last two weeks are fetched, and archived prices are used when Yahoo is down. Safe to delete; it rebuilds.
-- `data/` is git-ignored so trades never end up in version control.
+- Portfolios, trades, cash entries and watch lists live in `data/store.db` (SQLite) in the project folder. They are
+  mirrored in the browser, so every device that opens the app sees the same data.
+- Earlier versions are kept automatically and can be restored from **Trades → History**. Two devices editing at once
+  cannot overwrite each other: a save made from stale data is refused and kept in History.
+- **Trades → Back up** downloads everything as JSON. **Restore** replaces all data with a backup.
+- Daily prices are archived in `data/prices.db`, so history survives restarts and Yahoo outages. You can delete it at
+  any time; it rebuilds itself.
+- `data/` is git-ignored, so your trades never end up in version control.
 
-## What the numbers include
+Details: [docs/DATA.md](docs/DATA.md).
 
-- **Holdings return** — time-weighted, daily closes, includes dividends, interest, fees and tax from the cash ledger.
-- **Account return** — holdings + cash (shown once a deposit is recorded): time-weighted and money-weighted (XIRR).
-- **Cost and realised P&L** use parcels, first-in first-out (the same parcels as the tax report). Brokerage entered with a trade goes into the parcel's cost base / off the sale proceeds for tax.
-- **Splits** are detected automatically; trades before a split are restated to today's share count (records stay as typed).
-- **Currencies** — each portfolio has a ledger currency; foreign prices and trades are converted at the day's FX rate. Cash can settle in the ledger currency (CommSec style) or per currency (Stake / IBKR style).
-- Full formulas: [PORTFOLIO_DASHBOARD.md](PORTFOLIO_DASHBOARD.md). Architecture and file map: [PROJECT_HANDOFF.md](PROJECT_HANDOFF.md).
+## Important notes
 
-## Importing from a broker
+- **Not financial or tax advice.** The tax report follows the ATO rules described in [docs/TAX.md](docs/TAX.md) for an
+  Australian resident individual holding shares on capital account. Check every figure against your broker's
+  statements, and ask a registered tax agent when in doubt.
+- **Market data.** Yahoo Finance via the unofficial [`yahoo-finance2`](https://github.com/gadicc/node-yahoo-finance2)
+  library is fine for personal use, not for production or redistribution. Quotes may be delayed. The app never shows
+  simulated prices as real ones.
+- Supported symbols include US (`AAPL`), ASX (`BHP.AX`), Hong Kong (`0700.HK`), China A-shares (`600519.SS`,
+  `000001.SZ`), Korea (`005930.KS`) and other markets Yahoo covers.
 
-Trades page → 导入 CSV. Recognises IBKR, CommSec (incl. "B 100 CBA @ 115.50" details), Stake, SelfWealth, Chinese brokers
-(GBK files), and this app's own export. You can fix the column mapping, date format and symbol suffix (e.g. `.AX`) before importing;
-duplicates are skipped and nothing is saved if validation fails.
+## Documentation
 
-## Checks
+| Document | Contents |
+| --- | --- |
+| [User guide](docs/USER_GUIDE.md) | Page-by-page walkthrough: recording trades, importing CSVs, brokerage, dividends, tax, drawings, backtest |
+| [Methodology](docs/METHODOLOGY.md) | How every number is calculated: returns, risk, trade analytics, splits, currencies |
+| [Australian tax](docs/TAX.md) | CGT, discount, loss ordering, dividends, foreign income, myTax labels, limitations |
+| [Data & storage](docs/DATA.md) | Store, history and conflicts, backups, price archive, CSV formats |
+| [Architecture](docs/ARCHITECTURE.md) | Stack, data flow, data model, file map, caching and failure handling |
+| [Testing](docs/TESTING.md) | Test runner, requirement catalog, test layers, isolation, CI |
+| [Contributing](CONTRIBUTING.md) | Development workflow, conventions, releases |
+| [Security](SECURITY.md) | Threat model and safe deployment |
+| [Changelog](CHANGELOG.md) | Release history |
 
-Double-click **`run-tests.bat`** (or `npm run test:full`): lint, types, unit tests with coverage, dependency audit, smoke,
-end-to-end and live-data tests, then the report opens (`test-results/report.html`). Your data and a running app are not
-touched. Details: [tests/README.md](tests/README.md).
+## Tech stack
 
-## Notes
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · lightweight-charts 5 · d3-hierarchy ·
+yahoo-finance2 4 · `node:sqlite` · Vitest · Playwright.
 
-- Yahoo Finance via `yahoo-finance2` is fine for personal use, not for production market data. Requests are cached, retried with
-  backoff on rate limits, and the last good value is served if Yahoo is down. No simulated prices are ever shown as real.
-- Supported symbols: US (`AAPL`), ASX (`BHP.AX`), Hong Kong (`0700.HK`), China A-shares (`600519.SS`, `000001.SZ`), Korea (`005930.KS`) and others Yahoo covers.
+## Status
+
+Version **1.4.0**. This is a personal project, built and tested for one investor's workflow (AUD ledger, US and ASX
+shares, IBKR / Stake / CommSec). Issues and suggestions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+No licence has been chosen yet, so all rights are reserved by the author.

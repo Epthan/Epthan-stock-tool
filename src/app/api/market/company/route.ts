@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { normalizeSymbol } from "@/lib/market-symbols";
 import { getYahooQuoteSummary } from "@/lib/yahoo-finance";
 
+// GET /api/market/company?symbol=AAPL: company facts for the research panel.
+// Yahoo spreads these over several quoteSummary modules; take whichever one has the field.
 export async function GET(request: NextRequest) {
   const symbol = normalizeSymbol(request.nextUrl.searchParams.get("symbol") ?? "");
 

@@ -13,6 +13,7 @@ const num = (value: number | null | undefined, digits = 2) => value == null || !
 const pct = (value: number | null | undefined, digits = 1) => value == null || !Number.isFinite(value) ? "—" : `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
 const tone = (value: number | null | undefined) => value == null || !Number.isFinite(value) || Math.abs(value) < 1e-9 ? "" : value > 0 ? "pd-positive" : "pd-negative";
 
+// Key findings from lib/trader-insights, already sorted by importance.
 export function InsightList({ insights, limit }: { insights: Insight[]; limit?: number }) {
   const { locale } = useLanguage();
   const items = limit ? insights.slice(0, limit) : insights;
@@ -20,6 +21,8 @@ export function InsightList({ insights, limit }: { insights: Insight[]; limit?: 
   return <div className="ta-insights">{items.map((insight, index) => <article key={index} className={`ta-insight ta-insight-${insight.tone}`}><small>{String(index + 1).padStart(2, "0")} / {locale === "zh" ? insight.topic.zh : insight.topic.en.toUpperCase()}</small><p>{locale === "zh" ? insight.zh : insight.en}</p></article>)}</div>;
 }
 
+// "Trade analysis" view: closed-trade statistics, what happened after entries and exits, and attribution.
+// Only trades inside the selected period are counted, valued against their real (possibly older) cost.
 export function TradeAnalysis({ data, insights, benchmark, money, onPick }: { data: LivePortfolioAnalysis; insights: Insight[]; benchmark: string; money: (value: number) => string; onPick: (symbol: string) => void }) {
   const { locale } = useLanguage();
   const text = (english: string, chinese: string) => locale === "zh" ? chinese : english;

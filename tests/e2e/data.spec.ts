@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import { PORTFOLIO, open, portfolios, resetStore, store } from "./fixtures";
 import { dataDirFor } from "../support/servers";
 
-/** Data integrity: validation, store, backup / restore, CSV round trip, multi-device sync. Test titles start with requirement IDs (see tests/requirements.ts). */
+/** Data integrity: validation, store, backup / restore, CSV round trip, multi-device sync. Test titles start with requirement IDs (see tests/requirements.mjs). */
 test.beforeEach(async ({ request }) => { await resetStore(request); });
 
 test("B01 trade validation rejects oversell, future date", async ({ page }) => {

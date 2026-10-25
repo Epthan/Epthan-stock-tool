@@ -1,7 +1,23 @@
 # Changelog
 
 Versions follow `MAJOR.MINOR.PATCH`: a new feature bumps MINOR, a fix bumps PATCH. Each release is a git tag (`v1.0.0`).
-The running version shows on the logo tooltip and in Trades → 历史版本.
+The running version shows on the logo tooltip and in Trades → History.
+
+## 1.4.0 — 2026-10-25
+
+Documentation and publishing release; no change to calculations.
+
+- **Docs** (all English): new README with screenshots, [user guide](docs/USER_GUIDE.md),
+  [methodology](docs/METHODOLOGY.md) (replaces `PORTFOLIO_DASHBOARD.md`), [Australian tax](docs/TAX.md),
+  [data & storage](docs/DATA.md), [architecture](docs/ARCHITECTURE.md) (replaces `PROJECT_HANDOFF.md`),
+  [testing](docs/TESTING.md), [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md).
+- **Screenshots** in `docs/images`, generated from the mocked test market by `npm run docs:screenshots`.
+- **CI**: GitHub Actions runs lint, types, unit tests, audit, build, smoke and end-to-end tests on every push and pull request.
+- **Test report** is English by default; `--lang=zh` (used by `run-tests.bat`) keeps it in Chinese. The requirement
+  catalog has English titles with Chinese translations.
+- **Security**: `start-localhost.bat` now binds the dev server to `127.0.0.1`, so only this computer can reach it
+  (use `start-phone.bat` for other devices).
+- `package.json` declares `engines.node >= 22.13`.
 
 ## 1.3.2 — 2026-10-25
 
@@ -36,7 +52,7 @@ The running version shows on the logo tooltip and in Trades → 历史版本.
 
 ## 1.1.0 — 2026-10-25
 
-- **Fill in missing brokerage** (Trades → 补佣金, or from the notice on the Tax page): pick a broker fee schedule —
+- **Fill in missing brokerage** (Trades → Fill brokerage, or from the notice on the Tax page): pick a broker fee schedule —
   IBKR fixed (US), Stake (ASX / US), CommSec (ASX) — or a custom rule (fixed + % with a minimum, any currency),
   preview the fee for every trade without brokerage, untick any you want to skip, and save them in one go as linked
   fee entries. One step to undo via History.

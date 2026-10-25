@@ -3,6 +3,7 @@ import { normalizeSymbol } from "@/lib/market-symbols";
 import { getYahooChart } from "@/lib/yahoo-finance";
 import { normalizeTimeframe } from "@/lib/timeframes";
 
+// lightweight-charts uses UNIX seconds.
 function toUnixTime(date: Date) {
   return Math.floor(date.getTime() / 1000);
 }
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     const response = await getYahooChart(symbol, timeframe);
     const candles = response.quotes
+      // Yahoo pads gaps (halts, the current unfinished bar) with nulls.
       .filter((bar) => bar.open !== null && bar.high !== null && bar.low !== null && bar.close !== null)
       .map((bar) => ({
         time: toUnixTime(bar.date),

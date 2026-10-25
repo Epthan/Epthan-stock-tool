@@ -38,6 +38,7 @@ export function InsightChart({ dates, series, unit, label }: { dates: string[]; 
 export function PerformanceInsights({ points, benchmark, weekly = false }: { points: ReturnPoint[]; benchmark: string; weekly?: boolean }) {
   const { locale } = useLanguage();
   const text = (english: string, chinese: string) => locale === "zh" ? chinese : english;
+  // Rolling window ≈ one quarter of weekly points or one month of daily points.
   const window = weekly ? 12 : 20;
   const data = buildPerformanceInsights(points, window, weekly ? 52 : 252);
   const dates = points.map((point) => point.date);

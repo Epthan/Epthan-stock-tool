@@ -6,6 +6,7 @@
  *   node scripts/run-tests.mjs --live     … plus the live suite against real Yahoo data (needs internet)
  *   node scripts/run-tests.mjs --quick    lint, types, unit, audit only (no build / browser)
  *   node scripts/run-tests.mjs --only=unit,e2e
+ *   node scripts/run-tests.mjs --lang=zh   report in Chinese (default English)
  *
  * Output: test-results/report.html, report.md, summary.json. Exit code 1 when anything failed.
  * Test servers use .next-test and test-results/data-* — your ./data and a running `npm run dev` are untouched.
@@ -21,6 +22,7 @@ const out = path.join(root, "test-results");
 const args = process.argv.slice(2);
 const live = args.includes("--live");
 const quick = args.includes("--quick");
+const lang = args.find((arg) => arg.startsWith("--lang="))?.slice(7) ?? "en";
 const only = args.find((arg) => arg.startsWith("--only="))?.slice(7).split(",");
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 fs.mkdirSync(out, { recursive: true });
@@ -121,32 +123,55 @@ fs.writeFileSync(path.join(out, "summary.json"), JSON.stringify({ ok, meta, tota
 
 /** The audit stage exits non-zero for any advisory; it only fails when a runtime dependency is high / critical (G03). */
 const stageStatus = (item) => (item.id === "audit" ? verdict.G03.status : item.exit === 0 ? "passed" : "failed");
-const label = { passed: "通过", failed: "失败", "not run": "未运行", "not covered": "无测试", flaky: "不稳定", skipped: "跳过" };
+const T = lang === "zh" ? {
+  report: "测试报告", live: "含真实行情", allPassed: "全部通过", someFailed: "有失败项", conclusion: "结论",
+  summary: (t) => `需求 ${t.requirements} 条：通过 ${t.passed}，失败 ${t.failed}，未运行 ${t.notRun}，无测试 ${t.notCovered}；测试用例 ${t.tests} 个，失败 ${t.testsFailed}${t.testsFlaky ? `，不稳定 ${t.testsFlaky}` : ""}。`,
+  stages: "阶段", stage: "阶段", result: "结果", time: "用时", byArea: "按类别", area: "类别", requirements: "需求", passed: "通过", failed: "失败", notRunOrCovered: "未运行 / 无测试",
+  perReq: "逐条需求", requirement: "需求", tests: "测试", note: "说明", failures: "失败 / 不稳定的用例", coverage: "计算代码覆盖率（src/lib）",
+  statements: "语句", branches: "分支", functions: "函数", lines: "行", file: "文件", vulns: "依赖漏洞", pkg: "包", severity: "级别", scope: "范围", dev: "仅开发", runtime: "运行时",
+  all: "全部用例", suite: "套件", testCase: "用例", testCount: "测试用例", lineCoverage: "src/lib 行覆盖", reportAt: "报告：",
+  console: (t) => `需求 ${t.passed}/${t.requirements} 通过，失败 ${t.failed}，未运行 ${t.notRun}，无测试 ${t.notCovered}；用例 ${t.tests} 个，失败 ${t.testsFailed}`,
+  status: { passed: "通过", failed: "失败", "not run": "未运行", "not covered": "无测试", flaky: "不稳定", skipped: "跳过" },
+} : {
+  report: "Test report", live: "with live data", allPassed: "All passed", someFailed: "Failures", conclusion: "Verdict",
+  summary: (t) => `${t.requirements} requirements: ${t.passed} passed, ${t.failed} failed, ${t.notRun} not run, ${t.notCovered} not covered; ${t.tests} test cases, ${t.testsFailed} failed${t.testsFlaky ? `, ${t.testsFlaky} flaky` : ""}.`,
+  stages: "Stages", stage: "Stage", result: "Result", time: "Time", byArea: "By area", area: "Area", requirements: "Requirements", passed: "Passed", failed: "Failed", notRunOrCovered: "Not run / not covered",
+  perReq: "Requirements", requirement: "Requirement", tests: "Tests", note: "Note", failures: "Failed / flaky tests", coverage: "Code coverage (src/lib)",
+  statements: "Statements", branches: "Branches", functions: "Functions", lines: "Lines", file: "File", vulns: "Dependency vulnerabilities", pkg: "Package", severity: "Severity", scope: "Scope", dev: "dev only", runtime: "runtime",
+  all: "All test cases", suite: "Suite", testCase: "Test", testCount: "Test cases", lineCoverage: "src/lib line coverage", reportAt: "Report: ",
+  console: (t) => `${t.passed}/${t.requirements} requirements passed, ${t.failed} failed, ${t.notRun} not run, ${t.notCovered} not covered; ${t.tests} tests, ${t.testsFailed} failed`,
+  status: { passed: "passed", failed: "failed", "not run": "not run", "not covered": "not covered", flaky: "flaky", skipped: "skipped" },
+};
+const label = T.status;
+const reqTitle = (req) => (lang === "zh" ? req.zh : req.title);
+const areaName = (area) => AREAS[area][lang === "zh" ? "zh" : "en"];
 const pct = (value) => (value == null ? "—" : `${value.toFixed(1)}%`);
 const md = [];
-md.push(`# 测试报告 · ${meta.app}`, "", `${meta.date.replace("T", " ").slice(0, 19)} UTC · Node ${meta.node} · ${meta.platform}${live ? " · 含真实行情" : ""}`, "");
-md.push(`**结论：${ok ? "全部通过" : "有失败项"}** — 需求 ${totals.requirements} 条：通过 ${totals.passed}，失败 ${totals.failed}，未运行 ${totals.notRun}，无测试 ${totals.notCovered}；测试用例 ${totals.tests} 个，失败 ${totals.testsFailed}${totals.testsFlaky ? `，不稳定 ${totals.testsFlaky}` : ""}。`, "");
-md.push("## 阶段", "", "| 阶段 | 结果 | 用时 |", "| --- | --- | --- |", ...results.map((item) => `| ${item.label}${item.id === "audit" ? `（${verdict.G03.note}）` : ""} | ${label[stageStatus(item)]} | ${item.seconds.toFixed(1)}s |`), "");
-md.push("## 按类别", "", "| 类别 | 需求 | 通过 | 失败 | 未运行 / 无测试 |", "| --- | --- | --- | --- | --- |");
-for (const [area, name] of Object.entries(AREAS)) {
+md.push(`# ${T.report} · ${meta.app}`, "", `${meta.date.replace("T", " ").slice(0, 19)} UTC · Node ${meta.node} · ${meta.platform}${live ? ` · ${T.live}` : ""}`, "");
+md.push(`**${T.conclusion}: ${ok ? T.allPassed : T.someFailed}** — ${T.summary(totals)}`, "");
+md.push(`## ${T.stages}`, "", `| ${T.stage} | ${T.result} | ${T.time} |`, "| --- | --- | --- |", ...results.map((item) => `| ${item.label}${item.id === "audit" ? ` (${verdict.G03.note})` : ""} | ${label[stageStatus(item)]} | ${item.seconds.toFixed(1)}s |`), "");
+md.push(`## ${T.byArea}`, "", `| ${T.area} | ${T.requirements} | ${T.passed} | ${T.failed} | ${T.notRunOrCovered} |`, "| --- | --- | --- | --- | --- |");
+for (const area of Object.keys(AREAS)) {
   const list = REQUIREMENTS.filter((req) => req.area === area).map((req) => verdict[req.id].status);
-  md.push(`| ${name} | ${list.length} | ${list.filter((s) => s === "passed").length} | ${list.filter((s) => s === "failed").length} | ${list.filter((s) => s === "not run" || s === "not covered").length} |`);
+  md.push(`| ${areaName(area)} | ${list.length} | ${list.filter((s) => s === "passed").length} | ${list.filter((s) => s === "failed").length} | ${list.filter((s) => s === "not run" || s === "not covered").length} |`);
 }
-md.push("", "## 逐条需求", "", "| ID | 需求 | 结果 | 测试 | 说明 |", "| --- | --- | --- | --- | --- |");
-for (const req of REQUIREMENTS) { const item = verdict[req.id]; md.push(`| ${req.id} | ${req.title} | ${label[item.status]} | ${item.tests.length || (req.stage ? "阶段" : "—")} | ${item.note ?? (item.tests.filter((t) => t.status === "failed").map((t) => t.title).join("; ") || "")} |`); }
+md.push("", `## ${T.perReq}`, "", `| ID | ${T.requirement} | ${T.result} | ${T.tests} | ${T.note} |`, "| --- | --- | --- | --- | --- |");
+for (const req of REQUIREMENTS) { const item = verdict[req.id]; md.push(`| ${req.id} | ${reqTitle(req)} | ${label[item.status]} | ${item.tests.length || (req.stage ? T.stage : "—")} | ${item.note ?? (item.tests.filter((t) => t.status === "failed").map((t) => t.title).join("; ") || "")} |`); }
 const failures = cases.filter((item) => item.status === "failed" || item.status === "flaky");
-if (failures.length) { md.push("", "## 失败 / 不稳定的用例", ""); for (const item of failures) md.push(`### [${item.suite}] ${item.title}`, "", `\`${item.file}\` · ${label[item.status]}`, "", "```", (item.error ?? "").replace(/\u001b\[[0-9;]*m/g, "").slice(0, 1500), "```", ""); }
+if (failures.length) { md.push("", `## ${T.failures}`, ""); for (const item of failures) md.push(`### [${item.suite}] ${item.title}`, "", `\`${item.file}\` · ${label[item.status]}`, "", "```", (item.error ?? "").replace(/\u001b\[[0-9;]*m/g, "").slice(0, 1500), "```", ""); }
+const coverageLine = () => `${T.statements} ${pct(coverage.total.statements.pct)} · ${T.branches} ${pct(coverage.total.branches.pct)} · ${T.functions} ${pct(coverage.total.functions.pct)} · ${T.lines} ${pct(coverage.total.lines.pct)}`;
+const coverageFiles = () => Object.entries(coverage).filter(([file]) => file !== "total").sort((a, b) => a[1].lines.pct - b[1].lines.pct);
 if (coverage) {
-  md.push("", "## 计算代码覆盖率（src/lib）", "", `语句 ${pct(coverage.total.statements.pct)} · 分支 ${pct(coverage.total.branches.pct)} · 函数 ${pct(coverage.total.functions.pct)} · 行 ${pct(coverage.total.lines.pct)}`, "", "| 文件 | 行 | 分支 |", "| --- | --- | --- |");
-  for (const [file, item] of Object.entries(coverage).filter(([file]) => file !== "total").sort((a, b) => a[1].lines.pct - b[1].lines.pct)) md.push(`| ${path.relative(root, file)} | ${pct(item.lines.pct)} | ${pct(item.branches.pct)} |`);
+  md.push("", `## ${T.coverage}`, "", coverageLine(), "", `| ${T.file} | ${T.lines} | ${T.branches} |`, "| --- | --- | --- |");
+  for (const [file, item] of coverageFiles()) md.push(`| ${path.relative(root, file)} | ${pct(item.lines.pct)} | ${pct(item.branches.pct)} |`);
 }
-if (vulns.length) { md.push("", "## 依赖漏洞", "", "| 包 | 级别 | 范围 | 说明 |", "| --- | --- | --- | --- |", ...vulns.map((item) => `| ${item.name} | ${item.severity} | ${item.dev ? "仅开发" : "运行时"} | ${item.via.replace(/\|/g, "/")} |`)); }
-md.push("", "## 全部用例", "", "| 套件 | 用例 | 结果 | 用时 |", "| --- | --- | --- | --- |", ...cases.map((item) => `| ${item.suite} | ${item.title.replace(/\|/g, "/")} | ${label[item.status]} | ${(item.ms / 1000).toFixed(1)}s |`));
+if (vulns.length) { md.push("", `## ${T.vulns}`, "", `| ${T.pkg} | ${T.severity} | ${T.scope} | ${T.note} |`, "| --- | --- | --- | --- |", ...vulns.map((item) => `| ${item.name} | ${item.severity} | ${item.dev ? T.dev : T.runtime} | ${item.via.replace(/\|/g, "/")} |`)); }
+md.push("", `## ${T.all}`, "", `| ${T.suite} | ${T.testCase} | ${T.result} | ${T.time} |`, "| --- | --- | --- | --- |", ...cases.map((item) => `| ${item.suite} | ${item.title.replace(/\|/g, "/")} | ${label[item.status]} | ${(item.ms / 1000).toFixed(1)}s |`));
 fs.writeFileSync(path.join(out, "report.md"), md.join("\n") + "\n");
 
 const esc = (text) => String(text ?? "").replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
 const chip = (status) => `<span class="chip ${status.replace(" ", "-")}">${label[status] ?? status}</span>`;
-const html = `<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>测试报告 · ${esc(meta.app)}</title><style>
+const html = `<!doctype html><html lang="${lang === "zh" ? "zh" : "en"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${T.report} · ${esc(meta.app)}</title><style>
 :root{--bg:#f5f6f8;--panel:#fff;--ink:#16202b;--muted:#5d6875;--line:#dde2e8;--ok:#0b7a55;--ok-bg:#e3f4ec;--bad:#b4322a;--bad-bg:#fbe7e5;--warn:#8a6100;--warn-bg:#fbf0d6;--off:#5d6875;--off-bg:#eceff3}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1318;--panel:#171c23;--ink:#e6ebf0;--muted:#9aa5b1;--line:#2a323c;--ok:#4cc597;--ok-bg:#163428;--bad:#f07a6e;--bad-bg:#3a1d1a;--warn:#e6c063;--warn-bg:#352b12;--off:#9aa5b1;--off-bg:#232a33}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}main{max-width:1180px;margin:0 auto;padding:24px 16px 60px}
@@ -156,17 +181,17 @@ table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;p
 .chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}.passed{color:var(--ok);background:var(--ok-bg)}.failed{color:var(--bad);background:var(--bad-bg)}.flaky{color:var(--warn);background:var(--warn-bg)}.not-run,.not-covered,.skipped{color:var(--off);background:var(--off-bg)}
 .verdict{display:inline-block;margin-top:12px;padding:6px 12px;border-radius:8px;font-weight:700}pre{white-space:pre-wrap;font-size:12px;margin:6px 0 0;color:var(--muted)}details summary{cursor:pointer}
 </style></head><body><main>
-<h1>测试报告 · ${esc(meta.app)}</h1><div class="muted">${esc(meta.date.replace("T", " ").slice(0, 19))} UTC · Node ${esc(meta.node)} · ${esc(meta.platform)}${live ? " · 含真实行情" : ""}</div>
-<div class="verdict ${ok ? "passed" : "failed"}">${ok ? "全部通过" : "有失败项"}</div>
-<div class="cards"><div class="card">需求<b>${totals.requirements}</b></div><div class="card">通过<b style="color:var(--ok)">${totals.passed}</b></div><div class="card">失败<b style="color:var(--bad)">${totals.failed}</b></div><div class="card">未运行 / 无测试<b>${totals.notRun + totals.notCovered}</b></div><div class="card">测试用例<b>${totals.tests}</b></div>${coverage ? `<div class="card">src/lib 行覆盖<b>${pct(coverage.total.lines.pct)}</b></div>` : ""}</div>
-<h2>阶段</h2><div class="panel"><table><tr><th>阶段</th><th>结果</th><th>用时</th></tr>${results.map((item) => `<tr><td>${esc(item.label)}${item.id === "audit" ? `<div class="muted">${esc(verdict.G03.note ?? "")}</div>` : ""}</td><td>${chip(stageStatus(item))}</td><td class="num">${item.seconds.toFixed(1)}s</td></tr>`).join("")}</table></div>
-<h2>逐条需求</h2><div class="panel"><table><tr><th>ID</th><th>类别</th><th>需求</th><th>结果</th><th>测试</th><th>说明</th></tr>${REQUIREMENTS.map((req) => { const item = verdict[req.id]; return `<tr><td class="num">${req.id}</td><td>${esc(AREAS[req.area])}</td><td>${esc(req.title)}</td><td>${chip(item.status)}</td><td class="num">${item.tests.length ? `<details><summary>${item.tests.length}</summary>${item.tests.map((test) => `<div>${chip(test.status)} <span class="muted">${test.suite}</span> ${esc(test.title)}</div>`).join("")}</details>` : req.stage ? "阶段" : "—"}</td><td>${esc(item.note ?? "")}</td></tr>`; }).join("")}</table></div>
-${failures.length ? `<h2>失败 / 不稳定的用例</h2><div class="panel"><table>${failures.map((item) => `<tr><td>${chip(item.status)} <b>${esc(item.title)}</b><div class="muted">${item.suite} · ${esc(item.file)}</div><pre>${esc((item.error ?? "").replace(/\u001b\[[0-9;]*m/g, "").slice(0, 2000))}</pre></td></tr>`).join("")}</table></div>` : ""}
-${coverage ? `<h2>计算代码覆盖率（src/lib）</h2><div class="muted">语句 ${pct(coverage.total.statements.pct)} · 分支 ${pct(coverage.total.branches.pct)} · 函数 ${pct(coverage.total.functions.pct)} · 行 ${pct(coverage.total.lines.pct)}</div><div class="panel" style="margin-top:8px;max-height:420px"><table><tr><th>文件</th><th>行</th><th>分支</th></tr>${Object.entries(coverage).filter(([file]) => file !== "total").sort((a, b) => a[1].lines.pct - b[1].lines.pct).map(([file, item]) => `<tr><td>${esc(path.relative(root, file))}</td><td class="num">${pct(item.lines.pct)}</td><td class="num">${pct(item.branches.pct)}</td></tr>`).join("")}</table></div>` : ""}
-${vulns.length ? `<h2>依赖漏洞</h2><div class="panel"><table><tr><th>包</th><th>级别</th><th>范围</th><th>说明</th></tr>${vulns.map((item) => `<tr><td>${esc(item.name)}</td><td>${esc(item.severity)}</td><td>${item.dev ? "仅开发" : "运行时"}</td><td>${esc(item.via)}</td></tr>`).join("")}</table></div>` : ""}
-<h2>全部用例（${cases.length}）</h2><div class="panel" style="max-height:600px"><table><tr><th>套件</th><th>用例</th><th>结果</th><th>用时</th></tr>${cases.map((item) => `<tr><td>${item.suite}</td><td>${esc(item.title)}</td><td>${chip(item.status)}</td><td class="num">${(item.ms / 1000).toFixed(1)}s</td></tr>`).join("")}</table></div>
+<h1>${T.report} · ${esc(meta.app)}</h1><div class="muted">${esc(meta.date.replace("T", " ").slice(0, 19))} UTC · Node ${esc(meta.node)} · ${esc(meta.platform)}${live ? ` · ${T.live}` : ""}</div>
+<div class="verdict ${ok ? "passed" : "failed"}">${ok ? T.allPassed : T.someFailed}</div>
+<div class="cards"><div class="card">${T.requirements}<b>${totals.requirements}</b></div><div class="card">${T.passed}<b style="color:var(--ok)">${totals.passed}</b></div><div class="card">${T.failed}<b style="color:var(--bad)">${totals.failed}</b></div><div class="card">${T.notRunOrCovered}<b>${totals.notRun + totals.notCovered}</b></div><div class="card">${T.testCount}<b>${totals.tests}</b></div>${coverage ? `<div class="card">${T.lineCoverage}<b>${pct(coverage.total.lines.pct)}</b></div>` : ""}</div>
+<h2>${T.stages}</h2><div class="panel"><table><tr><th>${T.stage}</th><th>${T.result}</th><th>${T.time}</th></tr>${results.map((item) => `<tr><td>${esc(item.label)}${item.id === "audit" ? `<div class="muted">${esc(verdict.G03.note ?? "")}</div>` : ""}</td><td>${chip(stageStatus(item))}</td><td class="num">${item.seconds.toFixed(1)}s</td></tr>`).join("")}</table></div>
+<h2>${T.perReq}</h2><div class="panel"><table><tr><th>ID</th><th>${T.area}</th><th>${T.requirement}</th><th>${T.result}</th><th>${T.tests}</th><th>${T.note}</th></tr>${REQUIREMENTS.map((req) => { const item = verdict[req.id]; return `<tr><td class="num">${req.id}</td><td>${esc(areaName(req.area))}</td><td>${esc(reqTitle(req))}</td><td>${chip(item.status)}</td><td class="num">${item.tests.length ? `<details><summary>${item.tests.length}</summary>${item.tests.map((test) => `<div>${chip(test.status)} <span class="muted">${test.suite}</span> ${esc(test.title)}</div>`).join("")}</details>` : req.stage ? T.stage : "—"}</td><td>${esc(item.note ?? "")}</td></tr>`; }).join("")}</table></div>
+${failures.length ? `<h2>${T.failures}</h2><div class="panel"><table>${failures.map((item) => `<tr><td>${chip(item.status)} <b>${esc(item.title)}</b><div class="muted">${item.suite} · ${esc(item.file)}</div><pre>${esc((item.error ?? "").replace(/\u001b\[[0-9;]*m/g, "").slice(0, 2000))}</pre></td></tr>`).join("")}</table></div>` : ""}
+${coverage ? `<h2>${T.coverage}</h2><div class="muted">${coverageLine()}</div><div class="panel" style="margin-top:8px;max-height:420px"><table><tr><th>${T.file}</th><th>${T.lines}</th><th>${T.branches}</th></tr>${coverageFiles().map(([file, item]) => `<tr><td>${esc(path.relative(root, file))}</td><td class="num">${pct(item.lines.pct)}</td><td class="num">${pct(item.branches.pct)}</td></tr>`).join("")}</table></div>` : ""}
+${vulns.length ? `<h2>${T.vulns}</h2><div class="panel"><table><tr><th>${T.pkg}</th><th>${T.severity}</th><th>${T.scope}</th><th>${T.note}</th></tr>${vulns.map((item) => `<tr><td>${esc(item.name)}</td><td>${esc(item.severity)}</td><td>${item.dev ? T.dev : T.runtime}</td><td>${esc(item.via)}</td></tr>`).join("")}</table></div>` : ""}
+<h2>${T.all} (${cases.length})</h2><div class="panel" style="max-height:600px"><table><tr><th>${T.suite}</th><th>${T.testCase}</th><th>${T.result}</th><th>${T.time}</th></tr>${cases.map((item) => `<tr><td>${item.suite}</td><td>${esc(item.title)}</td><td>${chip(item.status)}</td><td class="num">${(item.ms / 1000).toFixed(1)}s</td></tr>`).join("")}</table></div>
 </main></body></html>`;
 fs.writeFileSync(path.join(out, "report.html"), html);
 
-process.stdout.write(`\n${ok ? "✓ 全部通过" : "✗ 有失败项"} — 需求 ${totals.passed}/${totals.requirements} 通过，失败 ${totals.failed}，未运行 ${totals.notRun}，无测试 ${totals.notCovered}；用例 ${totals.tests} 个，失败 ${totals.testsFailed}\n报告：${path.join(out, "report.html")}\n`);
+process.stdout.write(`\n${ok ? `✓ ${T.allPassed}` : `✗ ${T.someFailed}`} — ${T.console(totals)}\n${T.reportAt}${path.join(out, "report.html")}\n`);
 process.exit(ok ? 0 : 1);

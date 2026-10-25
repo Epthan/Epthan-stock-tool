@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { open, resetStore, watchErrors } from "./fixtures";
 
-/** Portfolio analytics, compare, heatmap. Test titles start with requirement IDs (see tests/requirements.ts). */
+/** Portfolio analytics, compare, heatmap. Test titles start with requirement IDs (see tests/requirements.mjs). */
 test.beforeEach(async ({ request }) => { await resetStore(request); });
 
 test("C06 dashboard: 6 views × ranges × benchmark, no errors", async ({ page }) => {

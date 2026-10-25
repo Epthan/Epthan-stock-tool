@@ -66,13 +66,14 @@ export async function mockMarket(page: Page, options: MockOptions = {}) {
 
 /** Fresh state: empty server store, browser seeded once per test (not on every navigation). */
 /**
- * Empties the e2e server's own data folder (test-results/data-e2e), never ./data. Done through the test-only
+ * Empties the test server's own data folder (test-results/data-<suite>), never ./data. Done through the test-only
  * reset endpoint, which closes the SQLite files first (Windows cannot delete open files).
  */
 export async function resetStore(request: APIRequestContext) {
   const response = await request.post("/api/store/reset");
   if (!response.ok()) throw new Error(`store reset failed (${response.status()})`);
-  if (fs.existsSync(path.join(dataDirFor("e2e"), "store.db"))) throw new Error("store reset left data behind");
+  const suite = (process.env.STOCK_TOOL_TEST_SUITE ?? "e2e") as Parameters<typeof dataDirFor>[0];
+  if (fs.existsSync(path.join(dataDirFor(suite), "store.db"))) throw new Error("store reset left data behind");
 }
 export async function seed(page: Page, { locale = "zh", skin = "gray", portfolio = true }: { locale?: string; skin?: string; portfolio?: boolean } = {}) {
   await page.addInitScript(({ locale, skin, data }) => {

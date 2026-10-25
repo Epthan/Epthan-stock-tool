@@ -1,3 +1,5 @@
+// Shared market types, plus a little static sample data.
+// The static rows are only used as placeholders and in tests; the app never shows them as live prices.
 import type { SupportedMarket } from "@/lib/market-symbols";
 
 export type Trend = "up" | "down";
@@ -41,6 +43,7 @@ export type CandlePoint = {
   volume: number;
 };
 
+// Chart ranges offered in the UI. 1D–1W use intraday bars, longer ranges daily, weekly or monthly ones.
 export type TimeframeKey =
   | "1D"
   | "2D"
@@ -80,6 +83,7 @@ export const symbolMeta: Record<string, string> = {
   TSLA: "Tesla",
 };
 
+// Leftovers from the first prototype, before Yahoo was wired in.
 export const mockProviderPlan = {
   provider: "mock",
   supportsRealtime: false,
@@ -189,6 +193,7 @@ export const mockSparklines: Record<string, SparklinePoint[]> = {
   ],
 };
 
+// lightweight-charts wants seconds, not milliseconds.
 function toUnixTime(value: string) {
   return Math.floor(new Date(value).getTime() / 1000);
 }

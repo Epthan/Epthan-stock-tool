@@ -99,6 +99,7 @@ type ChartMode = "auto" | ChartStyle;
 
 const defaultMovingAverages: MovingAverageKey[] = [20, 50];
 
+// Candles are unreadable at 5-minute resolution over a day or two, so "auto" uses a line there.
 function getRecommendedChartStyle(timeframe: TimeframeKey): ChartStyle {
   return timeframe === "1D" || timeframe === "2D" ? "line" : "candles";
 }
@@ -166,15 +167,22 @@ function createWatchlistId() {
 
 const candleCacheKey = (symbol: string, timeframe: string) => `candles:${symbol}:${timeframe}`;
 const candleUrl = (symbol: string, timeframe: string) => `/api/market/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${timeframe}`;
+// Intraday charts go stale within minutes; daily ones can be cached much longer.
 const candleTtl = (timeframe: string) => (["1D", "2D", "5D", "1W"].includes(timeframe) ? TTL.intraday : TTL.daily);
 const companyUrl = (symbol: string) => `/api/market/company?symbol=${encodeURIComponent(symbol)}`;
 
+/**
+ * The Market page: overview, research (watch list + chart + company panel) and backtest tabs.
+ * The selected symbol is shared app-wide through StockSelectionProvider, so search in the top bar
+ * and clicks elsewhere land here.
+ */
 export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   const { locale, messages } = useLanguage();
   const { selectedSymbol: globalSelectedSymbol, pickSymbol } = useStockSelection();
   const noDataMessage = messages.common.noData;
   const { watchlists, setWatchlists, activeWatchlistId, setActiveWatchlistId } = useStoredWatchlists();
   const { portfolios, activePortfolio, selectPortfolio, removeSymbol } = usePortfolios();
+  // The left list can show a watch list or the symbols of the active portfolio.
   const [listSource, setListSource] = useState<"watchlist" | "portfolio">("watchlist");
   const activeWatchlist = useMemo(() => listSource === "portfolio"
     ? { id: activePortfolio.id, name: locale === "zh" ? activePortfolio.nameZh ?? activePortfolio.name : activePortfolio.name, symbols: activePortfolio.symbols }
@@ -197,6 +205,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   const [marketState, setMarketState] = useState<"loading" | "live" | "error">("loading");
   const [candles, setCandles] = useState<CandlePoint[]>([]);
   const [loadedChartSymbol, setLoadedChartSymbol] = useState("");
+  // Don't flash the previous stock's chart while the new one loads.
   const chartCandles = loadedChartSymbol === resolvedSelectedSymbol ? candles : [];
   const [, setChartMeta] = useState({
     mode: "mock" as "mock" | "live",
@@ -216,10 +225,12 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   type MarketView = "overview" | "research" | "backtest";
   const [workplaceView, setWorkplaceViewState] = useState<MarketView>("research");
   const setWorkplaceView = useCallback((view: MarketView) => { setWorkplaceViewState(view); try { window.localStorage.setItem("stock-tool.market-view.v1", view); } catch {} }, []);
+  // Restored after mount (not in the initial state) to avoid a hydration mismatch.
   useEffect(() => { try { const saved = window.localStorage.getItem("stock-tool.market-view.v1"); if (saved === "overview" || saved === "backtest") startTransition(() => setWorkplaceViewState(saved)); } catch {} }, []);
   const watchlistMenu = useRef<HTMLDetailsElement>(null);
   const [watchlistNotice, setWatchlistNotice] = useState("");
   useEffect(() => {
+    // The watch-list menu is a <details>; close it on an outside click or Esc like a normal menu.
     function closeOutside(event: PointerEvent) {
       if (event.target instanceof Node && !watchlistMenu.current?.contains(event.target)) watchlistMenu.current?.removeAttribute("open");
     }
@@ -238,6 +249,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   }, []);
   const [chartRetry, setChartRetry] = useState(0);
 
+  // Clear everything tied to the old symbol up front so the panels show loading, not stale data.
   const handleSymbolPick = useCallback((symbol: string) => {
     if (symbol === resolvedSelectedSymbol) return;
     pickSymbol(symbol);
@@ -256,6 +268,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   useEffect(() => {
     let ignore = false;
 
+    // Quotes for the strip and the list, refreshed every 15 s while the page is open.
     async function loadDashboard() {
       try {
         const url = `/api/market/dashboard?symbols=${encodeURIComponent(activeWatchlist.symbols.join(","))}`;
@@ -325,6 +338,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   }, [activeTimeframe, chartRetry, noDataMessage, resolvedSelectedSymbol]);
 
   useEffect(() => {
+    // A symbol opened from search may not be in the list, so fetch its quote separately.
     const existsInWatchlist = dashboard.watchlist.some((item) => item.symbol === resolvedSelectedSymbol);
 
     if (existsInWatchlist) {
@@ -387,6 +401,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
   const resolvedChartStyle = chartMode === "auto" ? getRecommendedChartStyle(activeTimeframe) : chartMode;
 
 
+  // "custom" keeps the order the user dragged the rows into.
   const filteredAndSortedWatchlist = useMemo(() => {
     const orderMap = new Map(activeWatchlist.symbols.map((symbol, index) => [symbol, index]));
     const normalizedFilter = watchlistFilter.trim().toUpperCase();
@@ -449,6 +464,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
 
     setWatchlists((current) =>
       current.map((list) => {
+        // A list always keeps at least one symbol.
         if (list.id !== activeWatchlistId || list.symbols.length <= 1) {
           return list;
         }
@@ -550,6 +566,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
     );
   }
 
+  // First portfolio that currently holds this symbol, for the "Your position" card.
   const heldPosition = (() => {
     for (const portfolio of portfolios) {
       const trades = portfolio.trades?.filter((trade) => trade.symbol === resolvedSelectedSymbol) ?? [];
@@ -592,6 +609,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
         : workplaceView === "backtest" ? <BacktestPanel key={resolvedSelectedSymbol} symbol={resolvedSelectedSymbol} /> : <>
 
         <nav className="wp-mobile-tabs" aria-label={locale === "zh" ? "工作台视图" : "Workplace views"}>{[["chart", locale === "zh" ? "图表" : "Chart"], ["watchlist", locale === "zh" ? "自选" : "Watchlist"], ["details", locale === "zh" ? "公司资料" : "Company"]].map(([value, label]) => <button key={value} aria-pressed={mobileView === value} onClick={() => setMobileView(value)}>{label}</button>)}</nav>
+        {/* Research tab: watch list | quote + chart | company and position. On phones one column shows at a time. */}
         <section className="wp-grid wpx-grid" data-mobile-view={mobileView}>
           <aside className="wp-watchlist wpx-watch" aria-label={messages.dashboard.watchLists}>
             <div className="wpx-watch-head">
@@ -779,6 +797,7 @@ export function StockDashboard({ defaultSymbol }: StockDashboardProps) {
                       })}
                     </div></details>
             </div>
+            {/* Drawings are keyed to the symbol, so switching stock clears them. */}
             <div className="wpx-chart">
               <StockChart
                     candles={chartCandles}

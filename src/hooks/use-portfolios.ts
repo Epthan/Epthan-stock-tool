@@ -1,5 +1,7 @@
 "use client";
 
+// Portfolio state lives in localStorage (mirrored to the server by DataSync). Every write goes
+// through save(), which notifies all hook instances in this tab; other tabs hear the storage event.
 import { useMemo, useSyncExternalStore } from "react";
 import { DEMO_SYMBOLS, demoPortfolios } from "@/lib/portfolio-analytics";
 import { importLegacyTrades, tradeDate, validatePortfolioTrades, type PortfolioTrade } from "@/lib/portfolio-trades";
@@ -7,6 +9,7 @@ import { validateCashEntries, type CashEntry, type CashMode } from "@/lib/cash-l
 import { sameSplits, type StockSplit } from "@/lib/corporate-actions";
 
 export type ManagedPortfolio = { id: string; name: string; nameZh?: string; initials: string; symbols: string[]; demoId?: string; trades?: PortfolioTrade[]; cash?: CashEntry[]; splits?: StockSplit[]; baseCurrency?: string; cashMode?: CashMode };
+// Demo portfolios have a demoId and no trades; the dashboard simulates them from fixed share counts.
 export const initialPortfolios: ManagedPortfolio[] = demoPortfolios.map((portfolio) => ({
   id: portfolio.id, name: portfolio.name, nameZh: portfolio.nameZh, initials: portfolio.initials, demoId: portfolio.id,
   symbols: DEMO_SYMBOLS.filter((_, index) => portfolio.quantities[index] > 0),
@@ -19,6 +22,7 @@ export const legacyMigrationKey = "stock-tool.legacy-trades-migrated.v1";
 export type LegacyMigration = { portfolioId: string | null; imported: number; skipped: number; at: string };
 const defaultSnapshot = JSON.stringify({ portfolios: initialPortfolios, activeId: "balanced" });
 
+// Drop anything that doesn't look like a portfolio rather than crash on hand-edited or old data.
 function storedPortfolios(): ManagedPortfolio[] | null {
   try {
     const stored: unknown = JSON.parse(window.localStorage.getItem(portfoliosKey) ?? "null");
@@ -58,12 +62,14 @@ function migrateLegacyTrades() {
   } catch {}
 }
 
+// Always read fresh from storage: mutations below must start from the latest state, not a stale render.
 function readState() {
   migrateLegacyTrades();
   const portfolios = storedPortfolios() ?? initialPortfolios;
   const saved = window.localStorage.getItem(activeKey);
   return { portfolios, activeId: portfolios.find((portfolio) => portfolio.id === saved)?.id ?? portfolios[0].id };
 }
+// useSyncExternalStore compares snapshots by identity, so hand it a string rather than a new object each time.
 function snapshot() { return JSON.stringify(readState()); }
 function serverSnapshot() { return defaultSnapshot; }
 function subscribe(listener: () => void) {
@@ -121,6 +127,7 @@ export function usePortfolios() {
      * a number > 0 creates / updates it, 0 or null removes it, undefined leaves it alone.
      */
     saveTrade(portfolioId: string, trade: PortfolioTrade, brokerage?: { amount: number; currency?: string; replaceId?: string } | null) {
+      // Prices are kept to the cent; EPSILON stops 1.005 rounding down.
       trade = { ...trade, price: Math.round((trade.price + Number.EPSILON) * 100) / 100 };
       const current = readState();
       const portfolio = current.portfolios.find((item) => item.id === portfolioId);
@@ -183,6 +190,7 @@ export function usePortfolios() {
         return [{ id: crypto.randomUUID(), kind: "fee" as const, date: tradeDate(trade.tradedAt), amount: Math.round(item.amount * 100) / 100, ...(item.currency !== base ? { currency: item.currency } : {}), symbol: trade.symbol, tradeId: trade.id, note: `${trade.side === "buy" ? "Buy" : "Sell"} ${trade.symbol} brokerage` }];
       });
       const linked = new Set(added.map((entry) => entry.tradeId));
+      // A trade that already had linked brokerage gets it replaced, not doubled.
       const cash = [...(portfolio.cash ?? []).filter((entry) => !(entry.tradeId && linked.has(entry.tradeId))), ...added];
       validateCashEntries(cash);
       save({ ...current, portfolios: current.portfolios.map((item) => item.id === portfolioId ? { ...item, cash } : item) });
@@ -203,6 +211,7 @@ export function usePortfolios() {
       const current = readState();
       const portfolio = current.portfolios.find((item) => item.id === portfolioId);
       if (!portfolio) throw new Error("PORTFOLIO_NOT_FOUND");
+      // Deleting a buy can make a later sell invalid, so the remaining trades are validated too.
       const trades = (portfolio.trades ?? []).filter((trade) => trade.id !== tradeId);
       validatePortfolioTrades(trades, portfolio.splits);
       const cash = portfolio.cash?.filter((entry) => entry.tradeId !== tradeId); // linked brokerage goes with the trade

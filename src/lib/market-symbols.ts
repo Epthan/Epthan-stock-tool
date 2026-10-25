@@ -1,3 +1,5 @@
+// Market is inferred from the Yahoo suffix. Anything without a known suffix is treated as US,
+// which is also what Yahoo assumes. ASX (.AX) has no market label of its own yet.
 export type SupportedMarket = "US" | "CN" | "HK" | "KR";
 
 const marketLabels: Record<SupportedMarket, string> = {

@@ -20,10 +20,12 @@ type Node = { name: string; children?: Node[]; value?: number; item?: Leaf };
 type Size = "cap" | "move" | "holding" | "equal";
 
 const TIMEFRAMES: TimeframeKey[] = ["1D", "5D", "1M", "3M", "6M", "1Y"];
-/** Colour saturates at this move: a 3% day is as strong as a 25% year. */
+/** Colour saturates at this move: a 3% day is as strong as a 30% year. */
 const SCALE: Partial<Record<TimeframeKey, number>> = { "1D": 3, "5D": 6, "1M": 10, "3M": 15, "6M": 20, "1Y": 30 };
+// Layout is computed in a fixed coordinate space and the SVG scales to fit.
 const W = 1200, H = 720;
 
+// Tint between the panel colour and up/down, so tiles follow the active skin.
 function fill(change: number, timeframe: TimeframeKey) {
   const strength = Math.min(1, Math.abs(change) / (SCALE[timeframe] ?? 10));
   const mix = Math.round(18 + strength * 70);
