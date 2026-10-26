@@ -16,6 +16,8 @@ import { demoPortfolio, type DemoPortfolio } from "./demo-portfolio";
 export type Row = Record<string, string | number | null>;
 export type Dataset = { tables: Record<string, Row[]>; expected: Record<string, unknown> };
 
+// Fixed names rather than toLocaleString: ICU versions disagree ("Sep" vs "Sept"), which would make the CSVs machine-dependent.
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const round = (value: number, digits = 6) => Math.round(value * 10 ** digits) / 10 ** digits;
 
 export function buildDataset(demo: DemoPortfolio = demoPortfolio()): Dataset {
@@ -41,7 +43,7 @@ export function buildDataset(demo: DemoPortfolio = demoPortfolio()): Dataset {
     const day = date.toISOString().slice(0, 10);
     const fy = financialYear(day);
     const month = date.getUTCMonth() + 1;
-    dimDate.push({ date: day, year: date.getUTCFullYear(), month, month_name: date.toLocaleString("en-AU", { month: "short", timeZone: "UTC" }), year_month: day.slice(0, 7),
+    dimDate.push({ date: day, year: date.getUTCFullYear(), month, month_name: MONTHS[month - 1], year_month: day.slice(0, 7),
       fy, fy_label: `FY ${fyLabel(fy)}`, fy_quarter: `Q${Math.floor(((month + 5) % 12) / 3) + 1}`, is_trading_day: dayIndex.has(day) ? 1 : 0 });
   }
   const dimFy: Row[] = [...new Set(dimDate.map((row) => row.fy as number))].map((fy) => ({ fy, fy_label: `FY ${fyLabel(fy)}`, start_date: `${fy - 1}-07-01`, end_date: `${fy}-06-30` }));

@@ -14,7 +14,8 @@ fs.writeFileSync(path.join(out, "expected.json"), JSON.stringify(expected, null,
 function columnType(rows: Row[], column: string) {
   const values = rows.map((row) => row[column]).filter((value) => value != null);
   if (values.length && values.every((value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value))) return "type date";
-  if (values.length && values.every((value) => typeof value === "number")) return values.every((value) => Number.isInteger(value)) && !/_aud$|_pct$|price|close|fx|share|quantity/.test(column) ? "Int64.Type" : "type number";
+  // Whole numbers only for counters and flags; amounts stay decimal even when every sample happens to be whole.
+  if (values.length && values.every((value) => typeof value === "number")) return /^(fy|year|month|days_held|discount_eligible|is_\w+)$/.test(column) ? "Int64.Type" : "type number";
   return "type text";
 }
 const queries = Object.entries(tables).map(([name, rows]) => {
