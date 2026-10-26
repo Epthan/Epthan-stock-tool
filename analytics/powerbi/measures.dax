@@ -1,0 +1,212 @@
+// Stock Tool – Power BI measures
+// ---------------------------------------------------------------------------------------------
+// Everything is in AUD. The formulas mirror src/lib (see docs/METHODOLOGY.md and docs/TAX.md), and
+// tests/unit/bi-dataset.test.ts applies the same arithmetic to the CSVs and checks the results against
+// the app. analytics/data/expected.json lists the values each measure should show for the full period.
+//
+// Create the calculated columns first (Table view → New column), then the measures
+// (put them in an empty "_Measures" table: Home → Enter data → load an empty table).
+
+
+// ===== Calculated columns ======================================================================
+
+// fact_daily_portfolio[growth_factor]
+// One day's holdings return as a factor. Buys are start-of-day money, sells end-of-day money.
+growth_factor =
+VAR Base = fact_daily_portfolio[value_open_aud] + fact_daily_portfolio[purchases_aud]
+RETURN
+    IF (
+        Base > 0,
+        MAX ( 0, fact_daily_portfolio[value_close_aud] + fact_daily_portfolio[sales_aud] + fact_daily_portfolio[income_aud] ) / Base,
+        1
+    )
+
+// fact_daily_portfolio[cum_index]
+// Growth of 1 AUD since the first trade. Charts and drawdown re-base it to the selected period.
+cum_index =
+VAR ThisDay = fact_daily_portfolio[date]
+RETURN
+    PRODUCTX ( FILTER ( fact_daily_portfolio, fact_daily_portfolio[date] <= ThisDay ), fact_daily_portfolio[growth_factor] )
+
+// fact_daily_account[account_factor]
+// Account (holdings + cash) daily return; deposits and withdrawals land at the start of the day.
+account_factor =
+VAR Base = fact_daily_account[account_open_aud] + fact_daily_account[external_flow_aud]
+RETURN IF ( Base > 0, fact_daily_account[account_close_aud] / Base, 1 )
+
+
+// ===== Returns =================================================================================
+
+Holdings TWR =
+// Time-weighted return of the holdings over the selected dates. Format as %.
+VAR Growth = PRODUCTX ( fact_daily_portfolio, fact_daily_portfolio[growth_factor] )
+RETURN IF ( ISBLANK ( Growth ), BLANK (), Growth - 1 )
+
+Period P&L =
+SUMX (
+    fact_daily_portfolio,
+    fact_daily_portfolio[value_close_aud] + fact_daily_portfolio[sales_aud] + fact_daily_portfolio[income_aud]
+        - fact_daily_portfolio[value_open_aud] - fact_daily_portfolio[purchases_aud]
+)
+
+Contribution =
+// Per-holding P&L (price moves, trades and that holding's dividends and fees). Sums to Period P&L.
+SUM ( fact_daily_holdings[pnl_aud] )
+
+Contribution Share =
+DIVIDE ( [Contribution], CALCULATE ( [Contribution], REMOVEFILTERS ( dim_security ) ) )
+
+Benchmark Return =
+// Needs exactly one benchmark selected (slicer on fact_benchmark[benchmark]).
+// Base = the benchmark's close on the last trading day before the period, as in the app.
+VAR FirstDay = MIN ( fact_daily_portfolio[date] )
+VAR LastDay = MAX ( fact_daily_portfolio[date] )
+VAR BaseDay =
+    CALCULATE ( MAX ( fact_benchmark[date] ), REMOVEFILTERS ( dim_date ), REMOVEFILTERS ( dim_financial_year ), fact_benchmark[date] < FirstDay )
+VAR BaseClose =
+    CALCULATE ( MAX ( fact_benchmark[close_aud] ), REMOVEFILTERS ( dim_date ), REMOVEFILTERS ( dim_financial_year ), fact_benchmark[date] = BaseDay )
+VAR LastClose =
+    CALCULATE ( MAX ( fact_benchmark[close_aud] ), REMOVEFILTERS ( dim_date ), REMOVEFILTERS ( dim_financial_year ), fact_benchmark[date] = LastDay )
+RETURN IF ( HASONEVALUE ( fact_benchmark[benchmark] ), DIVIDE ( LastClose, BaseClose ) - 1 )
+
+Excess Return =
+[Holdings TWR] - [Benchmark Return]
+
+Account TWR =
+VAR Growth = PRODUCTX ( fact_daily_account, fact_daily_account[account_factor] )
+RETURN IF ( ISBLANK ( Growth ), BLANK (), Growth - 1 )
+
+Account XIRR =
+// Money-weighted return, annualised. Investor cash flows: the account value at the start of the period
+// (money "put in"), deposits as negatives, withdrawals as positives, and the closing value.
+VAR FirstDay = MIN ( fact_daily_account[date] )
+VAR LastDay = MAX ( fact_daily_account[date] )
+VAR Opening = CALCULATE ( SUM ( fact_daily_account[account_open_aud] ), fact_daily_account[date] = FirstDay )
+VAR Closing = CALCULATE ( SUM ( fact_daily_account[account_close_aud] ), fact_daily_account[date] = LastDay )
+VAR Flows =
+    UNION (
+        ROW ( "Day", FirstDay, "Amount", - Opening ),
+        SELECTCOLUMNS (
+            FILTER ( fact_daily_account, fact_daily_account[external_flow_aud] <> 0 ),
+            "Day", fact_daily_account[date],
+            "Amount", - fact_daily_account[external_flow_aud]
+        ),
+        ROW ( "Day", LastDay, "Amount", Closing )
+    )
+RETURN XIRR ( Flows, [Amount], [Day] )
+
+
+// ===== Charts (use with dim_date[date] on the axis) ============================================
+
+Base Index =
+// cum_index on the day before the selected period starts (1 if it starts with the first trade).
+VAR FirstDay = CALCULATE ( MIN ( fact_daily_portfolio[date] ), ALLSELECTED ( dim_date ) )
+VAR FirstRow = CALCULATE ( MAX ( fact_daily_portfolio[cum_index] ), REMOVEFILTERS ( dim_date ), REMOVEFILTERS ( dim_financial_year ), fact_daily_portfolio[date] = FirstDay )
+VAR FirstFactor = CALCULATE ( MAX ( fact_daily_portfolio[growth_factor] ), REMOVEFILTERS ( dim_date ), REMOVEFILTERS ( dim_financial_year ), fact_daily_portfolio[date] = FirstDay )
+RETURN DIVIDE ( FirstRow, FirstFactor )
+
+Cumulative Return =
+VAR Today = MAX ( fact_daily_portfolio[cum_index] )
+RETURN IF ( NOT ISBLANK ( Today ), Today / [Base Index] - 1 )
+
+Cumulative Benchmark =
+VAR ThisDay = MAX ( fact_daily_portfolio[date] )
+VAR FirstDay = CALCULATE ( MIN ( fact_daily_portfolio[date] ), ALLSELECTED ( dim_date ) )
+VAR BaseDay = CALCULATE ( MAX ( fact_benchmark[date] ), REMOVEFILTERS ( dim_date ), REMOVEFILTERS ( dim_financial_year ), fact_benchmark[date] < FirstDay )
+VAR BaseClose = CALCULATE ( MAX ( fact_benchmark[close_aud] ), REMOVEFILTERS ( dim_date ), REMOVEFILTERS ( dim_financial_year ), fact_benchmark[date] = BaseDay )
+VAR TodayClose = CALCULATE ( MAX ( fact_benchmark[close_aud] ), REMOVEFILTERS ( dim_date ), REMOVEFILTERS ( dim_financial_year ), fact_benchmark[date] = ThisDay )
+RETURN IF ( NOT ISBLANK ( ThisDay ) && HASONEVALUE ( fact_benchmark[benchmark] ), DIVIDE ( TodayClose, BaseClose ) - 1 )
+
+Drawdown =
+// Fall from the highest point so far in the selected period (the period start counts as a peak).
+VAR ThisDay = MAX ( fact_daily_portfolio[date] )
+VAR Today = MAX ( fact_daily_portfolio[cum_index] )
+VAR Peak =
+    MAX (
+        [Base Index],
+        CALCULATE ( MAX ( fact_daily_portfolio[cum_index] ), ALLSELECTED ( dim_date ), fact_daily_portfolio[date] <= ThisDay )
+    )
+RETURN IF ( NOT ISBLANK ( Today ), Today / Peak - 1 )
+
+Max Drawdown =
+VAR Days =
+    ADDCOLUMNS (
+        CALCULATETABLE ( VALUES ( fact_daily_portfolio[date] ) ),
+        "@Index", CALCULATE ( MAX ( fact_daily_portfolio[cum_index] ) )
+    )
+VAR BaseIndex = [Base Index]
+VAR WithPeak =
+    ADDCOLUMNS (
+        Days,
+        "@Peak",
+            VAR ThisDay = fact_daily_portfolio[date]
+            RETURN MAX ( BaseIndex, MAXX ( FILTER ( Days, fact_daily_portfolio[date] <= ThisDay ), [@Index] ) )
+    )
+RETURN MIN ( 0, MINX ( WithPeak, [@Index] / [@Peak] - 1 ) )
+
+
+// ===== Holdings ================================================================================
+
+Market Value =
+// Value at the last trading day of the selection.
+VAR LastDay = MAX ( fact_daily_portfolio[date] )
+RETURN CALCULATE ( SUM ( fact_daily_holdings[value_close_aud] ), REMOVEFILTERS ( dim_date ), REMOVEFILTERS ( dim_financial_year ), fact_daily_holdings[date] = LastDay )
+
+Weight =
+DIVIDE ( [Market Value], CALCULATE ( [Market Value], REMOVEFILTERS ( dim_security ) ) )
+
+Cash Balance =
+VAR LastDay = MAX ( fact_daily_account[date] )
+RETURN CALCULATE ( SUM ( fact_daily_account[cash_aud] ), fact_daily_account[date] = LastDay )
+
+Account Value =
+VAR LastDay = MAX ( fact_daily_account[date] )
+RETURN CALCULATE ( SUM ( fact_daily_account[account_close_aud] ), fact_daily_account[date] = LastDay )
+
+Net Contributions =
+SUM ( fact_daily_account[external_flow_aud] )
+
+
+// ===== Closed trades and attribution =============================================================
+
+Closed Trades = COUNTROWS ( fact_closed_trades )
+
+Realised P&L = SUM ( fact_closed_trades[pnl_aud] )
+
+Win Rate =
+DIVIDE ( COUNTROWS ( FILTER ( fact_closed_trades, fact_closed_trades[pnl_aud] > 0 ) ), [Closed Trades] )
+
+Profit Factor =
+VAR Wins = CALCULATE ( SUM ( fact_closed_trades[pnl_aud] ), fact_closed_trades[pnl_aud] > 0 )
+VAR Losses = - CALCULATE ( SUM ( fact_closed_trades[pnl_aud] ), fact_closed_trades[pnl_aud] < 0 )
+RETURN DIVIDE ( Wins, Losses )
+
+Average Holding Days = AVERAGE ( fact_closed_trades[holding_days] )
+
+Tag P&L =
+// Realised P&L split by the strategy tags of the parcels each sale closed (bridge_closed_trade_tag).
+SUM ( bridge_closed_trade_tag[pnl_aud] )
+
+
+// ===== Australian tax (use dim_financial_year[fy_label] as the slicer) ===========================
+
+Gross Capital Gains (18H) =
+CALCULATE ( SUM ( fact_cgt_events[gain_aud] ), fact_cgt_events[gain_aud] > 0 )
+
+Capital Losses This Year =
+- CALCULATE ( SUM ( fact_cgt_events[gain_aud] ), fact_cgt_events[gain_aud] < 0 )
+
+Discount-Eligible Gains =
+CALCULATE ( SUM ( fact_cgt_events[gain_aud] ), fact_cgt_events[gain_aud] > 0, fact_cgt_events[discount_eligible] = 1 )
+
+// Loss ordering and carry-forward depend on every earlier year, so they come from fact_tax_year
+// (worked out by src/lib/au-tax.ts) rather than being rebuilt in DAX.
+Net Capital Gain (18A) = SUM ( fact_tax_year[label_18A] )
+Losses Carried Forward (18V) = SUM ( fact_tax_year[label_18V] )
+CGT Discount Applied = SUM ( fact_tax_year[discount] )
+
+Franked Dividends (11T) = SUM ( fact_dividends[franked_aud] )
+Unfranked Dividends (11S) = CALCULATE ( SUM ( fact_dividends[unfranked_aud] ), fact_dividends[type] = "Australian" )
+Franking Credits (11U) = SUM ( fact_dividends[franking_credit_aud] )
+Foreign Income (20E) = CALCULATE ( SUM ( fact_dividends[assessable_aud] ), fact_dividends[type] = "Foreign" )
+Foreign Tax Offset (20O) = CALCULATE ( SUM ( fact_dividends[withheld_aud] ), fact_dividends[type] = "Foreign" )

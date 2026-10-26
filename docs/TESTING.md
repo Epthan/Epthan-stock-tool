@@ -52,6 +52,7 @@ npm run test:smoke          # port 3100
 npm run test:e2e            # port 3200
 npm run test:live           # port 3300, needs internet
 npm test                    # unit tests only (Vitest)
+npm run bi:export           # rebuild the Power BI dataset in analytics/data (B10 checks it is current)
 npm run docs:screenshots    # port 3400, rewrites docs/images/*.png
 ```
 

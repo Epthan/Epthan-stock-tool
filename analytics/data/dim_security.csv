@@ -1,0 +1,11 @@
+symbol,name,sector,market,currency,is_benchmark
+AAPL,Apple,Technology,US,USD,0
+MSFT,Microsoft,Technology,US,USD,0
+NVDA,NVIDIA,Technology,US,USD,0
+JPM,JPMorgan Chase,Financials,US,USD,0
+XOM,Exxon Mobil,Energy,US,USD,0
+CBA.AX,Commonwealth Bank,Financials,ASX,AUD,0
+BHP.AX,BHP Group,Materials,ASX,AUD,0
+CSL.AX,CSL,Health Care,ASX,AUD,0
+^AXJO,S&P/ASX 200,Index,ASX,AUD,1
+SPY,S&P 500 ETF,Index,US,USD,1

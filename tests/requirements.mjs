@@ -44,6 +44,7 @@ export const REQUIREMENTS = [
   { id: "B07", area: "data", title: "Storage API: non-JSON returns 400, oversized values dropped", zh: "存储 API：非 JSON 返回 400，超大值丢弃" },
   { id: "B08", area: "data", title: "SQLite store: migrate store.json, reject stale revisions, restore snapshots", zh: "SQLite 存储：迁移 store.json、版本冲突拒绝、历史快照恢复" },
   { id: "B09", area: "data", title: "Local price archive: incremental download, full refetch on new split, offline fallback", zh: "本地价格存档：增量下载、新拆股全量重下、离线兜底" },
+  { id: "B10", area: "data", title: "Power BI dataset: DAX formulas on the exported tables match the app (TWR, contribution, XIRR, CGT)", zh: "Power BI 数据集：按 DAX 口径重算的收益、贡献、XIRR、资本利得与应用一致" },
   // ---- Functional ----
   { id: "C01", area: "func", title: "Market page: three tabs switch and are remembered", zh: "行情页三个 tab 切换并记住" },
   { id: "C02", area: "func", title: "Index row click opens stock research", zh: "指数行点击 → 打开个股研究" },

@@ -3,6 +3,16 @@
 Versions follow `MAJOR.MINOR.PATCH`: a new feature bumps MINOR, a fix bumps PATCH. Each release is a git tag (`v1.0.0`).
 The running version shows on the logo tooltip and in Trades → History.
 
+## 1.5.0 — 2026-10-26
+
+- **Power BI dataset** (`analytics/`): `npm run bi:export` writes a 16-table star schema (dates, financial years,
+  securities, daily holdings / portfolio / account, benchmarks, trades, cash, closed trades with tag attribution,
+  CGT events, tax years, dividends) from a deterministic demo portfolio, plus a generated Power Query script.
+- DAX measures for TWR, P&L, contribution, benchmark and excess return, account TWR and XIRR, cumulative return,
+  drawdown, holdings weights, trade statistics and the myTax labels, with a page layout for the report.
+- New requirement B10: the DAX arithmetic applied to the exported tables matches the app's results, and the
+  committed CSVs must be up to date.
+
 ## 1.4.0 — 2026-10-25
 
 Documentation and publishing release; no change to calculations.
