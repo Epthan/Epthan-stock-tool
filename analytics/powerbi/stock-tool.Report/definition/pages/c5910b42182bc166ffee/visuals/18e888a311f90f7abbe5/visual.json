@@ -1,0 +1,94 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "name": "18e888a311f90f7abbe5",
+  "position": {
+    "x": 24,
+    "y": 468,
+    "z": 5000,
+    "height": 236,
+    "width": 608,
+    "tabOrder": 5000
+  },
+  "visual": {
+    "visualType": "clusteredColumnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_financial_year"
+                    }
+                  },
+                  "Property": "fy_label"
+                }
+              },
+              "queryRef": "dim_financial_year.fy_label",
+              "nativeQueryRef": "fy_label",
+              "active": true,
+              "displayName": "Financial year"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Holdings TWR"
+                }
+              },
+              "queryRef": "_Measures.Holdings TWR",
+              "nativeQueryRef": "Holdings TWR"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Account TWR"
+                }
+              },
+              "queryRef": "_Measures.Account TWR",
+              "nativeQueryRef": "Account TWR"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Holdings vs account return by FY (gap = cash drag)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

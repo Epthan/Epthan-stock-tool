@@ -1,0 +1,51 @@
+table bridge_closed_trade_tag
+	lineageTag: 3709451f-ff4d-4699-bd66-f91eba08a9a8
+
+	column sale_id
+		dataType: string
+		lineageTag: 9fa61004-7884-40df-b069-f5ab845b4962
+		summarizeBy: none
+		sourceColumn: sale_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column tag
+		dataType: string
+		lineageTag: 668d6794-8d61-4e30-84be-32dc599835ac
+		summarizeBy: none
+		sourceColumn: tag
+
+		annotation SummarizationSetBy = Automatic
+
+	column share
+		dataType: double
+		lineageTag: d29a62a7-90a5-4ec4-8ba5-19ad1d587c0b
+		summarizeBy: sum
+		sourceColumn: share
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column pnl_aud
+		dataType: double
+		lineageTag: a33461db-ae7f-4a58-9ea2-3e55a6ecbb33
+		summarizeBy: sum
+		sourceColumn: pnl_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition bridge_closed_trade_tag = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("bridge_closed_trade_tag", {{"sale_id", type text}, {"tag", type text}, {"share", type number}, {"pnl_aud", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

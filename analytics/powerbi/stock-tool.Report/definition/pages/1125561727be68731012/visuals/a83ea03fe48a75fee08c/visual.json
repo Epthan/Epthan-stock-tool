@@ -1,0 +1,184 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "name": "a83ea03fe48a75fee08c",
+  "position": {
+    "x": 500,
+    "y": 188,
+    "z": 6000,
+    "height": 516,
+    "width": 756,
+    "tabOrder": 6000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_closed_trades"
+                    }
+                  },
+                  "Property": "sale_id"
+                }
+              },
+              "queryRef": "fact_closed_trades.sale_id",
+              "nativeQueryRef": "sale_id",
+              "displayName": "Sale"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_closed_trades"
+                    }
+                  },
+                  "Property": "symbol"
+                }
+              },
+              "queryRef": "fact_closed_trades.symbol",
+              "nativeQueryRef": "symbol",
+              "displayName": "Symbol"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_closed_trades"
+                    }
+                  },
+                  "Property": "exit_date"
+                }
+              },
+              "queryRef": "fact_closed_trades.exit_date",
+              "nativeQueryRef": "exit_date",
+              "displayName": "Exit date"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_closed_trades"
+                    }
+                  },
+                  "Property": "quantity"
+                }
+              },
+              "queryRef": "fact_closed_trades.quantity",
+              "nativeQueryRef": "quantity",
+              "displayName": "Qty"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_closed_trades"
+                    }
+                  },
+                  "Property": "exit_price_aud"
+                }
+              },
+              "queryRef": "fact_closed_trades.exit_price_aud",
+              "nativeQueryRef": "exit_price_aud",
+              "displayName": "Exit price"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_closed_trades"
+                    }
+                  },
+                  "Property": "pnl_aud"
+                }
+              },
+              "queryRef": "fact_closed_trades.pnl_aud",
+              "nativeQueryRef": "pnl_aud",
+              "displayName": "P&L"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_closed_trades"
+                    }
+                  },
+                  "Property": "return_pct"
+                }
+              },
+              "queryRef": "fact_closed_trades.return_pct",
+              "nativeQueryRef": "return_pct",
+              "displayName": "Return %"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_closed_trades"
+                    }
+                  },
+                  "Property": "holding_days"
+                }
+              },
+              "queryRef": "fact_closed_trades.holding_days",
+              "nativeQueryRef": "holding_days",
+              "displayName": "Days"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "fact_closed_trades"
+                  }
+                },
+                "Property": "exit_date"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Closed trades (FIFO)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

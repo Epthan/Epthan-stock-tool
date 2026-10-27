@@ -1,0 +1,67 @@
+table dim_financial_year
+	lineageTag: 1c1b3498-6068-48e2-b773-ad116725f7de
+
+	column fy
+		dataType: int64
+		formatString: 0
+		lineageTag: 38ee040c-f3c7-4dfd-9412-b23274427a10
+		summarizeBy: sum
+		sourceColumn: fy
+
+		annotation SummarizationSetBy = Automatic
+
+	column fy_label
+		dataType: string
+		lineageTag: 465e1c0f-7db3-4a8a-a647-a64eb21d5cbd
+		summarizeBy: none
+		sourceColumn: fy_label
+		sortByColumn: fy
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column start_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: b91c56af-c810-4dd3-aa7c-63aca6bca8ab
+		summarizeBy: none
+		sourceColumn: start_date
+
+		variation Variation
+			isDefault
+			relationship: 2d51031d-7a73-44d6-9114-203fefc09ae4
+			defaultHierarchy: LocalDateTable_87d5bc8c-1f69-41d6-9251-ccaf793d57a6.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column end_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 1598b298-fef3-4fd3-96a9-811d42e7c97d
+		summarizeBy: none
+		sourceColumn: end_date
+
+		variation Variation
+			isDefault
+			relationship: 91eb186e-b790-4416-b0f9-1b52fa0e39e1
+			defaultHierarchy: LocalDateTable_d8e69896-162e-4b9f-b9f4-12f07a79f5fc.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition dim_financial_year = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("dim_financial_year", {{"fy", Int64.Type}, {"fy_label", type text}, {"start_date", type date}, {"end_date", type date}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,70 @@
+table fact_prices
+	lineageTag: ab8d6f5b-2e52-4a4d-878d-3a7d0e7c5872
+
+	column date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: 6aee31df-8a02-4fbf-b082-5bc800220124
+		summarizeBy: none
+		sourceColumn: date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column symbol
+		dataType: string
+		isHidden
+		lineageTag: ed72d935-e51e-4004-8a46-ff3083d29283
+		summarizeBy: none
+		sourceColumn: symbol
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column close_local
+		dataType: double
+		lineageTag: fdfc4ac8-43b2-4e5c-9520-11168e979140
+		summarizeBy: sum
+		sourceColumn: close_local
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column fx_to_aud
+		dataType: double
+		lineageTag: c5936ac4-893b-47b6-b9d4-b674323e8ef8
+		summarizeBy: sum
+		sourceColumn: fx_to_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column close_aud
+		dataType: double
+		lineageTag: e6acb565-7aea-473f-9ac9-312b1b71d93c
+		summarizeBy: sum
+		sourceColumn: close_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_prices = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_prices", {{"date", type date}, {"symbol", type text}, {"close_local", type number}, {"fx_to_aud", type number}, {"close_aud", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

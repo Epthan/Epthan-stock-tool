@@ -1,0 +1,147 @@
+table fact_cgt_events
+	lineageTag: 86138edb-b8e3-4ff2-b2bb-6f0517d052db
+
+	column fy
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: d4f303ef-e2cb-4212-b2a7-a9746882ac61
+		summarizeBy: sum
+		sourceColumn: fy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column fy_label
+		dataType: string
+		lineageTag: b91e6e08-df1f-4291-a1ea-eac234be28f0
+		summarizeBy: none
+		sourceColumn: fy_label
+
+		annotation SummarizationSetBy = Automatic
+
+	column symbol
+		dataType: string
+		isHidden
+		lineageTag: 979a4609-e575-4af5-b2e5-17d716146d12
+		summarizeBy: none
+		sourceColumn: symbol
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column sale_id
+		dataType: string
+		lineageTag: cc5b3db0-be0a-4764-a774-cea30855a695
+		summarizeBy: none
+		sourceColumn: sale_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column buy_id
+		dataType: string
+		lineageTag: 27a8853c-6aea-4593-9470-ec46bddb080a
+		summarizeBy: none
+		sourceColumn: buy_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column acquired
+		dataType: dateTime
+		formatString: dd/mm/yyyy
+		lineageTag: df74e86a-7495-40c0-8511-e55285a3fe54
+		summarizeBy: none
+		sourceColumn: acquired
+
+		variation Variation
+			isDefault
+			relationship: a5fea494-8f87-4c55-9e17-fd4bf23f155d
+			defaultHierarchy: LocalDateTable_ece6f6a8-03e9-44d9-a5ba-7271f796c044.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column disposed
+		dataType: dateTime
+		formatString: dd/mm/yyyy
+		lineageTag: 873d0515-3d1c-41f7-a902-9404909c5c02
+		summarizeBy: none
+		sourceColumn: disposed
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column quantity
+		dataType: double
+		lineageTag: ea6fe99a-dc2f-4e9f-8cb5-197ad5af7cec
+		summarizeBy: sum
+		sourceColumn: quantity
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cost_base_aud
+		dataType: double
+		lineageTag: 97a59c2f-7d8e-4fed-b5cb-ab5a2914fd61
+		summarizeBy: sum
+		sourceColumn: cost_base_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column proceeds_aud
+		dataType: double
+		lineageTag: 3a90b36b-5cb5-4dd2-90a5-df5aff9dc2ef
+		summarizeBy: sum
+		sourceColumn: proceeds_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column gain_aud
+		dataType: double
+		lineageTag: 517650a4-2f1f-48a7-b2b8-01cda57fd3fd
+		summarizeBy: sum
+		sourceColumn: gain_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column days_held
+		dataType: int64
+		formatString: 0
+		lineageTag: d5e9c8e2-f9b8-454a-8a4c-1931b072cc94
+		summarizeBy: sum
+		sourceColumn: days_held
+
+		annotation SummarizationSetBy = Automatic
+
+	column discount_eligible
+		dataType: int64
+		formatString: 0
+		lineageTag: ff7c1916-9e0a-4ba0-a5cc-2762e81bcace
+		summarizeBy: sum
+		sourceColumn: discount_eligible
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fact_cgt_events = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_cgt_events", {{"fy", Int64.Type}, {"fy_label", type text}, {"symbol", type text}, {"sale_id", type text}, {"buy_id", type text}, {"acquired", type date}, {"disposed", type date}, {"quantity", type number}, {"cost_base_aud", type number}, {"proceeds_aud", type number}, {"gain_aud", type number}, {"days_held", Int64.Type}, {"discount_eligible", Int64.Type}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,21 @@
+expression DataFolder = "C:\path\to\stock-tool\analytics\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 380da8b5-e4f5-4580-b8cc-27907c7c32fb
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Text
+
+expression LoadCsv =
+		(name as text, types as list) as table =>
+		let
+		    Source = Csv.Document(File.Contents(DataFolder & "\" & name & ".csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+		    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+		    Typed = Table.TransformColumnTypes(Promoted, types, "en-US")
+		in
+		    Typed
+	lineageTag: b9d60e6a-410b-4a7a-b37c-04ca4ae9f235
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Function
+

@@ -1,0 +1,120 @@
+table fact_dividends
+	lineageTag: 76d23e4e-676e-489d-9564-6053413ab692
+
+	column fy
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 085180d3-9eaf-479f-a398-1c68f32a0cb2
+		summarizeBy: sum
+		sourceColumn: fy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: ed895f34-7425-4e27-8cad-726f58b758f3
+		summarizeBy: none
+		sourceColumn: date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column symbol
+		dataType: string
+		isHidden
+		lineageTag: cf4b4e00-3b10-484b-bedb-6654c0ef7870
+		summarizeBy: none
+		sourceColumn: symbol
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column type
+		dataType: string
+		lineageTag: d207f3a6-1f4a-417f-937f-2292b2e1a670
+		summarizeBy: none
+		sourceColumn: type
+
+		annotation SummarizationSetBy = Automatic
+
+	column cash_aud
+		dataType: double
+		lineageTag: fa44bb52-1816-4552-8091-3c81bb875281
+		summarizeBy: sum
+		sourceColumn: cash_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column franked_aud
+		dataType: double
+		lineageTag: 8f13beb8-0cdb-4591-9d78-f562ae8c0ffe
+		summarizeBy: sum
+		sourceColumn: franked_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column unfranked_aud
+		dataType: double
+		lineageTag: a45aae58-e38b-415f-a4c7-5c0e4d5aea1b
+		summarizeBy: sum
+		sourceColumn: unfranked_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column franking_credit_aud
+		dataType: double
+		lineageTag: 61efbb32-dfff-49c9-a1ac-72138ee56caa
+		summarizeBy: sum
+		sourceColumn: franking_credit_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column withheld_aud
+		dataType: double
+		lineageTag: 6ac4f022-da6e-4531-8395-58901961e20e
+		summarizeBy: sum
+		sourceColumn: withheld_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column assessable_aud
+		dataType: double
+		lineageTag: ad667808-6a37-4851-8c3b-32465d8b6191
+		summarizeBy: sum
+		sourceColumn: assessable_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_dividends = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_dividends", {{"fy", Int64.Type}, {"date", type date}, {"symbol", type text}, {"type", type text}, {"cash_aud", type number}, {"franked_aud", type number}, {"unfranked_aud", type number}, {"franking_credit_aud", type number}, {"withheld_aud", type number}, {"assessable_aud", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,112 @@
+table fact_daily_portfolio
+	lineageTag: f830c938-1a5b-41b0-83b8-f655e112e70d
+
+	column date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: 7cce3910-870d-4b87-9707-14c148329475
+		summarizeBy: none
+		sourceColumn: date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column value_open_aud
+		dataType: double
+		isHidden
+		lineageTag: 15baf366-5822-424a-90c2-0e7003f5c829
+		summarizeBy: sum
+		sourceColumn: value_open_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column purchases_aud
+		dataType: double
+		isHidden
+		lineageTag: 492ceca1-6508-4669-8257-7bc43bd006cd
+		summarizeBy: sum
+		sourceColumn: purchases_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column sales_aud
+		dataType: double
+		isHidden
+		lineageTag: 541f6bdb-d68b-4c23-b6ff-39f980aa8950
+		summarizeBy: sum
+		sourceColumn: sales_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column income_aud
+		dataType: double
+		isHidden
+		lineageTag: 71f6f80b-fa59-4339-b863-659463ae1487
+		summarizeBy: sum
+		sourceColumn: income_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column value_close_aud
+		dataType: double
+		isHidden
+		lineageTag: 7caff431-9470-4171-911a-f6d78ba07233
+		summarizeBy: sum
+		sourceColumn: value_close_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column growth_factor =
+			VAR Base = fact_daily_portfolio[value_open_aud] + fact_daily_portfolio[purchases_aud]
+			RETURN
+			    IF (
+			        Base > 0,
+			        MAX ( 0, fact_daily_portfolio[value_close_aud] + fact_daily_portfolio[sales_aud] + fact_daily_portfolio[income_aud] ) / Base,
+			        1
+			    )
+		formatString: 0.000000
+		lineageTag: 2d99cdc2-cebf-4c6c-ba14-94bf8339a020
+
+	column cum_index =
+			VAR ThisDay = fact_daily_portfolio[date]
+			RETURN
+			    PRODUCTX ( FILTER ( fact_daily_portfolio, fact_daily_portfolio[date] <= ThisDay ), fact_daily_portfolio[growth_factor] )
+		formatString: 0.000000
+		lineageTag: 7ac640de-2484-4645-8d34-15fdcf5d3dad
+
+	partition fact_daily_portfolio = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_daily_portfolio", {{"date", type date}, {"value_open_aud", type number}, {"purchases_aud", type number}, {"sales_aud", type number}, {"income_aud", type number}, {"value_close_aud", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

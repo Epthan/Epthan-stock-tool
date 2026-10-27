@@ -19,8 +19,10 @@ Most of the work in this project is data work, not UI:
 - **Metrics** – time-weighted return, money-weighted return (XIRR), contribution by holding, benchmark comparison and risk measures. Per-holding contributions reconcile exactly to the period P&L.
 - **Attribution** – returns broken down by sector, holding period and user-defined tags.
 - **Tax** – Australian CGT per financial year: FIFO parcels, loss ordering, the 50% discount and franking credits, with CSV export.
-- **Reporting** – the same data exported as a star schema (16 tables) for a Power BI model with DAX measures, reconciled to the app's own results. See [`analytics/`](analytics/).
+- **Reporting** – the same data exported as a star schema (16 tables) into a five-page Power BI report with DAX measures, reconciled to the app's own results. See [`analytics/`](analytics/).
 - **Testing** – calculations are covered by unit tests (Vitest) and every page and user flow by smoke and end-to-end tests (Playwright), all running on fixed mock data.
+
+![Power BI report built on the exported star schema](docs/images/powerbi-overview.png)
 
 Formulas and conventions are documented in [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) and [`docs/TAX.md`](docs/TAX.md).
 

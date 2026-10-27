@@ -10,6 +10,8 @@ src/lib (returns, FIFO, tax)  ──►  analytics/bi-dataset.ts  ──►  ana
                                           └──►  expected.json  ──►  tests/unit/bi-dataset.test.ts ┘  same formulas, same answers
 ```
 
+![Power BI report, Overview page](../docs/images/powerbi-overview.png)
+
 > **Demo data only.** The portfolio is generated (seeded random prices, a scripted set of trades), so the
 > report can be published openly. No real account data is involved.
 
@@ -60,27 +62,52 @@ All are single-direction, one-to-many, from the dimension to the fact.
 
 Mark `dim_date` as the date table. `fact_benchmark[benchmark]` is used only as a single-select slicer.
 
-## Building the report
+## Opening the report
+
+The finished report is in [`powerbi/stock-tool.pbip`](powerbi/), saved as a Power BI Project so every table,
+measure, relationship and visual is a text file that can be reviewed in git.
+
+1. Run `npm run bi:export` (only needed if the demo changed; the CSVs are committed).
+2. Open `analytics/powerbi/stock-tool.pbip` in Power BI Desktop (it needs *Power BI Project* support, on by default
+   in current versions).
+3. **Transform data → Edit parameters** and set `DataFolder` to the full path of `analytics\data` on your
+   computer, then **Refresh**. The committed copy has a placeholder path and no cached data.
+4. The DAX query view has a `Reconciliation` query that prints the figures from the table below.
+
+The report uses its own theme, [`powerbi/theme.json`](powerbi/theme.json) (a navy header band, white cards on a light
+grey page, one teal accent and red for drawdowns). Dates in tables are formatted `dd/mm/yyyy`. Chart axes use the
+`year_month` column (`2024-01`) and the period is picked with a financial-year slicer, so nothing depends on the
+computer's regional format.
+
+## Building it from scratch
+
+The same steps, if you want to rebuild the model yourself:
 
 1. **Load the data.** In Power BI Desktop, create a text parameter `DataFolder` pointing at `analytics\data`.
    Then add one blank query per block in [`powerbi/queries.pq`](powerbi/queries.pq): the `LoadCsv` function
    first, then the 16 tables. Types are set explicitly with the en-US culture, so the report opens correctly on
    any regional setting.
-2. **Model.** Create the relationships above. Hide the key and component columns from report view.
-3. **DAX.** Add the three calculated columns and the measures from [`powerbi/measures.dax`](powerbi/measures.dax).
+2. **Model.** Create the relationships above. Mark `dim_date` as the date table and sort `fy_label` by `fy`.
+   Hide the key and component columns from report view.
+3. **DAX.** Add the three calculated columns and the measures from [`powerbi/measures.dax`](powerbi/measures.dax)
+   (in the committed model they sit in a `_Measures` table, in display folders).
 4. **Check.** Compare the figures with the reconciliation table below before building pages.
-5. **Save as a Power BI Project** (File → Save as → `.pbip`) in `analytics/powerbi/`. The model and report are then
-   stored as text and reviewable in git.
+5. **Save as a Power BI Project** (File → Save as → `.pbip`) so the result stays reviewable as text.
 
-### Suggested pages
+### Pages
 
 | Page | Visuals |
 | --- | --- |
-| **Overview** | Cards: Account Value, Holdings TWR, Excess Return, Account XIRR, Max Drawdown. Line: Cumulative Return vs Cumulative Benchmark by date. Slicers: date range, benchmark |
-| **Attribution** | Bar: Contribution by symbol (sorted). Treemap or bar: Contribution by sector. Table: symbol, Market Value, Weight, Contribution, Contribution Share |
-| **Risk** | Area: Drawdown by date. Line: Account TWR vs Holdings TWR (the gap is cash drag). Bar: Weight by holding |
-| **Trading** | Cards: Closed Trades, Win Rate, Profit Factor, Average Holding Days. Bar: Tag P&L by tag. Table of closed trades |
-| **Tax** | Slicer: `dim_financial_year[fy_label]`. Cards: 18H, 18A, 18V, 11T, 11U, 20E, 20O. Table: CGT events (symbol, acquired, disposed, cost base, proceeds, gain, discount eligible) |
+| **Overview** | Cards: Account Value, Holdings TWR, Excess Return, Account XIRR, Max Drawdown. Line: Cumulative Return vs Cumulative Benchmark by month. Slicers: benchmark (single select), financial year |
+| **Attribution** | Bars: Contribution by holding and by sector. Table: symbol, name, sector, Market Value, Weight, Contribution, Contribution Share |
+| **Risk** | Cards: Max Drawdown, Account TWR, Holdings TWR, Cash Balance. Area: Worst Drawdown by month. Columns: Holdings vs Account TWR by financial year (the gap is cash drag). Bar: Weight by holding |
+| **Trading** | Cards: Closed Trades, Win Rate, Profit Factor, Average Holding Days, Realised P&L. Bar: Tag P&L by tag. Table of closed trades (FIFO) |
+| **Tax** | Slicer: financial year (single select). Cards: 18H, 18A, 18V, CGT discount, 11T, 11U, 20E, 20O. Table: CGT events by sale and parcel |
+
+<table>
+<tr><td><img src="../docs/images/powerbi-attribution.png" alt="Attribution page"></td><td><img src="../docs/images/powerbi-risk.png" alt="Risk page"></td></tr>
+<tr><td><img src="../docs/images/powerbi-trading.png" alt="Trading page"></td><td><img src="../docs/images/powerbi-tax.png" alt="Tax page"></td></tr>
+</table>
 
 ## Reconciliation
 
@@ -109,6 +136,6 @@ it in Power BI.
 
 ## Publishing
 
-- **Screenshots** of each page go in `docs/images/powerbi-*.png` and are linked from the main README.
+- **Screenshots** of each page are in `docs/images/powerbi-*.png`.
 - **Publish to web** (File → Publish → Publish to web) gives a public link anyone can open without a licence.
   Only ever publish the demo dataset this way, because the link is public.

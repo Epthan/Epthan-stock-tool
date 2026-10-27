@@ -1,0 +1,64 @@
+table dim_security
+	lineageTag: a3e3ef97-2bdd-49ef-a56e-1b59fd4f4ce7
+
+	column symbol
+		dataType: string
+		lineageTag: 7677e6a6-c49d-4d94-aa13-2e8ce18f23cb
+		summarizeBy: none
+		sourceColumn: symbol
+
+		annotation SummarizationSetBy = Automatic
+
+	column name
+		dataType: string
+		lineageTag: 7ccf88fb-0638-40ec-8c51-5223fc0d7ea0
+		summarizeBy: none
+		sourceColumn: name
+
+		annotation SummarizationSetBy = Automatic
+
+	column sector
+		dataType: string
+		lineageTag: 1f150b67-2b1c-4c74-8949-6a1f9324c151
+		summarizeBy: none
+		sourceColumn: sector
+
+		annotation SummarizationSetBy = Automatic
+
+	column market
+		dataType: string
+		lineageTag: 87ac3f00-498e-4a24-aa3c-9c1491b894a7
+		summarizeBy: none
+		sourceColumn: market
+
+		annotation SummarizationSetBy = Automatic
+
+	column currency
+		dataType: string
+		lineageTag: 785fa131-4cfc-41bd-81e6-3a9a6bf5e6ae
+		summarizeBy: none
+		sourceColumn: currency
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_benchmark
+		dataType: int64
+		formatString: 0
+		lineageTag: c86a4996-0152-4f98-a42d-a93bc8dff448
+		summarizeBy: sum
+		sourceColumn: is_benchmark
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_security = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("dim_security", {{"symbol", type text}, {"name", type text}, {"sector", type text}, {"market", type text}, {"currency", type text}, {"is_benchmark", Int64.Type}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

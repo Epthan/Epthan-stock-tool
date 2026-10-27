@@ -1,0 +1,165 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "name": "cb3f0d778029e1d3b7a4",
+  "position": {
+    "x": 24,
+    "y": 392,
+    "z": 2000,
+    "height": 312,
+    "width": 1232,
+    "tabOrder": 2000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_security"
+                    }
+                  },
+                  "Property": "symbol"
+                }
+              },
+              "queryRef": "dim_security.symbol",
+              "nativeQueryRef": "symbol",
+              "displayName": "Symbol"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_security"
+                    }
+                  },
+                  "Property": "name"
+                }
+              },
+              "queryRef": "dim_security.name",
+              "nativeQueryRef": "name",
+              "displayName": "Name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_security"
+                    }
+                  },
+                  "Property": "sector"
+                }
+              },
+              "queryRef": "dim_security.sector",
+              "nativeQueryRef": "sector",
+              "displayName": "Sector"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Market Value"
+                }
+              },
+              "queryRef": "_Measures.Market Value",
+              "nativeQueryRef": "Market Value"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Weight"
+                }
+              },
+              "queryRef": "_Measures.Weight",
+              "nativeQueryRef": "Weight"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Contribution"
+                }
+              },
+              "queryRef": "_Measures.Contribution",
+              "nativeQueryRef": "Contribution"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Contribution Share"
+                }
+              },
+              "queryRef": "_Measures.Contribution Share",
+              "nativeQueryRef": "Contribution Share"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "_Measures"
+                  }
+                },
+                "Property": "Contribution"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Holdings'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

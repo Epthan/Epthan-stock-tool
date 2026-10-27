@@ -1,0 +1,99 @@
+relationship 2d51031d-7a73-44d6-9114-203fefc09ae4
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_financial_year.start_date
+	toColumn: LocalDateTable_87d5bc8c-1f69-41d6-9251-ccaf793d57a6.Date
+
+relationship 91eb186e-b790-4416-b0f9-1b52fa0e39e1
+	joinOnDateBehavior: datePartOnly
+	fromColumn: dim_financial_year.end_date
+	toColumn: LocalDateTable_d8e69896-162e-4b9f-b9f4-12f07a79f5fc.Date
+
+relationship a5fea494-8f87-4c55-9e17-fd4bf23f155d
+	joinOnDateBehavior: datePartOnly
+	fromColumn: fact_cgt_events.acquired
+	toColumn: LocalDateTable_ece6f6a8-03e9-44d9-a5ba-7271f796c044.Date
+
+relationship 781af7f0-8d85-8075-548e-03a2fc4ac8fd
+	fromColumn: fact_daily_portfolio.date
+	toColumn: dim_date.date
+
+relationship 800bfd94-60f4-bd32-774e-0d94d1325824
+	fromColumn: fact_daily_holdings.date
+	toColumn: dim_date.date
+
+relationship 5f8dceef-969d-ff9f-91d3-bd2b7f07c525
+	fromColumn: fact_daily_account.date
+	toColumn: dim_date.date
+
+relationship a137e10c-0c31-02d0-8598-fa024c149a74
+	fromColumn: fact_benchmark.date
+	toColumn: dim_date.date
+
+relationship 64e0fda7-3200-8ad7-a1fd-ae50640e06e7
+	fromColumn: fact_prices.date
+	toColumn: dim_date.date
+
+relationship 74d75682-f799-c96e-b932-61cd0407fc01
+	fromColumn: fact_trades.date
+	toColumn: dim_date.date
+
+relationship 8c8fcaca-7b5c-da11-8169-185c85740285
+	fromColumn: fact_cash.date
+	toColumn: dim_date.date
+
+relationship 2e7ab0cc-4d86-6b6c-5528-a34a12265f88
+	fromColumn: fact_dividends.date
+	toColumn: dim_date.date
+
+relationship 28d41705-f16f-2569-7547-7e1dc1902eee
+	fromColumn: fact_closed_trades.exit_date
+	toColumn: dim_date.date
+
+relationship d931b1a4-0595-16a3-4660-8c23d8024d2d
+	fromColumn: fact_cgt_events.disposed
+	toColumn: dim_date.date
+
+relationship rel_fy_dim_date
+	fromColumn: dim_date.fy
+	toColumn: dim_financial_year.fy
+
+relationship rel_fy_tax_year
+	fromColumn: fact_tax_year.fy
+	toColumn: dim_financial_year.fy
+
+relationship rel_sec_holdings
+	fromColumn: fact_daily_holdings.symbol
+	toColumn: dim_security.symbol
+
+relationship rel_sec_prices
+	fromColumn: fact_prices.symbol
+	toColumn: dim_security.symbol
+
+relationship rel_sec_trades
+	fromColumn: fact_trades.symbol
+	toColumn: dim_security.symbol
+
+relationship rel_sec_cash
+	fromColumn: fact_cash.symbol
+	toColumn: dim_security.symbol
+
+relationship rel_sec_closed
+	fromColumn: fact_closed_trades.symbol
+	toColumn: dim_security.symbol
+
+relationship rel_sec_cgt
+	fromColumn: fact_cgt_events.symbol
+	toColumn: dim_security.symbol
+
+relationship rel_sec_dividends
+	fromColumn: fact_dividends.symbol
+	toColumn: dim_security.symbol
+
+relationship rel_closed_tag
+	fromColumn: bridge_closed_trade_tag.sale_id
+	toColumn: fact_closed_trades.sale_id
+
+relationship rel_trade_tag
+	fromColumn: bridge_trade_tag.trade_id
+	toColumn: fact_trades.trade_id
+

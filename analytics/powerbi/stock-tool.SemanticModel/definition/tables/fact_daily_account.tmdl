@@ -1,0 +1,103 @@
+table fact_daily_account
+	isHidden
+	lineageTag: 7a81d200-224b-4899-82f2-d03fd5c9e1c4
+
+	column date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: c94dfe1e-932b-45f4-b85a-15e8c76ee07e
+		summarizeBy: none
+		sourceColumn: date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column account_open_aud
+		dataType: double
+		isHidden
+		lineageTag: f43f1b95-8cbc-457c-bc01-7d92a51f7cd4
+		summarizeBy: sum
+		sourceColumn: account_open_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column external_flow_aud
+		dataType: double
+		isHidden
+		lineageTag: 1c1c4d94-1820-4ddb-a2f3-6c12a886de18
+		summarizeBy: sum
+		sourceColumn: external_flow_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column holdings_aud
+		dataType: double
+		isHidden
+		lineageTag: 238ef2b3-a37b-4033-959e-c46ebc16c80f
+		summarizeBy: sum
+		sourceColumn: holdings_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cash_aud
+		dataType: double
+		isHidden
+		lineageTag: 3e93473d-d7cd-4b8c-868a-0d8a7d24f71e
+		summarizeBy: sum
+		sourceColumn: cash_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column account_close_aud
+		dataType: double
+		isHidden
+		lineageTag: 786da275-35d5-4077-bb78-6f5fe160bb5f
+		summarizeBy: sum
+		sourceColumn: account_close_aud
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column account_factor =
+			VAR Base = fact_daily_account[account_open_aud] + fact_daily_account[external_flow_aud]
+			RETURN IF ( Base > 0, fact_daily_account[account_close_aud] / Base, 1 )
+		formatString: 0.000000
+		lineageTag: 0f678572-3a52-4a00-ac17-5d69073bd0f0
+
+	partition fact_daily_account = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_daily_account", {{"date", type date}, {"account_open_aud", type number}, {"external_flow_aud", type number}, {"holdings_aud", type number}, {"cash_aud", type number}, {"account_close_aud", type number}})
+				in
+				    Source
+
+	changedProperty = IsHidden
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

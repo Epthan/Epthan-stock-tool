@@ -1,0 +1,120 @@
+table fact_daily_holdings
+	lineageTag: 6bf13b27-7257-4de3-9c30-9cd201a8901f
+
+	column date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: eab8dc3c-fc25-4741-9989-c60993ccb751
+		summarizeBy: none
+		sourceColumn: date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column symbol
+		dataType: string
+		isHidden
+		lineageTag: 2674c047-84a3-46c7-bee2-f9688d17bc8e
+		summarizeBy: none
+		sourceColumn: symbol
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column quantity
+		dataType: double
+		lineageTag: 4d8aec69-3048-4d0a-9368-b211546429f0
+		summarizeBy: sum
+		sourceColumn: quantity
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column close_aud
+		dataType: double
+		lineageTag: 9b7ad8d5-e5ee-439e-bae5-f7d978d598ad
+		summarizeBy: sum
+		sourceColumn: close_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column value_open_aud
+		dataType: double
+		lineageTag: 8ce56dcd-f0e9-4deb-9ad5-d5b78673e39d
+		summarizeBy: sum
+		sourceColumn: value_open_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column buys_aud
+		dataType: double
+		lineageTag: e21e62b6-64b4-4451-984d-fefe96efeba1
+		summarizeBy: sum
+		sourceColumn: buys_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column sells_aud
+		dataType: double
+		lineageTag: c8473178-c596-42e8-a06b-c8771403e3b6
+		summarizeBy: sum
+		sourceColumn: sells_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column income_aud
+		dataType: double
+		lineageTag: c2353acb-f03a-4fb2-920c-e74349f48f91
+		summarizeBy: sum
+		sourceColumn: income_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column value_close_aud
+		dataType: double
+		lineageTag: 0b320a93-4d48-4092-aaba-4c3622d3e49c
+		summarizeBy: sum
+		sourceColumn: value_close_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column pnl_aud
+		dataType: double
+		lineageTag: e48ee80f-62a0-41e7-84b4-f56f8fed0fd5
+		summarizeBy: sum
+		sourceColumn: pnl_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_daily_holdings = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_daily_holdings", {{"date", type date}, {"symbol", type text}, {"quantity", type number}, {"close_aud", type number}, {"value_open_aud", type number}, {"buys_aud", type number}, {"sells_aud", type number}, {"income_aud", type number}, {"value_close_aud", type number}, {"pnl_aud", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

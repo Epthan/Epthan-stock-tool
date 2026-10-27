@@ -46,7 +46,7 @@ src/hooks/          use-portfolios (portfolio, trade and cash state)
 src/lib/            calculations, tax, storage, market data access
 tests/unit|smoke|e2e|live|docs   test layers (docs = README screenshots)
 scripts/run-tests.mjs           test runner and report
-analytics/          Power BI dataset export (npm run bi:export), DAX measures, report guide
+analytics/          Power BI dataset export (npm run bi:export), DAX measures, report (.pbip) and theme
 docs/               user guide, methodology, tax, data, architecture, testing
 ```
 

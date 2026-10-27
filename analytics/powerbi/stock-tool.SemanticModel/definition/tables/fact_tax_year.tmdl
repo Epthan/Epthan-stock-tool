@@ -1,0 +1,175 @@
+table fact_tax_year
+	lineageTag: 47dbf64b-7e71-47fb-8420-ed79eb5a8583
+
+	column fy
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 5929fde1-798b-40c6-ac82-d2ef0113b43b
+		summarizeBy: sum
+		sourceColumn: fy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column fy_label
+		dataType: string
+		lineageTag: a9835c14-c9d1-4ecd-8700-584c63359a30
+		summarizeBy: none
+		sourceColumn: fy_label
+
+		annotation SummarizationSetBy = Automatic
+
+	column gains_discountable
+		dataType: double
+		lineageTag: c193edbe-4aeb-4313-ad27-3608a4613d43
+		summarizeBy: sum
+		sourceColumn: gains_discountable
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column gains_other
+		dataType: double
+		lineageTag: 44cace86-741e-4932-8d02-b6c1e25de786
+		summarizeBy: sum
+		sourceColumn: gains_other
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column label_18H
+		dataType: double
+		lineageTag: cbf4d2e0-e600-469a-8ab5-5338ef56efd2
+		summarizeBy: sum
+		sourceColumn: label_18H
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column losses
+		dataType: double
+		lineageTag: e42c99eb-f623-42bc-aaf2-3e1b1f1f5709
+		summarizeBy: sum
+		sourceColumn: losses
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column losses_brought_forward
+		dataType: double
+		lineageTag: 19294515-554a-42a9-a732-7a764469c155
+		summarizeBy: sum
+		sourceColumn: losses_brought_forward
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column losses_used
+		dataType: double
+		lineageTag: 02912cd6-a7d4-4793-8361-b6b089d3ac0d
+		summarizeBy: sum
+		sourceColumn: losses_used
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column discount
+		dataType: double
+		lineageTag: fc9a63ff-f523-4d9f-8a0d-0e966044dade
+		summarizeBy: sum
+		sourceColumn: discount
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column label_18A
+		dataType: double
+		lineageTag: 96da37d2-8d38-40d7-ac4e-06db27cdaa63
+		summarizeBy: sum
+		sourceColumn: label_18A
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column label_18V
+		dataType: double
+		lineageTag: e10be59f-ca16-4ca3-8b3b-4b15c6708511
+		summarizeBy: sum
+		sourceColumn: label_18V
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column label_11S
+		dataType: double
+		lineageTag: 5679412c-040c-4c11-89da-f974e0bfc83c
+		summarizeBy: sum
+		sourceColumn: label_11S
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column label_11T
+		dataType: double
+		lineageTag: 6fa7fd59-46a6-4914-b2c6-57b096349ffe
+		summarizeBy: sum
+		sourceColumn: label_11T
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column label_11U
+		dataType: double
+		lineageTag: 9aa1464e-86d6-47bd-a22e-9dfaf3014f63
+		summarizeBy: sum
+		sourceColumn: label_11U
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column label_20E
+		dataType: double
+		lineageTag: 946315d4-50ae-4618-86f9-5db7c1bf939f
+		summarizeBy: sum
+		sourceColumn: label_20E
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column label_20O
+		dataType: double
+		lineageTag: 0eda1c77-da05-4d2d-a1e4-e1fcc9a04f81
+		summarizeBy: sum
+		sourceColumn: label_20O
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_tax_year = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_tax_year", {{"fy", Int64.Type}, {"fy_label", type text}, {"gains_discountable", type number}, {"gains_other", type number}, {"label_18H", type number}, {"losses", type number}, {"losses_brought_forward", type number}, {"losses_used", type number}, {"discount", type number}, {"label_18A", type number}, {"label_18V", type number}, {"label_11S", type number}, {"label_11T", type number}, {"label_11U", type number}, {"label_20E", type number}, {"label_20O", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

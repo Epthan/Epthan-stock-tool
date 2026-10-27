@@ -1,0 +1,23 @@
+EVALUATE
+{
+("Holdings TWR", [Holdings TWR]),
+("Benchmark ^AXJO", CALCULATE([Benchmark Return], fact_benchmark[benchmark] = "^AXJO")),
+("Benchmark SPY", CALCULATE([Benchmark Return], fact_benchmark[benchmark] = "SPY")),
+("Period P&L", [Period P&L]),
+("Contribution NVDA", CALCULATE([Contribution], dim_security[symbol] = "NVDA")),
+("Max Drawdown", [Max Drawdown]),
+("Account TWR", [Account TWR]),
+("Account XIRR", [Account XIRR]),
+("Account Value", [Account Value]),
+("Net Contributions", [Net Contributions]),
+("Closed Trades", [Closed Trades]),
+("Win Rate", [Win Rate]),
+("Profit Factor", [Profit Factor]),
+("Realised P&L", [Realised P&L]),
+("18H FY2024", CALCULATE([Gross Capital Gains (18H)], dim_financial_year[fy] = 2024)),
+("18A FY2024", CALCULATE([Net Capital Gain (18A)], dim_financial_year[fy] = 2024)),
+("18H FY2025", CALCULATE([Gross Capital Gains (18H)], dim_financial_year[fy] = 2025)),
+("18A FY2025", CALCULATE([Net Capital Gain (18A)], dim_financial_year[fy] = 2025)),
+("18H FY2026", CALCULATE([Gross Capital Gains (18H)], dim_financial_year[fy] = 2026)),
+("18A FY2026", CALCULATE([Net Capital Gain (18A)], dim_financial_year[fy] = 2026))
+}

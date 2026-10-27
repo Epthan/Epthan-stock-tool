@@ -1,0 +1,105 @@
+table fact_closed_trades
+	lineageTag: 8a646acb-348d-4352-b4a1-279820d3b2c6
+
+	column sale_id
+		dataType: string
+		lineageTag: 5eae7ca3-5877-4b6d-970c-71593f8f6235
+		summarizeBy: none
+		sourceColumn: sale_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column symbol
+		dataType: string
+		isHidden
+		lineageTag: efec6705-c4ba-4347-97fc-cab80e4e12ce
+		summarizeBy: none
+		sourceColumn: symbol
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column exit_date
+		dataType: dateTime
+		formatString: dd/mm/yyyy
+		lineageTag: a226f65e-b3b8-4a50-8709-61d8cb23337e
+		summarizeBy: none
+		sourceColumn: exit_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column quantity
+		dataType: double
+		lineageTag: 3543b1e3-c42c-4f45-aa5d-c00ff239abd4
+		summarizeBy: sum
+		sourceColumn: quantity
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column exit_price_aud
+		dataType: double
+		lineageTag: 66993918-8e05-4243-9b9f-b5b26e5f58eb
+		summarizeBy: sum
+		sourceColumn: exit_price_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column average_cost_aud
+		dataType: double
+		lineageTag: 3bfd73cb-1d34-42a6-b0c2-430c9bae1c7b
+		summarizeBy: sum
+		sourceColumn: average_cost_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column pnl_aud
+		dataType: double
+		lineageTag: 796a8a4e-b1f8-44e2-a725-a293ce894740
+		summarizeBy: sum
+		sourceColumn: pnl_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column return_pct
+		dataType: double
+		lineageTag: 0924f8bd-3d85-48dd-bc8c-8bfd1516a1f4
+		summarizeBy: sum
+		sourceColumn: return_pct
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column holding_days
+		dataType: double
+		lineageTag: cda5d78c-1fed-4fd1-bf51-c69b515967ad
+		summarizeBy: sum
+		sourceColumn: holding_days
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_closed_trades = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_closed_trades", {{"sale_id", type text}, {"symbol", type text}, {"exit_date", type date}, {"quantity", type number}, {"exit_price_aud", type number}, {"average_cost_aud", type number}, {"pnl_aud", type number}, {"return_pct", type number}, {"holding_days", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

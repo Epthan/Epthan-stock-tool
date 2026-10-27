@@ -96,7 +96,7 @@ VAR Flows =
 RETURN XIRR ( Flows, [Amount], [Day] )
 
 
-// ===== Charts (use with dim_date[date] on the axis) ============================================
+// ===== Charts (dim_date[date] or dim_date[year_month] on the axis) ============================================
 
 Base Index =
 // cum_index on the day before the selected period starts (1 if it starts with the first trade).
@@ -106,7 +106,9 @@ VAR FirstFactor = CALCULATE ( MAX ( fact_daily_portfolio[growth_factor] ), REMOV
 RETURN DIVIDE ( FirstRow, FirstFactor )
 
 Cumulative Return =
-VAR Today = MAX ( fact_daily_portfolio[cum_index] )
+// Value on the last trading day in context, so it works per day or per month on the axis.
+VAR LastDay = MAX ( fact_daily_portfolio[date] )
+VAR Today = CALCULATE ( MAX ( fact_daily_portfolio[cum_index] ), fact_daily_portfolio[date] = LastDay )
 RETURN IF ( NOT ISBLANK ( Today ), Today / [Base Index] - 1 )
 
 Cumulative Benchmark =
@@ -127,6 +129,10 @@ VAR Peak =
         CALCULATE ( MAX ( fact_daily_portfolio[cum_index] ), ALLSELECTED ( dim_date ), fact_daily_portfolio[date] <= ThisDay )
     )
 RETURN IF ( NOT ISBLANK ( Today ), Today / Peak - 1 )
+
+Worst Drawdown =
+// Deepest daily drawdown inside the current axis bucket (e.g. a month).
+MINX ( VALUES ( fact_daily_portfolio[date] ), [Drawdown] )
 
 Max Drawdown =
 VAR Days =

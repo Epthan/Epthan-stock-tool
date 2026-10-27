@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "stock-tool"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "e20ee477-159d-4767-adc6-41bd410a4a64"
+  }
+}

@@ -1,0 +1,47 @@
+table fact_benchmark
+	lineageTag: 7e5ecde3-e1ad-45df-aee5-bd3d99c64a44
+
+	column date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: 0993721c-bd54-44de-8138-7e04beb5ab6d
+		summarizeBy: none
+		sourceColumn: date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column benchmark
+		dataType: string
+		lineageTag: 185afe58-8d14-4330-926a-9bc64eb538e0
+		summarizeBy: none
+		sourceColumn: benchmark
+
+		annotation SummarizationSetBy = Automatic
+
+	column close_aud
+		dataType: double
+		lineageTag: 22b142b8-e5cf-454e-b370-b35a63221e0d
+		summarizeBy: sum
+		sourceColumn: close_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_benchmark = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_benchmark", {{"date", type date}, {"benchmark", type text}, {"close_aud", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

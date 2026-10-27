@@ -1,0 +1,119 @@
+table dim_date
+	lineageTag: 6a860bd0-1c04-4700-b3c1-36af303c5fb8
+	dataCategory: Time
+
+	column date
+		dataType: dateTime
+		isKey
+		formatString: dd/mm/yyyy
+		lineageTag: b9e14670-565b-4da5-aa5c-237df1782d92
+		summarizeBy: none
+		sourceColumn: date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column year
+		dataType: int64
+		formatString: 0
+		lineageTag: 483b0a9f-2d19-41b0-870a-32465dc9f0b5
+		summarizeBy: sum
+		sourceColumn: year
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column month
+		dataType: int64
+		formatString: 0
+		lineageTag: 837e3fd4-91c4-4860-91c5-bc0611162613
+		summarizeBy: sum
+		sourceColumn: month
+
+		changedProperty = SortByColumn
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column month_name
+		dataType: string
+		lineageTag: 6f19c049-d2ab-4b7d-8641-39d39e25824b
+		summarizeBy: none
+		sourceColumn: month_name
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column year_month
+		dataType: string
+		lineageTag: 5f21c3c0-902a-409b-9905-903792267313
+		summarizeBy: none
+		sourceColumn: year_month
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column fy
+		dataType: int64
+		formatString: 0
+		lineageTag: b31d6fb3-a6aa-4240-a8ef-df9622dee9b1
+		summarizeBy: sum
+		sourceColumn: fy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column fy_label
+		dataType: string
+		lineageTag: adb619da-f1bb-4b71-8293-b4e86edeb26d
+		summarizeBy: none
+		sourceColumn: fy_label
+		sortByColumn: fy
+
+		changedProperty = SortByColumn
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column fy_quarter
+		dataType: string
+		lineageTag: 1ac27129-6051-400f-b4cc-e977bb8962e2
+		summarizeBy: none
+		sourceColumn: fy_quarter
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_trading_day
+		dataType: int64
+		formatString: 0
+		lineageTag: 31f37809-cab6-45dd-bc41-8e4262ac1076
+		summarizeBy: sum
+		sourceColumn: is_trading_day
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_date = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("dim_date", {{"date", type date}, {"year", Int64.Type}, {"month", Int64.Type}, {"month_name", type text}, {"year_month", type text}, {"fy", Int64.Type}, {"fy_label", type text}, {"fy_quarter", type text}, {"is_trading_day", Int64.Type}})
+				in
+				    Source
+
+	changedProperty = IsHidden
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

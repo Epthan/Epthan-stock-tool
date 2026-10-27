@@ -1,0 +1,229 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "name": "17526bd087eaa9b4a9e4",
+  "position": {
+    "x": 24,
+    "y": 364,
+    "z": 9000,
+    "height": 340,
+    "width": 1232,
+    "tabOrder": 9000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "symbol"
+                }
+              },
+              "queryRef": "fact_cgt_events.symbol",
+              "nativeQueryRef": "symbol",
+              "displayName": "Symbol"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "sale_id"
+                }
+              },
+              "queryRef": "fact_cgt_events.sale_id",
+              "nativeQueryRef": "sale_id",
+              "displayName": "Sale"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "buy_id"
+                }
+              },
+              "queryRef": "fact_cgt_events.buy_id",
+              "nativeQueryRef": "buy_id",
+              "displayName": "Parcel"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "acquired"
+                }
+              },
+              "queryRef": "fact_cgt_events.acquired",
+              "nativeQueryRef": "acquired",
+              "displayName": "Acquired"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "disposed"
+                }
+              },
+              "queryRef": "fact_cgt_events.disposed",
+              "nativeQueryRef": "disposed",
+              "displayName": "Disposed"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "quantity"
+                }
+              },
+              "queryRef": "fact_cgt_events.quantity",
+              "nativeQueryRef": "quantity",
+              "displayName": "Qty"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "cost_base_aud"
+                }
+              },
+              "queryRef": "fact_cgt_events.cost_base_aud",
+              "nativeQueryRef": "cost_base_aud",
+              "displayName": "Cost base"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "proceeds_aud"
+                }
+              },
+              "queryRef": "fact_cgt_events.proceeds_aud",
+              "nativeQueryRef": "proceeds_aud",
+              "displayName": "Proceeds"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "gain_aud"
+                }
+              },
+              "queryRef": "fact_cgt_events.gain_aud",
+              "nativeQueryRef": "gain_aud",
+              "displayName": "Gain"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "days_held"
+                }
+              },
+              "queryRef": "fact_cgt_events.days_held",
+              "nativeQueryRef": "days_held",
+              "displayName": "Days held"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_cgt_events"
+                    }
+                  },
+                  "Property": "discount_eligible"
+                }
+              },
+              "queryRef": "fact_cgt_events.discount_eligible",
+              "nativeQueryRef": "discount_eligible",
+              "displayName": "Discount"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "fact_cgt_events"
+                  }
+                },
+                "Property": "disposed"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'CGT events (sale × parcel)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

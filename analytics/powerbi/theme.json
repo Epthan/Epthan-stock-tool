@@ -1,0 +1,89 @@
+{
+  "name": "Stock Tool",
+  "dataColors": ["#1F6F8B", "#9AA5B4", "#E0A458", "#D1495B", "#2A9D8F", "#3D5A80", "#B5838D", "#6D6875"],
+  "foreground": "#1B2B3A",
+  "foregroundNeutralSecondary": "#5F6B7A",
+  "foregroundNeutralTertiary": "#8C96A3",
+  "background": "#FFFFFF",
+  "backgroundLight": "#F4F6F9",
+  "backgroundNeutral": "#E4E8EE",
+  "tableAccent": "#1F6F8B",
+  "good": "#2A9D8F",
+  "neutral": "#E0A458",
+  "bad": "#D1495B",
+  "maximum": "#1F6F8B",
+  "center": "#E4E8EE",
+  "minimum": "#D1495B",
+  "textClasses": {
+    "callout": { "fontSize": 24, "fontFace": "Segoe UI Semibold", "color": "#1B2B3A" },
+    "title": { "fontSize": 11, "fontFace": "Segoe UI Semibold", "color": "#1B2B3A" },
+    "header": { "fontSize": 10, "fontFace": "Segoe UI Semibold", "color": "#1B2B3A" },
+    "label": { "fontSize": 9, "fontFace": "Segoe UI", "color": "#5F6B7A" }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [{ "show": true, "color": { "solid": { "color": "#FFFFFF" } }, "transparency": 0 }],
+        "border": [{ "show": true, "color": { "solid": { "color": "#E4E8EE" } }, "radius": 8 }],
+        "dropShadow": [{ "show": false }],
+        "padding": [{ "top": 10, "bottom": 10, "left": 14, "right": 14 }],
+        "title": [{ "show": true, "fontColor": { "solid": { "color": "#1B2B3A" } }, "fontSize": 11, "fontFamily": "Segoe UI Semibold" }],
+        "subTitle": [{ "show": false }],
+        "divider": [{ "show": false }],
+        "visualHeader": [{ "show": true, "transparency": 0 }],
+        "categoryAxis": [{ "labelColor": { "solid": { "color": "#5F6B7A" } }, "fontSize": 9, "gridlineShow": false, "showAxisTitle": false }],
+        "valueAxis": [{ "labelColor": { "solid": { "color": "#5F6B7A" } }, "fontSize": 9, "gridlineColor": { "solid": { "color": "#EEF1F5" } }, "gridlineStyle": "solid", "showAxisTitle": false }],
+        "legend": [{ "show": true, "position": "TopRight", "labelColor": { "solid": { "color": "#5F6B7A" } }, "fontSize": 9 }]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#F4F6F9" } }, "transparency": 0 }],
+        "outspace": [{ "color": { "solid": { "color": "#E9EDF2" } }, "transparency": 0 }]
+      }
+    },
+    "card": {
+      "*": {
+        "labels": [{ "color": { "solid": { "color": "#1B2B3A" } }, "fontSize": 22, "fontFamily": "Segoe UI Semibold" }],
+        "categoryLabels": [{ "show": true, "color": { "solid": { "color": "#5F6B7A" } }, "fontSize": 9 }],
+        "accentBar": [{ "show": true, "color": { "solid": { "color": "#1F6F8B" } }, "width": 4, "position": "Left" }]
+      }
+    },
+    "lineChart": {
+      "*": { "lineStyles": [{ "strokeWidth": 2 }] }
+    },
+    "areaChart": {
+      "*": { "lineStyles": [{ "strokeWidth": 1 }] }
+    },
+    "tableEx": {
+      "*": {
+        "grid": [{ "gridVertical": false, "gridHorizontal": true, "gridHorizontalColor": { "solid": { "color": "#EEF1F5" } }, "rowPadding": 4, "outlineColor": { "solid": { "color": "#E4E8EE" } } }],
+        "columnHeaders": [{ "fontColor": { "solid": { "color": "#1B2B3A" } }, "backColor": { "solid": { "color": "#F4F6F9" } }, "fontFamily": "Segoe UI Semibold", "fontSize": 9 }],
+        "values": [{ "fontColorPrimary": { "solid": { "color": "#1B2B3A" } }, "backColorPrimary": { "solid": { "color": "#FFFFFF" } }, "backColorSecondary": { "solid": { "color": "#FAFBFC" } }, "fontSize": 9 }],
+        "total": [{ "fontColor": { "solid": { "color": "#1B2B3A" } }, "backColor": { "solid": { "color": "#F4F6F9" } }, "fontFamily": "Segoe UI Semibold" }]
+      }
+    },
+    "slicer": {
+      "*": {
+        "items": [{ "fontColor": { "solid": { "color": "#1B2B3A" } }, "fontSize": 10 }],
+        "header": [{ "show": false }]
+      }
+    },
+    "textbox": {
+      "*": {
+        "background": [{ "show": false }],
+        "border": [{ "show": false }],
+        "title": [{ "show": false }],
+        "padding": [{ "top": 0, "bottom": 0, "left": 0, "right": 0 }]
+      }
+    },
+    "shape": {
+      "*": {
+        "background": [{ "show": false }],
+        "border": [{ "show": false }],
+        "title": [{ "show": false }],
+        "padding": [{ "top": 0, "bottom": 0, "left": 0, "right": 0 }]
+      }
+    }
+  }
+}

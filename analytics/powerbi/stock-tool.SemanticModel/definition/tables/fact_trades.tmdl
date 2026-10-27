@@ -1,0 +1,106 @@
+table fact_trades
+	lineageTag: f9556518-a25c-46b1-9b11-563bba12235d
+
+	column trade_id
+		dataType: string
+		lineageTag: 2f1aa622-09ba-4901-99d5-b3f3d9b17b19
+		summarizeBy: none
+		sourceColumn: trade_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: 78d3510f-10b0-4ff1-8be0-e48d0be91bad
+		summarizeBy: none
+		sourceColumn: date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column symbol
+		dataType: string
+		isHidden
+		lineageTag: 3536fca7-3250-49e6-82da-2cb893e8c868
+		summarizeBy: none
+		sourceColumn: symbol
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column side
+		dataType: string
+		lineageTag: 4b70718b-3788-4dd4-b77b-ffe50069e104
+		summarizeBy: none
+		sourceColumn: side
+
+		annotation SummarizationSetBy = Automatic
+
+	column quantity
+		dataType: double
+		lineageTag: d8339bcb-c7f1-4d85-b31f-22d1e20689e4
+		summarizeBy: sum
+		sourceColumn: quantity
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column price_local
+		dataType: double
+		lineageTag: 9d881902-9345-497b-8fff-3d6e390dcc1d
+		summarizeBy: sum
+		sourceColumn: price_local
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column fx_to_aud
+		dataType: double
+		lineageTag: 66269b1c-fa9d-4b5c-8893-74b87752c043
+		summarizeBy: sum
+		sourceColumn: fx_to_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column value_aud
+		dataType: double
+		lineageTag: e55e2398-1e52-4c9a-aaca-08991e0a7fac
+		summarizeBy: sum
+		sourceColumn: value_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column brokerage_aud
+		dataType: double
+		lineageTag: 84505216-ae47-44f2-83ea-e84796cb7a9b
+		summarizeBy: sum
+		sourceColumn: brokerage_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_trades = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_trades", {{"trade_id", type text}, {"date", type date}, {"symbol", type text}, {"side", type text}, {"quantity", type number}, {"price_local", type number}, {"fx_to_aud", type number}, {"value_aud", type number}, {"brokerage_aud", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

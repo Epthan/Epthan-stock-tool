@@ -57,6 +57,7 @@ Formulas and conventions: [METHODOLOGY.md](METHODOLOGY.md). Tax rules: [TAX.md](
 | Server storage | `lib/server-sqlite.ts` (node:sqlite wrapper, `STOCK_TOOL_DATA_DIR`), `lib/server-store.ts`, `lib/price-archive.ts`, `api/store`, `api/store/snapshots`, `api/store/info`, `api/store/reset` |
 | Compare / Heatmap | `components/compare-view.tsx`, `treemap-view.tsx`, `lib/treemap-data.ts` |
 | States | `components/state-panel.tsx` (`StatePanel`, `ErrorState` with auto-retry), `lib/friendly-error.ts`, `app/error.tsx` |
+| Reporting | `analytics/` (star-schema export for Power BI, DAX measures, `powerbi/stock-tool.pbip` report) |
 | Calculations | `lib/live-portfolio.ts`, `trader-analytics.ts`, `trader-insights.ts`, `breakdowns.ts`, `cash-ledger.ts`, `fx.ts`, `corporate-actions.ts`, `csv-import.ts`, `portfolio-trades.ts` |
 | Data access | `lib/yahoo-finance.ts` (server cache), `lib/client-cache.ts` (browser cache) |
 

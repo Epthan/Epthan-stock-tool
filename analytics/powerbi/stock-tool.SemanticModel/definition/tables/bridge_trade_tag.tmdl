@@ -1,0 +1,31 @@
+table bridge_trade_tag
+	lineageTag: a78a53b4-5b46-449d-8252-dad3394f3115
+
+	column trade_id
+		dataType: string
+		lineageTag: c7b38640-4849-4b76-9de7-7b41de3b2ca3
+		summarizeBy: none
+		sourceColumn: trade_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column tag
+		dataType: string
+		lineageTag: 5e7b3734-afff-4f68-962e-c6d61e9563e8
+		summarizeBy: none
+		sourceColumn: tag
+
+		annotation SummarizationSetBy = Automatic
+
+	partition bridge_trade_tag = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("bridge_trade_tag", {{"trade_id", type text}, {"tag", type text}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

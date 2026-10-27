@@ -1,0 +1,114 @@
+table fact_cash
+	lineageTag: 2d942893-a56b-44d9-aa36-3efed1cec2a7
+
+	column entry_id
+		dataType: string
+		lineageTag: 169d2963-5d09-4bb2-99bd-069f81703697
+		summarizeBy: none
+		sourceColumn: entry_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		lineageTag: 389cb71c-368a-4e7c-841d-815b648ff2a7
+		summarizeBy: none
+		sourceColumn: date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column kind
+		dataType: string
+		lineageTag: 44ef3c9e-095c-4596-be3c-ca380c545320
+		summarizeBy: none
+		sourceColumn: kind
+
+		annotation SummarizationSetBy = Automatic
+
+	column symbol
+		dataType: string
+		isHidden
+		lineageTag: 53f2b6b4-a245-426c-a1ea-03afda4175f2
+		summarizeBy: none
+		sourceColumn: symbol
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column trade_id
+		dataType: string
+		lineageTag: 53b852b6-0ae4-4d90-a7ee-9af2e43dd0f2
+		summarizeBy: none
+		sourceColumn: trade_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column amount_aud
+		dataType: double
+		lineageTag: bd8a3734-ee71-4e36-adf5-eaa25a2ed094
+		summarizeBy: sum
+		sourceColumn: amount_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column external_flow_aud
+		dataType: double
+		lineageTag: 46813588-fcf2-48bc-8756-3a6b70fc7d74
+		summarizeBy: sum
+		sourceColumn: external_flow_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column franked_aud
+		dataType: double
+		lineageTag: b67cf54e-80da-40f0-bf72-70d669ea8d39
+		summarizeBy: sum
+		sourceColumn: franked_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column franking_credit_aud
+		dataType: double
+		lineageTag: 8f459bad-8e3b-4ab9-970b-ad88fd64f87a
+		summarizeBy: sum
+		sourceColumn: franking_credit_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column withheld_aud
+		dataType: double
+		lineageTag: e02139d3-6dc1-48e5-af85-592684764a9e
+		summarizeBy: sum
+		sourceColumn: withheld_aud
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition fact_cash = m
+		mode: import
+		source =
+				let
+				    Source = LoadCsv("fact_cash", {{"entry_id", type text}, {"date", type date}, {"kind", type text}, {"symbol", type text}, {"trade_id", type text}, {"amount_aud", type number}, {"external_flow_aud", type number}, {"franked_aud", type number}, {"franking_credit_aud", type number}, {"withheld_aud", type number}})
+				in
+				    Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

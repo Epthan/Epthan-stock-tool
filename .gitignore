@@ -50,3 +50,9 @@ next-env.d.ts
 
 # git history bundles of each release (git clone releases/stock-tool-vX.Y.Z.bundle)
 /releases
+
+# Power BI Desktop local state (the report itself is committed as a .pbip project)
+**/.pbi/localSettings.json
+**/.pbi/cache.abf
+**/.pbi/editorSettings.json
+analytics/powerbi/**/TMDLScripts/

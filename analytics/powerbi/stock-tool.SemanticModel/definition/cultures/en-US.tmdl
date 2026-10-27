@@ -1,0 +1,566 @@
+cultureInfo en-US
+
+	linguisticMetadata =
+			{
+			  "Version": "2.0.0",
+			  "Language": "en-US",
+			  "Entities": {
+			    "dim_date.date": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "dim_date",
+			          "ConceptualProperty": "date"
+			        }
+			      },
+			      "State": "Generated"
+			    },
+			    "fact_benchmark.benchmark": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_benchmark",
+			          "ConceptualProperty": "benchmark"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Benchmark": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "dim_security.symbol": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "dim_security",
+			          "ConceptualProperty": "symbol"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Symbol": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "dim_security.name": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "dim_security",
+			          "ConceptualProperty": "name"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Name": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "dim_security.sector": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "dim_security",
+			          "ConceptualProperty": "sector"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Sector": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "dim_financial_year.fy_label": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "dim_financial_year",
+			          "ConceptualProperty": "fy_label"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Financial year": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "bridge_closed_trade_tag.tag": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "bridge_closed_trade_tag",
+			          "ConceptualProperty": "tag"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Tag": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_closed_trades.sale_id": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_closed_trades",
+			          "ConceptualProperty": "sale_id"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Sale": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_closed_trades.symbol": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_closed_trades",
+			          "ConceptualProperty": "symbol"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Symbol": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_closed_trades.exit_date": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_closed_trades",
+			          "ConceptualProperty": "exit_date"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Exit date": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_closed_trades.quantity": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_closed_trades",
+			          "ConceptualProperty": "quantity"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Qty": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_closed_trades.exit_price_aud": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_closed_trades",
+			          "ConceptualProperty": "exit_price_aud"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Exit price": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_closed_trades.pnl_aud": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_closed_trades",
+			          "ConceptualProperty": "pnl_aud"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "P&L": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_closed_trades.return_pct": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_closed_trades",
+			          "ConceptualProperty": "return_pct"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Return %": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_closed_trades.holding_days": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_closed_trades",
+			          "ConceptualProperty": "holding_days"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Days": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.symbol": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "symbol"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Symbol": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.sale_id": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "sale_id"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Sale": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.buy_id": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "buy_id"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Parcel": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.acquired": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "acquired"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Acquired": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.disposed": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "disposed"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Disposed": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.quantity": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "quantity"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Qty": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.cost_base_aud": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "cost_base_aud"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Cost base": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.proceeds_aud": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "proceeds_aud"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Proceeds": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.gain_aud": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "gain_aud"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Gain": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.days_held": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "days_held"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Days held": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "fact_cgt_events.discount_eligible": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "fact_cgt_events",
+			          "ConceptualProperty": "discount_eligible"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Discount": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    },
+			    "dim_date.year_month": {
+			      "Definition": {
+			        "Binding": {
+			          "ConceptualEntity": "dim_date",
+			          "ConceptualProperty": "year_month"
+			        }
+			      },
+			      "State": "Generated",
+			      "Terms": [
+			        {
+			          "Month": {
+			            "State": "Suggested",
+			            "Source": {
+			              "Type": "External",
+			              "Agent": "PowerBI.VisualColumnRename"
+			            },
+			            "Weight": 0.9
+			          }
+			        }
+			      ]
+			    }
+			  }
+			}
+		contentType: json
+

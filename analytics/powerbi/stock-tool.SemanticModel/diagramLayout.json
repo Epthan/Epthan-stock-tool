@@ -1,0 +1,241 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 1921,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 0,
+            "y": 0
+          },
+          "nodeIndex": "bridge_closed_trade_tag",
+          "nodeLineageTag": "3709451f-ff4d-4699-bd66-f91eba08a9a8",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 268,
+            "y": 130
+          },
+          "nodeIndex": "dim_date",
+          "nodeLineageTag": "6a860bd0-1c04-4700-b3c1-36af303c5fb8",
+          "size": {
+            "height": 270,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 542,
+            "y": 0
+          },
+          "nodeIndex": "dim_financial_year",
+          "nodeLineageTag": "1c1b3498-6068-48e2-b773-ad116725f7de",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 852,
+            "y": 0
+          },
+          "nodeIndex": "dim_security",
+          "nodeLineageTag": "a3e3ef97-2bdd-49ef-a56e-1b59fd4f4ce7",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1136,
+            "y": 0
+          },
+          "nodeIndex": "fact_benchmark",
+          "nodeLineageTag": "7e5ecde3-e1ad-45df-aee5-bd3d99c64a44",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1420,
+            "y": 0
+          },
+          "nodeIndex": "fact_cgt_events",
+          "nodeLineageTag": "86138edb-b8e3-4ff2-b2bb-6f0517d052db",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1704,
+            "y": 0
+          },
+          "nodeIndex": "fact_closed_trades",
+          "nodeLineageTag": "8a646acb-348d-4352-b4a1-279820d3b2c6",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1988,
+            "y": 0
+          },
+          "nodeIndex": "fact_daily_account",
+          "nodeLineageTag": "7a81d200-224b-4899-82f2-d03fd5c9e1c4",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2272,
+            "y": 0
+          },
+          "nodeIndex": "fact_daily_holdings",
+          "nodeLineageTag": "6bf13b27-7257-4de3-9c30-9cd201a8901f",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2556,
+            "y": 0
+          },
+          "nodeIndex": "fact_daily_portfolio",
+          "nodeLineageTag": "f830c938-1a5b-41b0-83b8-f655e112e70d",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2840,
+            "y": 0
+          },
+          "nodeIndex": "fact_dividends",
+          "nodeLineageTag": "76d23e4e-676e-489d-9564-6053413ab692",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3124,
+            "y": 0
+          },
+          "nodeIndex": "fact_prices",
+          "nodeLineageTag": "ab8d6f5b-2e52-4a4d-878d-3a7d0e7c5872",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3408,
+            "y": 0
+          },
+          "nodeIndex": "fact_tax_year",
+          "nodeLineageTag": "47dbf64b-7e71-47fb-8420-ed79eb5a8583",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3692,
+            "y": 0
+          },
+          "nodeIndex": "fact_trades",
+          "nodeLineageTag": "f9556518-a25c-46b1-9b11-563bba12235d",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4260,
+            "y": 0
+          },
+          "nodeIndex": "bridge_trade_tag",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4544,
+            "y": 0
+          },
+          "nodeIndex": "fact_cash",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4828,
+            "y": 50
+          },
+          "nodeIndex": "_Measures",
+          "nodeLineageTag": "9e2c8d62-f609-4106-aac7-cc9c000df7b0",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        }
+      ],
+      "name": "All tables",
+      "zoomValue": 100,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "All tables",
+  "defaultDiagram": "All tables"
+}
