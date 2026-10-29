@@ -38,7 +38,7 @@ mock data. The formulas are written up in [`docs/METHODOLOGY.md`](docs/METHODOLO
 
 ## Pages
 
-| Page | Route | What's on it |
+| Page | Where | What's on it |
 | --- | --- | --- |
 | Market | `/` | Watch lists, line and candle charts with moving averages, quick drawings (trend lines, rectangles, Fibonacci), company facts, your position in the stock, and a moving-average backtest shown against your real trades |
 | Portfolio | `/dashboard` | Holdings and account returns, benchmark comparison, contribution by holding, risk (volatility, drawdown, beta, correlation), trade stats such as win rate and profit factor, and a short list of findings |
@@ -46,6 +46,7 @@ mock data. The formulas are written up in [`docs/METHODOLOGY.md`](docs/METHODOLO
 | Tax | `/tax` | CGT schedule by parcel for each financial year, the 12-month discount, loss carry-forward, franked and foreign dividends, the matching myTax labels, and a CSV export |
 | Compare | `/compare` | Several symbols rebased to 0% on one chart |
 | Heatmap | `/treemap` | S&P 100, Nasdaq-100, a watch list or your own holdings, sized by market cap or position value |
+| Power BI report | [`analytics/powerbi/stock-tool.pbip`](analytics/) | Five pages built on the exported data: Overview (return vs benchmark), Attribution, Risk (drawdown, cash drag, weights), Trading (win rate, P&L by tag) and Tax (myTax labels by financial year) |
 
 There are three colour themes, an English and Chinese interface, a phone layout, and it can be used from several
 devices on the same home network without one overwriting another.
